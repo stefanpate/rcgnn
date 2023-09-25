@@ -1,0 +1,20 @@
+stages:
+  download_proteins:
+    cmd: python scripts/download_proteins.py
+    deps:
+      - data/ec.txt
+      - scripts/download_proteins.py
+    params:
+      - download_proteins.EC_PATH
+      - download_proteins.BASE_URL
+      - download_proteins.SEQUENCE_PATH
+    outs:
+      - data/sequences/sequences.json
+  make_fasta:
+    cmd: python scripts/make_fasta.py
+    deps:
+      - data/sequences/sequences.json
+      - scripts/make_fasta.py
+    params:
+      - make_fasta.JSON_PATH
+      - make_fasta.FASTA_PATH

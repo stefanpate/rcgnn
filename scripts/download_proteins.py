@@ -3,10 +3,9 @@ import json
 import logging
 import urllib
 from tqdm import tqdm
+from dvc.api import params_show
 
-EC_PATH = 'data/ec.txt'
-SEQUENCE_PATH = 'data/sequences/sequences.json'
-BASE_URL = 'https://rest.uniprot.org/uniprotkb/search?&query=ec'
+params = params_show()['download_proteins']
 
 get_primary_accession = lambda r: r['primaryAccession']
 get_sequence = lambda r: r['sequence']['value']
@@ -15,13 +14,13 @@ get_sequence = lambda r: r['sequence']['value']
 if __name__ == '__main__':
 
     print('Reading EC values...')
-    with open(EC_PATH, 'r') as f:
+    with open(params['EC_PATH'], 'r') as f:
         ec = f.readlines()
 
     print('Accessing protein sequences from uniprot rest api...')
     results = {}
     for e in tqdm(ec[:]):
-        url = urllib.parse.urljoin(BASE_URL, f'search?&query=ec:{e}&fields=sequence,ec')
+        url = urllib.parse.urljoin(params['BASE_URL'], f'search?&query=ec:{e}&fields=sequence,ec')
         response = requests.get(url)
         if response.status_code != 200 or 'results' not in response.json():
             logging.warning(f'Error with request for {e}')
@@ -38,7 +37,7 @@ if __name__ == '__main__':
         results[e.strip()] = result
 
     print('Writing to file.')
-    with open(SEQUENCE_PATH, 'w') as f:
+    with open(params['SEQUENCE_PATH'], 'w') as f:
         json.dump(results, f)
 
 
