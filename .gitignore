@@ -1,3 +1,4 @@
 .dvc/
-data/
+data/sequences/
+data/embeddings/
 .idea/

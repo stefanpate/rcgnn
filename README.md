@@ -97,3 +97,13 @@ model_loss_function (new branch: loss_funciton model updates)
 ### Whenever you pull or checkout a new branch
 1. git pull
 2. dvc pull
+
+
+### Installation
+1. git pull
+2. pip install fair-esm  # latest release, OR:
+pip install git+https://github.com/facebookresearch/esm.git  # bleeding edge, current repo main branch
+3. pip install "fair-esm[esmfold]"
+# OpenFold and its remaining dependency
+pip install 'dllogger @ git+https://github.com/NVIDIA/dllogger.git'
+pip install 'openfold @ git+https://github.com/aqlaboratory/openfold.git@4b41059694619831a7db195b7e0988fc4ff3a307'
