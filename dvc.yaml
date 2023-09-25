@@ -3,7 +3,6 @@ stages:
     cmd: python scripts/download_proteins.py
     deps:
       - data/ec.txt
-      - scripts/download_proteins.py
     params:
       - download_proteins.EC_PATH
       - download_proteins.BASE_URL
@@ -14,9 +13,14 @@ stages:
     cmd: python scripts/make_fasta.py
     deps:
       - data/sequences/sequences.json
-      - scripts/make_fasta.py
     params:
       - make_fasta.JSON_PATH
       - make_fasta.FASTA_PATH
     outs:
       - data/sequences/sequences.fasta
+  encode_esm:
+    cmd: esm-extract esm2_t33_650M_UR50D data/sequences/sequences.fasta   data/embeddings/proteins --repr_layers 32 --include mean
+    deps:
+      - data/sequences/sequences.fasta
+    outs:
+      - data/embeddings/proteins
