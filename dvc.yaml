@@ -18,3 +18,5 @@ stages:
     params:
       - make_fasta.JSON_PATH
       - make_fasta.FASTA_PATH
+    outs:
+      - data/sequences/sequences.fasta

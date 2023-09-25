@@ -75,3 +75,9 @@ model (new branch: model_updates) -> DL 3 layers (commit) -> 4 layers (commit) -
 loss funciton (new branch: loss_function_updates) -> DL 4 layers + CE -> DL 4 layers + BCE -> ...
 
 model_loss_function (new branch: loss_funciton model updates)
+
+
+### NEW PERSON
+1. git clone https://dagshub.com/erxw/hiec
+2. git pull
+3. dvc pull
