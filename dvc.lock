@@ -37,3 +37,17 @@ stages:
       hash: md5
       md5: 337dea7c874ce1339b79f40218f6052b
       size: 55361798
+  encode_esm:
+    cmd: esm-extract esm2_t33_650M_UR50D data/sequences/sequences.fasta   data/embeddings/proteins
+      --repr_layers 32 --include mean
+    deps:
+    - path: data/sequences/sequences.fasta
+      hash: md5
+      md5: 337dea7c874ce1339b79f40218f6052b
+      size: 55361798
+    outs:
+    - path: data/embeddings/proteins
+      hash: md5
+      md5: a88c2a5c6b34027456fc9ac830473ed1.dir
+      size: 665251408
+      nfiles: 111234
