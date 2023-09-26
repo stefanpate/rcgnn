@@ -7,10 +7,6 @@ stages:
       hash: md5
       md5: 374f7839c10d16d6a00476dd2cbc7643
       size: 79737
-    - path: scripts/download_proteins.py
-      hash: md5
-      md5: 09e708b3dad94ab55023baee7e108156
-      size: 1237
     params:
       params.yaml:
         download_proteins.BASE_URL: https://rest.uniprot.org/uniprotkb/search?&query=ec
