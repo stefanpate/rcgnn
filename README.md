@@ -8,6 +8,7 @@
 3. scripts
 4. src (packages and modules)
 5. artifacts (stores results)
+6. CLEAN
 
 ## Dev Notes
 1. Whenever you push to remote, please: 1) export conda environment and requirements.txt, 2) black and vulture
@@ -58,6 +59,7 @@
 4. process.py splits data into train and test sets. Also creates pairs of proteins for self-supervised learning (pending decision whether to do it a priori or during train)
 4. train.py trains model (Stefan handles this)
 5. evaluate.py evaluates model on external sources (Stefan handles this)
+6. CLEAN/app/get_embeddings.ipynb Transforms EXM embeddings into CLEAN embeddings
 
 
 
