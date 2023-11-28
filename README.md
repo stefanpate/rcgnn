@@ -59,7 +59,7 @@
 4. process.py splits data into train and test sets. Also creates pairs of proteins for self-supervised learning (pending decision whether to do it a priori or during train)
 4. train.py trains model (Stefan handles this)
 5. evaluate.py evaluates model on external sources (Stefan handles this)
-6. CLEAN/app/get_embeddings.ipynb Transforms EXM embeddings into CLEAN embeddings
+6. get_embeddings.ipynb Transforms EXM embeddings into CLEAN embeddings
 
 
 
