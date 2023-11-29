@@ -81,7 +81,7 @@ model_loss_function (new branch: loss_funciton model updates)
 
 ### NEW PERSON
 
-0. conda env create -n hiec
+0. conda create -n hiec
 1. conda activate hiec
 1. git clone https://dagshub.com/erxw/hiec
 2. git pull 
