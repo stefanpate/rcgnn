@@ -115,13 +115,13 @@ def ensure_dirs(path):
         os.makedirs(path)
         
 def retrive_esm1b_embedding(fasta_name):
-    esm_script = "esm/scripts/extract.py"
-    esm_out = "data/esm_data"
+    esm_script = "extract.py"
+    esm_out = "/home/spn1560/hiec/data/clean_data/esm_data/"
     esm_type = "esm1b_t33_650M_UR50S"
-    fasta_name = "data/" + fasta_name + ".fasta"
+    fasta_name = '/home/spn1560/hiec/data/clean_data/' + fasta_name + ".fasta"
     command = ["python", esm_script, esm_type, 
               fasta_name, esm_out, "--include", "mean"]
-    subprocess.run(command)
+    subprocess.run(command, cwd='/home/spn1560/hiec/src/esm/scripts/')
  
 def compute_esm_distance(train_file):
     ensure_dirs('./data/distance_map/')

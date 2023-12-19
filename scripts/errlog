@@ -1,4 +1,0 @@
-Traceback (most recent call last):
-  File "get_esm_swissprot.py", line 1, in <module>
-    from src.CLEAN.utils import *
-ModuleNotFoundError: No module named 'src'
