@@ -89,10 +89,10 @@ model_loss_function (new branch: loss_funciton model updates)
 3. dvc pull 
 
 ### Whenever you push
-0. dvc repro (or dvc add filename)
-1. git add . (or git add filename.dvc)
-2. git commit -m "add a really useful message here"
-3. pipreqs .
+0. pipreqs .
+1. dvc repro (or dvc add filename)
+3. git add . (or git add filename.dvc)
+4. git commit -m "add a really useful message here" 
 4. git push
 5. dvc push
 
