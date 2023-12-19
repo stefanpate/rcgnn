@@ -1,5 +1,6 @@
 .idea/
 erx_hiec_rampup.txt
 .Rhistory
-CLEAN
+/CLEAN
 /data
+__pycache__
