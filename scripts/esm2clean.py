@@ -48,6 +48,7 @@ def get_clean_embeds(train_str, esm_embeds):
 Main
 '''
 
+print("Loading esm")
 esm_embeds = [load_esm(elt) for elt in os.listdir(esm_embed_dir)] # Load esm embeds
 fns = os.listdir(esm_embed_dir) # Keep file names
 clean_embeds = get_clean_embeds("split100", esm_embeds)
@@ -58,3 +59,6 @@ for i in range(clean_embeds.shape[0]):
         # Slicing returns a view, not a new object
         # Detach from loss function to get just the vector
         torch.save(clean_embeds[i].clone().detach(), save_to + fns[i])
+
+        if i % 1000 == 0:
+             print(f"{i} / {clean_embeds.shape[0]} converted")
