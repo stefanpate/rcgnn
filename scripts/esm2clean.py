@@ -35,10 +35,10 @@ def get_clean_embeds(train_str, esm_embeds):
     # and rebuild with [python build.py install]
     # if inferencing on model trained w/ supconH loss
     model = LayerNormNet(512, 128, device, dtype) 
-    checkpoint = torch.load('./data/pretrained/'+ train_str +'.pth', map_location=device) 
+    checkpoint = torch.load('../data/swissprot/pretrained/'+ train_str +'.pth', map_location=device) 
     model.load_state_dict(checkpoint)
     model.eval()
-        
+    
     # Forward pass
     esm_embeds = torch.cat(esm_embeds).to(device=device, dtype=dtype)
     model_emb = model(esm_embeds)
