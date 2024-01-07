@@ -7,8 +7,8 @@ import os
 Params
 '''
 
-esm_embed_dir = '../data/swissprot/esm/'
-save_to = '../data/swissprot/clean/'
+esm_embed_dir = '../data/halogenase/esm/'
+save_to = '../data/halogenase/clean/'
 idx = 33 # 32 for eric's embeddings
 
 '''
@@ -49,17 +49,19 @@ Main
 '''
 
 print("Loading esm")
+ensure_dirs(save_to)
 esm_embeds = [load_esm(elt) for elt in os.listdir(esm_embed_dir)] # Load esm embeds
-print('done')
-#fns = os.listdir(esm_embed_dir) # Keep file names
-#clean_embeds = get_clean_embeds("split100", esm_embeds)
+fns = os.listdir(esm_embed_dir) # Keep file names
+clean_embeds = get_clean_embeds("split100", esm_embeds)
 
 # Save embeddings
-#for i in range(clean_embeds.shape[0]):
+for i in range(clean_embeds.shape[0]):
         # Must clone a slice of the tensor to save only that slice, not whole tensor
         # Slicing returns a view, not a new object
         # Detach from loss function to get just the vector
-#        torch.save(clean_embeds[i].clone().detach(), save_to + fns[i])
+        torch.save(clean_embeds[i].clone().detach(), save_to + fns[i])
 
-#        if i % 1000 == 0:
-#             print(f"{i} / {clean_embeds.shape[0]} converted")
+        if i % 1000 == 0:
+             print(f"{i} / {clean_embeds.shape[0]} converted")
+
+print('done')

@@ -1,9 +1,11 @@
 from src.CLEAN.utils import *
-# import sys
 
-# i = int(sys.argv[1])
+dataset = 'new'
+outdir = f"../data/{dataset}/esm/"
+csv_path = f"../data/{dataset}/{dataset}.csv" 
+fasta_path = f"../data/{dataset}/{dataset}.fasta"
 
-# ensure_dirs("../data/clean_data/esm_data")
-# ensure_dirs("../data/clean_data/pretrained")
-# csv_to_fasta("../data/clean_data/split100.csv", "../data/clean_data/split100.fasta")
-retrive_esm1b_embedding("split100_rem")
+
+ensure_dirs(outdir)
+csv_to_fasta(csv_path, fasta_path)
+retrive_esm1b_embedding(fasta_path, outdir)
