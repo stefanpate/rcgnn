@@ -27,19 +27,19 @@ rng = np.random.default_rng(seed)
 
 error_fracs = {}
 dmaxes = {}
-embed_idxs = defaultdict(lambda : defaultdict(list)) # Dict of dict of list of embed idxs in embeds arr {ec level: {ec number up to level:[idx1, ...]}}
+embed_idxs = defaultdict(lambda : defaultdict(list)) # {ec level: {ec number up to level:[idx1, ...]}} (idxs in embed_arr)
 
-# Load uniprot -> ec look-up table
-uni2ec = pd.read_csv(embed_csv, delimiter='\t')
-uni2ec.set_index('Entry', inplace=True)
+# Load id -> ec look-up table
+id2ec = pd.read_csv(embed_csv, delimiter='\t')
+id2ec.set_index('Entry', inplace=True)
 
 # Load embeddings
 print("Loading embeddings")
 ecs = []
 embeds = []
 for i, elt in enumerate(os.listdir(embed_dir)[::ds]):
-    uni_id, this_embed = load_embed(embed_dir + elt)
-    this_ec = uni2ec.loc[uni_id, 'EC number']
+    id, this_embed = load_embed(embed_dir + elt)
+    this_ec = id2ec.loc[id, 'EC number']
     if ';' in this_ec: # Multiple ecs, take first
         this_ec = this_ec.split(';')[0]
 
