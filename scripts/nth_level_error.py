@@ -1,7 +1,7 @@
 import pandas as pd
 from collections import defaultdict
 import os
-from src.utils import load_embed, save_json, ensure_dirs
+from src.utils import load_embed, save_json
 import numpy as np
 
 
@@ -11,12 +11,14 @@ Set these
 db = 'swissprot'
 embed_type = 'clean'
 
-# save_to = ''
+save_acc = f"../artifacts/embed_analysis/nth_level_accuracy_{db}_{embed_type}.json"
+save_tot = f"../artifacts/embed_analysis/nth_level_totals_{db}_{embed_type}.json"
+save_chance = f"../artifacts/embed_analysis/nth_level_chance_{db}_{embed_type}.json"
 db_dir = f"../data/{db}/"
 embed_dir = f"{db_dir}{embed_type}/"
 embed_csv = f"{db_dir}{db}.csv"
 n_levels = 4 # Levels of hierarchy in EC
-ds = 1000
+ds = 1
 batch_size = 100 # For getting predicted ec labels
 seed = 825
 rng = np.random.default_rng(seed)
@@ -52,13 +54,7 @@ l4_ecs = []
 l4_centroids = []
 for this_l4_ec in embed_idxs[3].keys():
     this_embeds = embeds[embed_idxs[3][this_l4_ec]]
-    ec_arr = np.array(this_l4_ec.split('.')).astype('<U1')
-
-    # Catch incomplete ecs
-    if len(ec_arr) < n_levels:
-        rnd_append = np.array([str(rng.random()) for i in range(n_levels - len(ec_arr))])
-        ec_arr = np.hstack((ec_arr, rnd_append))
-    
+    ec_arr = np.array(this_l4_ec.split('.')).astype('<U1')    
     l4_ecs.append(ec_arr)
     l4_centroids.append(this_embeds.mean(axis=0))
 
@@ -80,11 +76,12 @@ for i in range(n_batches):
     this_pred_ecs = l4_ecs[np.argmin(dist_to_centroids, axis=1)]
     pred_ecs.append(this_pred_ecs)
 
-    if i % 1000 == 0:
+    if i % 50 == 0:
         print(f"Batch {i} / {n_batches}")
 
 pred_ecs = np.vstack(pred_ecs)
 
+print("Calculating accuracy")
 # Get number accuracy for every ec at every level
 # These have keys of all ecs at every level
 # e.g., (1,), (1,1), (2,3,4,3)
@@ -112,3 +109,24 @@ for l in range(n_levels):
 
 for k,v in chance.items():
     chance[k] = v / omega
+
+# Convert keys to string
+old_list = [accuracy, total, chance]
+new_list = []
+for elt in old_list:
+    temp = {}
+    for k,v in elt.items():
+        this_k = '.'.join([str(dig) for dig in k])
+        temp[this_k] = v
+
+    new_list.append(temp)
+
+accuracy, total, chance = new_list
+
+# Save
+print("Saving")
+save_json(accuracy, save_acc)
+save_json(total, save_tot)
+save_json(chance, save_chance)
+
+print("Done")
