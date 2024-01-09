@@ -43,3 +43,7 @@ def load_class(ec, dir_path):
         embeds = torch.stack(embeds)
 
     return ids, ecs, embeds
+
+def ensure_dirs(path):
+    if not os.path.exists(path):
+        os.makedirs(path)

@@ -1,7 +1,7 @@
 import pandas as pd
 from collections import defaultdict
 import os
-from src.utils import load_embed, save_json
+from src.utils import load_embed, save_json, ensure_dirs
 import numpy as np
 from src.evaluation import get_dmax, dmax_error
 
@@ -9,7 +9,7 @@ from src.evaluation import get_dmax, dmax_error
 Set these
 '''
 db = 'swissprot'
-embed_type = 'clean'
+embed_type = 'esm'
 seed = 825
 
 '''
@@ -77,6 +77,7 @@ for i in range(n_levels):
 
 # Save
 print("Saving")
+ensure_dirs('/'.join(save_errors.split('/')[:-1]))
 save_json(error_fracs, save_errors)
 save_json(dmaxes, save_dmaxes)
 
