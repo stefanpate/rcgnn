@@ -19,7 +19,7 @@ embed_dir = f"{db_dir}{embed_type}/"
 embed_csv = f"{db_dir}{db}.csv"
 n_levels = 4 # Levels of hierarchy in EC
 ds = 1
-batch_size = 100 # For getting predicted ec labels
+batch_size = 1000 # For getting predicted ec labels
 seed = 825
 rng = np.random.default_rng(seed)
 
