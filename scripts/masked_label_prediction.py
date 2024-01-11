@@ -42,7 +42,7 @@ for i, elt in enumerate(os.listdir(swissprot_clean_dir)):
         sub_key = '.'.join(this_ec.split('.')[:j+1])
         embed_idxs[j][sub_key].append(i)
 
-embeds = np.vstack(swissprot_embeds)
+swissprot_embeds = np.vstack(swissprot_embeds)
 
 # Load test dataset id -> ec look-up table
 id2ec = pd.read_csv(embed_csv, delimiter='\t')

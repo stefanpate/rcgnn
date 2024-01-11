@@ -20,7 +20,7 @@ embed_csv = f"{db_dir}{db}.csv"
 swissprot_clean_dir = '../data/swissprot/clean/'
 swissprot_csv = '../data/swissprot/swissprot.csv'
 n_levels = 4 # Levels of hierarchy in EC
-batch_size = 1000 # For getting predicted ec labels
+batch_size = 10 # For getting predicted ec labels
 
 # Load swissprot id -> ec look-up table
 swiss_id2ec = pd.read_csv(swissprot_csv, delimiter='\t')
