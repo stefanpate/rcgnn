@@ -47,7 +47,7 @@ for i, elt in enumerate(os.listdir(swissprot_clean_dir)):
 	if i % 100 == 0:
 		print(f"{i}th swissprot loaded")
 
-swwissprot_embeds = np.vstack(swissprot_embeds)
+swissprot_embeds = np.vstack(swissprot_embeds)
 
 # Get centroids of level 4 clusters
 print('Getting level 4 centroids')
