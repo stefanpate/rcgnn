@@ -5,9 +5,9 @@
 #SBATCH -n 1
 #SBATCH --mem=64G
 #SBATCH -t 08:00:00
-#SBATCH --job-name="swiss_esm_dmax"
-#SBATCH --output=../logs/outlog
-#SBATCH --error=../logs/errlog
+#SBATCH --job-name="new_nth"
+#SBATCH --output=../logs/outlog_new
+#SBATCH --error=../logs/errlog_new
 ulimit -c 0
 module load python/anaconda3.6
 module load gcc/9.2.0

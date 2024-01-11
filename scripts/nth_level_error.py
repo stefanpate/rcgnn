@@ -8,7 +8,7 @@ import numpy as np
 '''
 Set these
 '''
-db = 'price'
+db = 'new'
 embed_type = 'clean'
 
 save_acc = f"../artifacts/embed_analysis/nth_level_accuracy_{db}_{embed_type}.json"
@@ -17,7 +17,7 @@ save_chance = f"../artifacts/embed_analysis/nth_level_chance_{db}_{embed_type}.j
 db_dir = f"../data/{db}/"
 embed_dir = f"{db_dir}{embed_type}/"
 embed_csv = f"{db_dir}{db}.csv"
-swissprot_clean_dir = '../data/swissprot/clean'
+swissprot_clean_dir = '../data/swissprot/clean/'
 swissprot_csv = '../data/swissprot/swissprot.csv'
 n_levels = 4 # Levels of hierarchy in EC
 batch_size = 1000 # For getting predicted ec labels
@@ -31,30 +31,33 @@ print("Loading swissprot")
 swissprot_embeds = []
 embed_idxs = defaultdict(lambda : defaultdict(list)) # {ec level: {ec number up to level:[idx1, ...]}} (idxs in embed_arr)
 for i, elt in enumerate(os.listdir(swissprot_clean_dir)):
-    id, this_embed = load_embed(swissprot_clean_dir + elt)
-    this_ec = swiss_id2ec.loc[id, 'EC number']
-    
-    if ';' in this_ec: # Multiple ecs, take first
-        this_ec = this_ec.split(';')[0]
+	id, this_embed = load_embed(swissprot_clean_dir + elt)
+	this_ec = swiss_id2ec.loc[id, 'EC number']
+	
+	if ';' in this_ec: # Multiple ecs, take first
+		this_ec = this_ec.split(';')[0]
 
-    swissprot_embeds.append(this_embed)
+	swissprot_embeds.append(this_embed)
 
-    # Append idxs for all sub-ecs of this embed
-    for j in range(n_levels):
-        sub_key = '.'.join(this_ec.split('.')[:j+1])
-        embed_idxs[j][sub_key].append(i)
+	# Append idxs for all sub-ecs of this embed
+	for j in range(n_levels):
+		sub_key = '.'.join(this_ec.split('.')[:j+1])
+		embed_idxs[j][sub_key].append(i)
 
-embeds = np.vstack(swissprot_embeds)
+	if i % 100 == 0:
+		print(f"{i}th swissprot loaded")
+
+swwissprot_embeds = np.vstack(swissprot_embeds)
 
 # Get centroids of level 4 clusters
 print('Getting level 4 centroids')
 l4_ecs = [] 
 l4_centroids = []
 for this_l4_ec in embed_idxs[n_levels - 1].keys():
-    this_embeds = swissprot_embeds[embed_idxs[3][this_l4_ec]]
-    ec_arr = np.array(this_l4_ec.split('.')).astype('<U1')    
-    l4_ecs.append(ec_arr)
-    l4_centroids.append(this_embeds.mean(axis=0))
+	this_embeds = swissprot_embeds[embed_idxs[3][this_l4_ec]]
+	ec_arr = np.array(this_l4_ec.split('.')).astype('<U1')    
+	l4_ecs.append(ec_arr)
+	l4_centroids.append(this_embeds.mean(axis=0))
 
 l4_centroids = np.vstack(l4_centroids)
 l4_ecs = np.array(l4_ecs)
@@ -67,14 +70,14 @@ id2ec.set_index('Entry', inplace=True)
 ecs = []
 embeds = []
 for i, elt in enumerate(os.listdir(embed_dir)):
-    id, this_embed = load_embed(embed_dir + elt)
-    this_ec = id2ec.loc[id, 'EC number']
-    
-    if ';' in this_ec: # Multiple ecs, take first
-        this_ec = this_ec.split(';')[0]
+	id, this_embed = load_embed(embed_dir + elt)
+	this_ec = id2ec.loc[id, 'EC number']
+	
+	if ';' in this_ec: # Multiple ecs, take first
+		this_ec = this_ec.split(';')[0]
 
-    ecs.append(np.array(this_ec.split('.')).astype('<U1')) # EC str -> arr
-    embeds.append(this_embed)
+	ecs.append(np.array(this_ec.split('.')).astype('<U1')) # EC str -> arr
+	embeds.append(this_embed)
 
 embeds = np.vstack(embeds)
 ecs = np.vstack(ecs)
@@ -86,17 +89,17 @@ pred_ecs = []
 n_batches = embeds.shape[0] // batch_size
 l4_centroids_expand = np.transpose(l4_centroids[np.newaxis, :, :], axes=(0,2,1)) # Transpose to (1, # features, # centroids)
 for i in range(n_batches):
-    
-    if i == n_batches - 1:
-        dist_to_centroids = np.sqrt(np.square(embeds[i * batch_size:, :, np.newaxis] - l4_centroids_expand).sum(axis=1))
-    else:
-        dist_to_centroids = np.sqrt(np.square(embeds[i * batch_size:(i + 1) * batch_size, :, np.newaxis] - l4_centroids_expand).sum(axis=1))
-    
-    this_pred_ecs = l4_ecs[np.argmin(dist_to_centroids, axis=1)]
-    pred_ecs.append(this_pred_ecs)
+	
+	if i == n_batches - 1:
+		dist_to_centroids = np.sqrt(np.square(embeds[i * batch_size:, :, np.newaxis] - l4_centroids_expand).sum(axis=1))
+	else:
+		dist_to_centroids = np.sqrt(np.square(embeds[i * batch_size:(i + 1) * batch_size, :, np.newaxis] - l4_centroids_expand).sum(axis=1))
+	
+	this_pred_ecs = l4_ecs[np.argmin(dist_to_centroids, axis=1)]
+	pred_ecs.append(this_pred_ecs)
 
-    if i % 20 == 0:
-        print(f"Batch {i} / {n_batches}")
+	if i % 20 == 0:
+		print(f"Batch {i} / {n_batches}")
 
 pred_ecs = np.vstack(pred_ecs)
 
@@ -109,14 +112,14 @@ total = defaultdict(lambda : 0) # Total samples of that class
 accuracy = {}
 
 for l in range(n_levels):
-    for i in range(pred_ecs.shape[0]):
-        total[tuple(ecs[i, :l+1])] += 1
-        
-        if np.all(ecs[i, :l+1] == pred_ecs[i, :l+1]):
-            n_correct[tuple(ecs[i, :l+1])] += 1
+	for i in range(pred_ecs.shape[0]):
+		total[tuple(ecs[i, :l+1])] += 1
+		
+		if np.all(ecs[i, :l+1] == pred_ecs[i, :l+1]):
+			n_correct[tuple(ecs[i, :l+1])] += 1
 
 for k in total.keys():
-    accuracy[k] = n_correct[k] / total[k]
+	accuracy[k] = n_correct[k] / total[k]
 
 # Compute chance for every ec at every level
 # Recall the ecs in l4_ecs are all the unique
@@ -124,22 +127,22 @@ for k in total.keys():
 omega = len(l4_ecs)
 chance = defaultdict(lambda : 0)
 for l in range(n_levels):
-    for i in range(l4_ecs.shape[0]):
-        chance[tuple(l4_ecs[i, :l+1])] += 1
+	for i in range(l4_ecs.shape[0]):
+		chance[tuple(l4_ecs[i, :l+1])] += 1
 
 for k,v in chance.items():
-    chance[k] = v / omega
+	chance[k] = v / omega
 
 # Convert keys to string
 old_list = [accuracy, total, chance]
 new_list = []
 for elt in old_list:
-    temp = {}
-    for k,v in elt.items():
-        this_k = '.'.join([str(dig) for dig in k])
-        temp[this_k] = v
+	temp = {}
+	for k,v in elt.items():
+		this_k = '.'.join([str(dig) for dig in k])
+		temp[this_k] = v
 
-    new_list.append(temp)
+	new_list.append(temp)
 
 accuracy, total, chance = new_list
 
