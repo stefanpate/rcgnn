@@ -11,7 +11,7 @@ Set these
 db = 'price'
 embed_type = 'clean'
 
-save_acc = f"../artifacts/embed_analysis/masked_label_prediction_acc_{db}_{embed_type}.json"
+save_acc = f"../artifacts/embed_analysis/masked_label_prediction_acc_{db}_{embed_type}.txt"
 db_dir = f"../data/{db}/"
 embed_dir = f"{db_dir}{embed_type}/"
 embed_csv = f"{db_dir}{db}.csv"
