@@ -7,9 +7,9 @@ import os
 Params
 '''
 
-esm_embed_dir = '../data/halogenase/esm/'
-save_to = '../data/halogenase/clean/'
-idx = 33 # 32 for eric's embeddings
+esm_embed_dir = '../data/erxprot/esm/'
+save_to = '../data/erxprot/clean/'
+idx = 32 # 32 for erxprot, 33 for swissprot
 
 '''
 Helpers

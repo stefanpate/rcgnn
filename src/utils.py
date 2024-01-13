@@ -12,14 +12,14 @@ def load_json(path):
         data = json.load(f)
     return data
 
-def load_embed(path):
-    uni_id = path.split('/')[-1].removesuffix('.pt')
+def load_embed(path, embed_key):
+    id = path.split('/')[-1].removesuffix('.pt')
     f = torch.load(path)
     if type(f) == dict:
-        embed = f['mean_representations'][33]
+        embed = f['mean_representations'][embed_key]
     elif type(f) == torch.Tensor:
         embed = f
-    return uni_id, embed
+    return id, embed
 
 def load_class(ec, dir_path):
     '''Loads samples from

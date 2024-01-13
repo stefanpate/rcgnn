@@ -8,36 +8,48 @@ import numpy as np
 '''
 Set these
 '''
-db = 'new'
+db = 'halogenase'
+train_db = 'erxprot'
 embed_type = 'clean'
 
-save_acc = f"../artifacts/embed_analysis/nth_level_accuracy_{db}_{embed_type}.json"
-save_tot = f"../artifacts/embed_analysis/nth_level_totals_{db}_{embed_type}.json"
-save_chance = f"../artifacts/embed_analysis/nth_level_chance_{db}_{embed_type}.json"
-db_dir = f"../data/{db}/"
-embed_dir = f"{db_dir}{embed_type}/"
-embed_csv = f"{db_dir}{db}.csv"
-swissprot_clean_dir = '../data/swissprot/clean/'
-swissprot_csv = '../data/swissprot/swissprot.csv'
+save_acc = f"../artifacts/embed_analysis/nth_level_accuracy_train_{train_db}_test_{db}_{embed_type}.json"
+save_tot = f"../artifacts/embed_analysis/nth_level_totals_train_{train_db}_test_{db}_{embed_type}.json"
+save_chance = f"../artifacts/embed_analysis/nth_level_chance_train_{train_db}_test_{db}_{embed_type}.json"
+embed_dir = f"../data/{db}/{embed_type}/"
+embed_csv = f"../data/{db}/{db}.csv"
+train_dir = f"../data/{train_db}/{embed_type}/"
+train_csv = f"../data/{train_db}/{train_db}.csv"
 n_levels = 4 # Levels of hierarchy in EC
 batch_size = 10 # For getting predicted ec labels
+ds = 1000 # Downsample
+
+# Different key to pull tensor from .pt file
+if train_db == 'erxprot':
+	train_embed_key = 32
+elif train_db == 'swissprot':
+	train_embed_key = 33
+
+if db == 'erxprot':
+     embed_key = 32
+else:
+     embed_key = 33
 
 # Load swissprot id -> ec look-up table
-swiss_id2ec = pd.read_csv(swissprot_csv, delimiter='\t')
-swiss_id2ec.set_index('Entry', inplace=True)
+train_id2ec = pd.read_csv(train_csv, delimiter='\t')
+train_id2ec.set_index('Entry', inplace=True)
 
 # Load swissprot embeddings
 print("Loading swissprot")
-swissprot_embeds = []
+train_embeds = []
 embed_idxs = defaultdict(lambda : defaultdict(list)) # {ec level: {ec number up to level:[idx1, ...]}} (idxs in embed_arr)
-for i, elt in enumerate(os.listdir(swissprot_clean_dir)):
-	id, this_embed = load_embed(swissprot_clean_dir + elt)
-	this_ec = swiss_id2ec.loc[id, 'EC number']
+for i, elt in enumerate(os.listdir(train_dir)[::ds]):
+	id, this_embed = load_embed(train_dir + elt, train_embed_key)
+	this_ec = train_id2ec.loc[id, 'EC number']
 	
 	if ';' in this_ec: # Multiple ecs, take first
 		this_ec = this_ec.split(';')[0]
 
-	swissprot_embeds.append(this_embed)
+	train_embeds.append(this_embed)
 
 	# Append idxs for all sub-ecs of this embed
 	for j in range(n_levels):
@@ -47,14 +59,14 @@ for i, elt in enumerate(os.listdir(swissprot_clean_dir)):
 	if i % 100 == 0:
 		print(f"{i}th swissprot loaded")
 
-swissprot_embeds = np.vstack(swissprot_embeds)
+train_embeds = np.vstack(train_embeds)
 
 # Get centroids of level 4 clusters
 print('Getting level 4 centroids')
 l4_ecs = [] 
 l4_centroids = []
 for this_l4_ec in embed_idxs[n_levels - 1].keys():
-	this_embeds = swissprot_embeds[embed_idxs[3][this_l4_ec]]
+	this_embeds = train_embeds[embed_idxs[3][this_l4_ec]]
 	ec_arr = np.array(this_l4_ec.split('.')).astype('<U1')    
 	l4_ecs.append(ec_arr)
 	l4_centroids.append(this_embeds.mean(axis=0))
@@ -70,7 +82,7 @@ id2ec.set_index('Entry', inplace=True)
 ecs = []
 embeds = []
 for i, elt in enumerate(os.listdir(embed_dir)):
-	id, this_embed = load_embed(embed_dir + elt)
+	id, this_embed = load_embed(embed_dir + elt, embed_key)
 	this_ec = id2ec.loc[id, 'EC number']
 	
 	if ';' in this_ec: # Multiple ecs, take first
@@ -147,8 +159,8 @@ for elt in old_list:
 accuracy, total, chance = new_list
 
 # Save
-print("Saving")
-save_json(accuracy, save_acc)
-save_json(total, save_tot)
-save_json(chance, save_chance)
-print("Done")
+# print("Saving")
+# save_json(accuracy, save_acc)
+# save_json(total, save_tot)
+# save_json(chance, save_chance)
+# print("Done")

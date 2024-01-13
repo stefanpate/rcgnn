@@ -8,7 +8,7 @@ from src.evaluation import get_dmax, dmax_error
 '''
 Set these
 '''
-db = 'swissprot'
+db = 'erxprot'
 embed_type = 'esm'
 seed = 825
 
@@ -22,8 +22,13 @@ embed_dir = f"{db_dir}{embed_type}/"
 embed_csv = f"{db_dir}{db}.csv"
 n_levels = 4 # Levels of hierarchy in EC
 do_shuffle = False
-ds = 1 # Downsample factor
+ds = 1000 # Downsample factor
 rng = np.random.default_rng(seed)
+
+if db == 'erxprot':
+     embed_key = 32
+else:
+     embed_key = 33
 
 error_fracs = {}
 dmaxes = {}
@@ -38,7 +43,7 @@ print("Loading embeddings")
 ecs = []
 embeds = []
 for i, elt in enumerate(os.listdir(embed_dir)[::ds]):
-    id, this_embed = load_embed(embed_dir + elt)
+    id, this_embed = load_embed(embed_dir + elt, embed_key)
     this_ec = id2ec.loc[id, 'EC number']
     if ';' in this_ec: # Multiple ecs, take first
         this_ec = this_ec.split(';')[0]
@@ -75,10 +80,10 @@ for i in range(n_levels):
         error_fracs[i].append(dmax_error(class_embeds, neg_embeds, neg_ecs))
         dmaxes[i].append(get_dmax(class_embeds))
 
-# Save
-print("Saving")
-ensure_dirs('/'.join(save_errors.split('/')[:-1]))
-save_json(error_fracs, save_errors)
-save_json(dmaxes, save_dmaxes)
+# # Save
+# print("Saving")
+# ensure_dirs('/'.join(save_errors.split('/')[:-1]))
+# save_json(error_fracs, save_errors)
+# save_json(dmaxes, save_dmaxes)
 
 print("Done")
