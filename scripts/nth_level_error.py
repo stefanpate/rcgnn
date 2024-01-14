@@ -11,7 +11,7 @@ import numpy as np
 Set these
 '''
 db = 'erxprot'
-train_db = 'erxprot'
+train_db = 'swissprot'
 embed_type = 'clean'
 
 save_acc = f"../artifacts/embed_analysis/nth_level_accuracy_train_{train_db}_test_{db}_{embed_type}.json"
