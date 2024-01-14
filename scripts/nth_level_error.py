@@ -1,3 +1,5 @@
+import sys
+sys.path.append('/home/spn1560/hiec/src')
 import pandas as pd
 from collections import defaultdict
 import os
@@ -8,7 +10,7 @@ import numpy as np
 '''
 Set these
 '''
-db = 'halogenase'
+db = 'erxprot'
 train_db = 'erxprot'
 embed_type = 'clean'
 
@@ -21,7 +23,7 @@ train_dir = f"../data/{train_db}/{embed_type}/"
 train_csv = f"../data/{train_db}/{train_db}.csv"
 n_levels = 4 # Levels of hierarchy in EC
 batch_size = 10 # For getting predicted ec labels
-ds = 1000 # Downsample
+ds = 1 # Downsample
 
 # Different key to pull tensor from .pt file
 if train_db == 'erxprot':
@@ -39,7 +41,7 @@ train_id2ec = pd.read_csv(train_csv, delimiter='\t')
 train_id2ec.set_index('Entry', inplace=True)
 
 # Load swissprot embeddings
-print("Loading swissprot")
+print("Loading train data")
 train_embeds = []
 embed_idxs = defaultdict(lambda : defaultdict(list)) # {ec level: {ec number up to level:[idx1, ...]}} (idxs in embed_arr)
 for i, elt in enumerate(os.listdir(train_dir)[::ds]):
@@ -57,7 +59,7 @@ for i, elt in enumerate(os.listdir(train_dir)[::ds]):
 		embed_idxs[j][sub_key].append(i)
 
 	if i % 100 == 0:
-		print(f"{i}th swissprot loaded")
+		print(f"{i}th training batch loaded")
 
 train_embeds = np.vstack(train_embeds)
 
@@ -159,8 +161,8 @@ for elt in old_list:
 accuracy, total, chance = new_list
 
 # Save
-# print("Saving")
-# save_json(accuracy, save_acc)
-# save_json(total, save_tot)
-# save_json(chance, save_chance)
-# print("Done")
+print("Saving")
+save_json(accuracy, save_acc)
+save_json(total, save_tot)
+save_json(chance, save_chance)
+print("Done")

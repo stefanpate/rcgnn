@@ -1,3 +1,5 @@
+import sys
+sys.path.append('/home/spn1560/hiec/src')
 import pandas as pd
 from collections import defaultdict
 import os
@@ -5,11 +7,12 @@ from src.utils import load_embed, save_json, ensure_dirs
 import numpy as np
 from src.evaluation import get_dmax, dmax_error
 
+
 '''
 Set these
 '''
 db = 'erxprot'
-embed_type = 'esm'
+embed_type = 'clean'
 seed = 825
 
 '''
@@ -22,7 +25,7 @@ embed_dir = f"{db_dir}{embed_type}/"
 embed_csv = f"{db_dir}{db}.csv"
 n_levels = 4 # Levels of hierarchy in EC
 do_shuffle = False
-ds = 1000 # Downsample factor
+ds = 1 # Downsample factor
 rng = np.random.default_rng(seed)
 
 if db == 'erxprot':
@@ -80,10 +83,10 @@ for i in range(n_levels):
         error_fracs[i].append(dmax_error(class_embeds, neg_embeds, neg_ecs))
         dmaxes[i].append(get_dmax(class_embeds))
 
-# # Save
-# print("Saving")
-# ensure_dirs('/'.join(save_errors.split('/')[:-1]))
-# save_json(error_fracs, save_errors)
-# save_json(dmaxes, save_dmaxes)
+# Save
+print("Saving")
+ensure_dirs('/'.join(save_errors.split('/')[:-1]))
+save_json(error_fracs, save_errors)
+save_json(dmaxes, save_dmaxes)
 
 print("Done")
