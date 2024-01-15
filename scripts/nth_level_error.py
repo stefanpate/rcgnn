@@ -10,8 +10,8 @@ import numpy as np
 '''
 Set these
 '''
-db = 'price'
-train_db = 'swissprot'
+db = 'erxprot'
+train_db = 'erxprot'
 embed_type = 'clean'
 
 save_acc = f"../artifacts/embed_analysis/nth_level_accuracy_train_{train_db}_test_{db}_{embed_type}.json"
@@ -23,7 +23,7 @@ train_dir = f"../data/{train_db}/{embed_type}/"
 train_csv = f"../data/{train_db}/{train_db}.csv"
 n_levels = 4 # Levels of hierarchy in EC
 batch_size = 10 # For getting predicted ec labels
-ds = 1000 # Downsample
+ds = 1 # Downsample
 
 # Different key to pull tensor from .pt file
 if train_db == 'erxprot':
@@ -161,8 +161,8 @@ for elt in old_list:
 accuracy, total, chance = new_list
 
 # Save
-# print("Saving")
-# save_json(accuracy, save_acc)
-# save_json(total, save_tot)
-# save_json(chance, save_chance)
-# print("Done")
+print("Saving")
+save_json(accuracy, save_acc)
+save_json(total, save_tot)
+save_json(chance, save_chance)
+print("Done")

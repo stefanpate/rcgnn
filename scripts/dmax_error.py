@@ -11,7 +11,7 @@ from src.evaluation import get_dmax, dmax_error
 '''
 Set these
 '''
-db = 'erxprot'
+db = 'swissprot'
 embed_type = 'clean'
 seed = 825
 
@@ -42,7 +42,7 @@ id2ec = pd.read_csv(embed_csv, delimiter='\t')
 id2ec.set_index('Entry', inplace=True)
 
 # Load embeddings
-print("Loading embeddings")
+print(f"Loading {db} embeddings")
 ecs = []
 embeds = []
 for i, elt in enumerate(os.listdir(embed_dir)[::ds]):
