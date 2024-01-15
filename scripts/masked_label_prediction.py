@@ -70,7 +70,7 @@ for i, elt in enumerate(os.listdir(embed_dir)):
     if ';' in this_ec: # Multiple ecs, take first
         this_ec = this_ec.split(';')[0]
 
-    ecs.append(np.array(this_ec.split('.')).astype('<U1')) # EC str -> arr
+    ecs.append(np.array(this_ec.split('.')).astype(str)) # EC str -> arr
     embeds.append(this_embed)
 
 embeds = np.vstack(embeds)
@@ -84,7 +84,7 @@ for l in range(n_levels):
     l_centroids = []
     for this_l_ec in embed_idxs[l]:
         this_embeds = train_embeds[embed_idxs[l][this_l_ec]]
-        ec_arr = np.array(this_l_ec.split('.')).astype('<U1') 
+        ec_arr = np.array(this_l_ec.split('.')).astype(str) 
         l_ecs.append(ec_arr)
         l_centroids.append(this_embeds.mean(axis=0))
 

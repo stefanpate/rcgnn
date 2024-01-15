@@ -10,7 +10,7 @@ import numpy as np
 '''
 Set these
 '''
-db = 'erxprot'
+db = 'price'
 train_db = 'swissprot'
 embed_type = 'clean'
 
@@ -23,7 +23,7 @@ train_dir = f"../data/{train_db}/{embed_type}/"
 train_csv = f"../data/{train_db}/{train_db}.csv"
 n_levels = 4 # Levels of hierarchy in EC
 batch_size = 10 # For getting predicted ec labels
-ds = 1 # Downsample
+ds = 1000 # Downsample
 
 # Different key to pull tensor from .pt file
 if train_db == 'erxprot':
@@ -69,7 +69,7 @@ l4_ecs = []
 l4_centroids = []
 for this_l4_ec in embed_idxs[n_levels - 1].keys():
 	this_embeds = train_embeds[embed_idxs[3][this_l4_ec]]
-	ec_arr = np.array(this_l4_ec.split('.')).astype('<U1')    
+	ec_arr = np.array(this_l4_ec.split('.')).astype(str)    
 	l4_ecs.append(ec_arr)
 	l4_centroids.append(this_embeds.mean(axis=0))
 
@@ -90,7 +90,7 @@ for i, elt in enumerate(os.listdir(embed_dir)):
 	if ';' in this_ec: # Multiple ecs, take first
 		this_ec = this_ec.split(';')[0]
 
-	ecs.append(np.array(this_ec.split('.')).astype('<U1')) # EC str -> arr
+	ecs.append(np.array(this_ec.split('.')).astype(str)) # EC str -> arr
 	embeds.append(this_embed)
 
 embeds = np.vstack(embeds)
@@ -161,8 +161,8 @@ for elt in old_list:
 accuracy, total, chance = new_list
 
 # Save
-print("Saving")
-save_json(accuracy, save_acc)
-save_json(total, save_tot)
-save_json(chance, save_chance)
-print("Done")
+# print("Saving")
+# save_json(accuracy, save_acc)
+# save_json(total, save_tot)
+# save_json(chance, save_chance)
+# print("Done")

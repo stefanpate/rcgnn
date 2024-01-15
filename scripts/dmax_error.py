@@ -51,7 +51,7 @@ for i, elt in enumerate(os.listdir(embed_dir)[::ds]):
     if ';' in this_ec: # Multiple ecs, take first
         this_ec = this_ec.split(';')[0]
 
-    ecs.append(np.array(this_ec.split('.')).astype('<U1')) # EC str -> arr
+    ecs.append(np.array(this_ec.split('.')).astype(str)) # EC str -> arr
     embeds.append(this_embed)
 
     for j in range(n_levels):
