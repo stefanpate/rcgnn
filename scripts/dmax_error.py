@@ -11,7 +11,7 @@ from src.evaluation import get_dmax, dmax_error
 '''
 Set these
 '''
-db = 'swissprot'
+db = 'erxprot'
 embed_type = 'clean'
 seed = 825
 

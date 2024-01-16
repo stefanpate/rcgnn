@@ -8,7 +8,7 @@ import numpy as np
 '''
 Set these
 '''
-db = 'erxprot'
+db = 'new'
 train_db = 'erxprot'
 embed_type = 'clean'
 
