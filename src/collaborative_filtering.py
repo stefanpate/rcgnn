@@ -1,8 +1,19 @@
+'''
+to do
+
+make x and y idxs into elts of a dict indexed by x and y names
+generalize batch_construct_sim to take left name, right name
+write def hypertune() which calls batch_construct sim with X twice
+...follow through rest of predict to make sure works
+
+have to address this upper bound on k due to batch size...
+'''
+
 import os
 import pandas as pd
 import subprocess
 import numpy as np
-from utils import load_embed
+from src.utils import load_embed
 import scipy as sp
 
 class cf:
@@ -71,6 +82,7 @@ class cf:
             Y_embeds = self.load_dense_embeds(self.Y_name, self.Y_idxs, se)
 
             # Matmul and save sim_batch
+            print("Saving similarity matrices")
             for i in range(self.n_batches):
                 path_pref = self.get_sim_mat_path_pref(se, self.X_name, self.Y_name)
                 sim_batch = X_embeds[i * self.batch_size : (i + 1) * self.batch_size] @ Y_embeds.T
@@ -112,7 +124,7 @@ class cf:
             path = path_pref + f"_batch_{i}.npy"
             sim_mat_i = np.load(path)
 
-            threshes_i = np.sort(sim_mat_i, axis=0)[-k:, :].reshape(k, -1)
+            threshes_i = np.sort(sim_mat_i, axis=0)[-k:, :]
             threshes = np.sort(np.vstack((threshes, threshes_i)), axis=0)[-k:, :]
 
             sums += sim_mat_i.sum(axis=0).reshape(1, -1)
@@ -153,7 +165,7 @@ class cf:
         Y_true = Y_true[:, in_sample_classes]
         Y_hat = Y_hat[:, in_sample_classes]
 
-        metric = test(Y_true, Y_hat>0)
+        metric = test(Y_true.ravel(), Y_hat.ravel())
         return metric
 
     
@@ -177,23 +189,20 @@ class cf:
 
         return embeds
 
-
 if __name__ == '__main__':
     import time
     from sklearn.metrics import roc_auc_score, accuracy_score
     X_name, Y_name = 'swissprot', 'price'
     sample_embeds = ['clean']
     master_ec_path = '../data/master_ec_idxs.csv'
-    k = 3
-
-    # Y_true = sp.sparse.load_npz(f"../data/{Y_name}/")
+    k = 1000
 
     master_ec_df = pd.read_csv(master_ec_path, delimiter='\t')
     master_ec_idxs = {k: i for i, k in enumerate(master_ec_df.loc[:, 'EC number'])}
 
     cf = cf(X_name, Y_name, sample_embeds, master_ec_idxs)
     # y_hat = cf.predict(k, 'esm')
-    metric = cf.evaluate(k, 'esm', roc_auc_score)
+    metric = cf.evaluate(k, sample_embeds[0], roc_auc_score)
     print(metric)
 
     # tic = time.perf_counter()
