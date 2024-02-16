@@ -1,6 +1,7 @@
 README.md
 setup.py
 src/__init__.py
+src/collaborative_filtering.py
 src/evaluation.py
 src/loss_functions.py
 src/model.py

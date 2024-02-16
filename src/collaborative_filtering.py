@@ -1,30 +1,19 @@
-'''
-to do
-
-make x and y idxs into elts of a dict indexed by x and y names
-generalize batch_construct_sim to take left name, right name
-write def hypertune() which calls batch_construct sim with X twice
-...follow through rest of predict to make sure works
-
-need to pass cv_idxs: two np arrays with test idxs at which need to zero out S
-from the k known samples and pass that to evaluate, predict, batch_norm to subsample
-both X and S
-'''
-
 import os
 import pandas as pd
 import subprocess
 import numpy as np
-from src.utils import load_embed
+from src.utils import load_embed, save_json, load_json
 import scipy as sp
 from itertools import product
 from sklearn.metrics import precision_recall_curve
+import time
+from collections import defaultdict
 
 class cf:
     
     def __init__(self, X_name:str, Y_name:str, sample_embeds,
                 master_feature_idxs:dict, feature_feature_sim_mats=[],
-                batch_size=1500
+                batch_size=15000
                 ):
         self.X_name = X_name
         self.Y_name = Y_name
@@ -87,8 +76,13 @@ class cf:
         print("Constructing similarity matrices")
         for se in to_construct:
             # Load embeds
-            left_embeds = self.load_dense_embeds(left_name, self.idxs[left_name], se)
-            right_embeds = self.load_dense_embeds(right_name, self.idxs[right_name], se)
+            left_embeds = self.load_dense_embeds(left_name, se)
+
+            # Avoid loading same thing twice
+            if left_name == right_name:
+                right_embeds = left_embeds
+            else:
+                right_embeds = self.load_dense_embeds(right_name, se)
 
             # Matmul and save sim_batch
             print("Saving similarity matrices")
@@ -131,6 +125,7 @@ class cf:
     def _batch_knn_and_norm(self, path_pref, k, cv_idxs=None):
         print("kNN thresholding & normalizing")
         for i in range(self.n_batches):
+            # print(f"Batch {i}")
 
             path = path_pref + f"_batch_{i}.npy"
             sim_mat_i = np.load(path)
@@ -174,7 +169,9 @@ class cf:
         
         k_thresholds, sums = self._batch_knn_and_norm(path_pref, k)
         
+        print("Predicting")
         for i in range(self.n_batches):
+            # print(f"Batch {i}")
             path = path_pref + f"_batch_{i}.npy"
             sim_mat_i = np.load(path)
 
@@ -216,12 +213,14 @@ class cf:
         hyperparams = list(product(*gs_values))
         fold_size = int(self.shapes[self.X_name][0] / kfold)
 
-        F1 = []
-        F1_err = []
-        thresholds = []
-        thresholds_err = []
+        res = defaultdict(list)
         # TODO: use gs vals and keys to do multiple hypparams
-        for elt in hyperparams:
+        for j, elt in enumerate(hyperparams):
+
+            # Enter next tuple of hp values
+            for i in range(len(elt)):
+                res[gs_keys[i]].append(elt[i])
+            
             inside_F1s = []
             inside_thresholds = []
             for i in range(kfold):
@@ -235,17 +234,16 @@ class cf:
                 inside_F1s.append(best_F1)
                 inside_thresholds.append(best_threshold)
 
+            # Enter performance metrics
             inside_thresholds, inside_F1s = np.array(inside_thresholds), np.array(inside_F1s)
-            F1.append(inside_F1s.mean())
-            F1_err.append(inside_F1s.std() / np.sqrt(kfold))
-            thresholds.append(inside_thresholds.mean())
-            thresholds_err.append(inside_thresholds.std() / np.sqrt(kfold))
+            res["F1"].append(inside_F1s.mean())
+            res["F1_err"].append(inside_F1s.std() / np.sqrt(kfold))
+            res["thresholds"].append(inside_thresholds.mean())
+            res["thresholds_err"].append(inside_thresholds.std() / np.sqrt(kfold))
 
-        res = {'F1':F1, 'F1_err':F1_err, 'thresholds':thresholds,
-               'thresholds_err':thresholds_err
-               }
-        
-        res = res | {gs_keys[i]: elt for i, elt in enumerate(list(zip(*hyperparams)))}
+            # Save
+            save_json(res, f"../artifacts/cf/{kfold}_fold_hpo_{X_name}_{sample_embeds[0]}.json")
+            print(f"Last hyperparameter set save: {gs_keys} = {elt}, # {j} / {len(hyperparams)}")
 
         return res
 
@@ -255,15 +253,21 @@ class cf:
         return f"../data/{ds_name}/cf_adj_mat.npz"
 
     def get_sim_mat_path_pref(self, type, left, right):
-        return f"../data/sim_mats/{type}_{left}_{right}"
+        # return f"../data/sim_mats/{type}_{left}_{right}"
         # return f"/media/stef/EXTHD/hiec_scratch/{type}_{left}_{right}"
+        return f"/scratch/spn1560/{type}_{left}_{right}"
     
-    def load_dense_embeds(self, ds_name, ds_idxs, embed_type, do_norm=True):
+    def load_dense_embeds(self, ds_name, embed_type, do_norm=True):
+        print("Loading dense embeddings")
         magic_key = 33
         data_path = f"../data/{ds_name}/"
+        ds_idxs = self.idxs[ds_name]
         embeds = []
-        for elt in ds_idxs:
+        for i, elt in enumerate(ds_idxs):
             embeds.append(load_embed(data_path + f"{embed_type}/{elt}.pt", embed_key=magic_key)[1])
+
+            if i % 5000 == 0:
+                print(f"Embedding #{i} / {len(ds_idxs)}")
 
         embeds = np.vstack(embeds)
         
@@ -275,32 +279,31 @@ class cf:
 if __name__ == '__main__':
     import time
     from sklearn.metrics import roc_auc_score, accuracy_score
-    X_name, Y_name = 'new', 'price'
+    X_name, Y_name = 'swissprot', 'price'
     sample_embeds = ['clean']
     master_ec_path = '../data/master_ec_idxs.csv'
-    k = 3
+    # k = 3
 
     master_ec_df = pd.read_csv(master_ec_path, delimiter='\t')
     master_ec_idxs = {k: i for i, k in enumerate(master_ec_df.loc[:, 'EC number'])}
 
     cf_model = cf(X_name, Y_name, sample_embeds, master_ec_idxs)
+
     # y_hat = cf.predict(X_name, Y_name, k, 'esm')
     # metric = cf.evaluate(X_name, Y_name, k, sample_embeds[0], roc_auc_score)
     # metric = cf.evaluate(X_name, X_name, k, sample_embeds[0], roc_auc_score, np.array([0,1,2,3]))
     # print(metric)
 
-    # kfold = 5
-    # gs_dict = {'clean':[1, 3]}
-    # res = cf_model.kfold_knn_opt(kfold, sample_embeds[0], gs_dict)
-    # print(res)
+    kfold = 5
+    gs_dict = {sample_embeds[0]:[1, 3, 5, 10, 50, 100]}
+    res = cf_model.kfold_knn_opt(kfold, sample_embeds[0], gs_dict)
 
-
-    metric = cf_model.evaluate('new', 'new', k, sample_embeds[0], precision_recall_curve, np.random.random_integers(0, 391, size=(78,)))
-    precision, recall, thresholds_pr = metric
-    best_f1 = np.max(np.sqrt(recall * precision))
-    best_threshold = thresholds_pr[np.argmax(np.sqrt(recall * precision))]
-    print(f"Max F1:{best_f1}")
-    print(f"Best decision threshold: {best_threshold}")
+    # metric = cf_model.evaluate('new', 'new', k, sample_embeds[0], precision_recall_curve, np.random.random_integers(0, 391, size=(78,)))
+    # precision, recall, thresholds_pr = metric
+    # best_f1 = np.max(np.sqrt(recall * precision))
+    # best_threshold = thresholds_pr[np.argmax(np.sqrt(recall * precision))]
+    # print(f"Max F1:{best_f1}")
+    # print(f"Best decision threshold: {best_threshold}")
 
     # tic = time.perf_counter()
     # pass
