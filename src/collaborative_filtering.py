@@ -242,7 +242,7 @@ class cf:
             res["thresholds_err"].append(inside_thresholds.std() / np.sqrt(kfold))
 
             # Save
-            save_json(res, f"../artifacts/cf/{kfold}_fold_hpo_{X_name}_{sample_embeds[0]}.json")
+            save_json(res, f"../artifacts/cf/{kfold}_fold_hpo_{X_name}_{embed_type}.json")
             print(f"Last hyperparameter set save: {gs_keys} = {elt}, # {j} / {len(hyperparams)}")
 
         return res
@@ -280,7 +280,7 @@ if __name__ == '__main__':
     import time
     from sklearn.metrics import roc_auc_score, accuracy_score
     X_name, Y_name = 'swissprot', 'price'
-    sample_embeds = ['clean']
+    sample_embeds = ['esm']
     master_ec_path = '../data/master_ec_idxs.csv'
     # k = 3
 
