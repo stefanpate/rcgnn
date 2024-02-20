@@ -1,0 +1,15 @@
+Checking for similarity matrices
+Loading swissprot sparse adjacency matrix
+Loading swissprot sparse adjacency matrix
+kNN thresholding & normalizing
+Predicting
+Evalutating
+Predicting
+Evalutating
+Predicting
+Evalutating
+Predicting
+Evalutating
+Predicting
+Evalutating
+Last hyperparameter set saved: ['ks'] = (3,), # 1 / 1

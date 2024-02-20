@@ -11,14 +11,13 @@ from collections import defaultdict
 
 class cf:
     
-    def __init__(self, X_name:str, Y_name:str, sample_embeds,
-                master_feature_idxs:dict, feature_feature_sim_mats=[],
-                batch_size=15000
+    def __init__(self, X_name:str, Y_name:str, embed_type, master_feature_idxs:dict,
+                feature_feature_sim_mats=[], batch_size=15000
                 ):
         self.X_name = X_name
         self.Y_name = Y_name
         self.ffsm = feature_feature_sim_mats
-        self.sample_embeds = sample_embeds
+        self.embed_type = embed_type
         self.idxs = {}
         self.idxs['feature'] = master_feature_idxs
         self.X_idxs = None
@@ -56,41 +55,36 @@ class cf:
             return df
 
     
-    def batch_construct_dense_sim_mats(self, left_name, right_name): 
+    def batch_construct_dense_sim_mats(self): 
         # Check for existing sim_mats
         print("Checking for similarity matrices")
-        to_construct = []
-        for se in self.sample_embeds:
-            path_pref = self.get_sim_mat_path_pref(se, left_name, right_name)
-            sim_mat_dir = '/'.join(path_pref.split('/')[:-1])
-            fn_pref = path_pref.split('/')[-1]
-            matches = [elt for elt in os.listdir(sim_mat_dir) if fn_pref in elt]
+        path_pref = self.get_sim_mat_path_pref(self.embed_type, self.X_name, self.Y_name)
+        sim_mat_dir = '/'.join(path_pref.split('/')[:-1])
+        fn_pref = path_pref.split('/')[-1]
+        matches = [elt for elt in os.listdir(sim_mat_dir) if fn_pref in elt]
 
-            if len(matches) != self.n_batches:
-                for elt in matches:
-                    subprocess.run(["rm", f"{sim_mat_dir}/{elt}"])
-
-                to_construct.append(se)
-
+        
         # Construct
-        if len(to_construct) > 0:
+        if len(matches) != self.n_batches:
             print("Constructing similarity matrices")
-            for se in to_construct:
-                # Load embeds
-                left_embeds = self.load_dense_embeds(left_name, se)
+            for elt in matches:
+                subprocess.run(["rm", f"{sim_mat_dir}/{elt}"])
+            
+            # Load embeds
+            left_embeds = self.load_dense_embeds(self.X_name, self.embed_type)
 
-                # Avoid loading same thing twice
-                if left_name == right_name:
-                    right_embeds = left_embeds
-                else:
-                    right_embeds = self.load_dense_embeds(right_name, se)
+            # Avoid loading same thing twice
+            if self.X_name == self.Y_name:
+                right_embeds = left_embeds
+            else:
+                right_embeds = self.load_dense_embeds(self.Y_name, self.embed_type)
 
-                # Matmul and save sim_batch
-                print("Saving similarity matrices")
-                for i in range(self.n_batches):
-                    path_pref = self.get_sim_mat_path_pref(se, left_name, right_name)
-                    sim_batch = left_embeds[i * self.batch_size : (i + 1) * self.batch_size] @ right_embeds.T
-                    np.save(path_pref + f"_batch_{i}.npy", sim_batch)
+            # Matmul and save sim_batch
+            print("Saving similarity matrices")
+            for i in range(self.n_batches):
+                path_pref = self.get_sim_mat_path_pref(self.embed_type, self.X_name, self.Y_name)
+                sim_batch = left_embeds[i * self.batch_size : (i + 1) * self.batch_size] @ right_embeds.T
+                np.save(path_pref + f"_batch_{i}.npy", sim_batch)
             
     def get_sparse_adj_mat(self, ds_name):
         path = self.get_adj_mat_path(ds_name)
@@ -123,16 +117,17 @@ class cf:
 
         return adj
 
-    def _kfold_splits(self, kfold):
-        rng = np.random.default_rng(seed=self.seed)
+    def _kfold_splits(self, kfold, seed):
+        rng = np.random.default_rng(seed=seed)
         cv_idxs = np.arange(self.shapes[self.X_name][0])
         fold_size = int(self.shapes[self.X_name][0] / kfold)
         rng.shuffle(cv_idxs)
         splits = [cv_idxs[i * fold_size : (i + 1) * fold_size] for i in range(kfold)]
         return splits
     
-    def _precompute_knn_thresholds(self, path_pref, ks, kfold=1):
+    def _precompute_knn_thresholds(self, ks, splits, kfold=1):
         print("kNN thresholding & normalizing")
+        path_pref = self.get_sim_mat_path_pref(self.embed_type, self.X_name, self.Y_name)
         max_k = max(ks) # k-thresholds for lesser ks come along with max_k
         for i in range(self.n_batches):
 
@@ -144,7 +139,7 @@ class cf:
                 d = batch_sim_mat.shape[1] # Infer last dimension from 1st batch
                 max_threshes = np.zeros(shape=(kfold, max_k, d)) # Create 3d array to store n_splits (max_k x d) "top-k" matrices             
 
-            for j, split in enumerate(self._kfold_splits(kfold)):
+            for j, split in enumerate(splits):
 
                     # Zero out rows & cols at in case of HPO (kfold > 1)
                     batch_sim_mat, row_vals, col_vals = self._mask_at_idxs(batch_sim_mat, split, batch_no=i)
@@ -157,7 +152,6 @@ class cf:
 
         # Store precomputed k-threshes in (kfold x d) matrices under key (k(NN), k(fold))
         self.knn_thresholds = {}
-        threshes = np.zeros(shape=(len(ks), kfold, d)) # kNN threshold vals
         for k in ks:
             self.knn_thresholds[k, kfold] = max_threshes[:, -k, :]
 
@@ -171,7 +165,7 @@ class cf:
 
             # Zero out rows & cols at cv_idxs (e.g., HPO)
             if cv_idxs is not None:
-                sim_mat_i = self._zero_at_idxs(sim_mat_i, cv_idxs, batch_no=i)
+                sim_mat_i, _, _ = self._mask_at_idxs(sim_mat_i, cv_idxs, batch_no=i)
 
             # Infer shape from first batch
             if i == 0:
@@ -184,36 +178,64 @@ class cf:
 
         return threshes
     
-    def _zero_at_idxs(self, mat, idxs, batch_no=None):
+    # def _zero_at_idxs(self, mat, idxs, batch_no=None):
+    #     if batch_no is not None:
+    #         lb, ub = batch_no * self.batch_size, (batch_no + 1) * self.batch_size
+    #         idxs = idxs[(idxs >= lb) & (idxs < ub)]
+    #         idxs = idxs % self.batch_size
+
+    #     mat[idxs, :] = 0
+    #     mat[:, idxs] = 0
+
+    #     return mat
+
+    def _mask_at_idxs(self, mat, idxs, batch_no=None):
         if batch_no is not None:
             lb, ub = batch_no * self.batch_size, (batch_no + 1) * self.batch_size
-            idxs = idxs[(idxs > lb) & (idxs < ub)]
+            idxs = idxs[(idxs >= lb) & (idxs < ub)]
             idxs = idxs % self.batch_size
+
+        row_vals = mat[idxs, :]
+        col_vals = mat[:, idxs]
 
         mat[idxs, :] = 0
         mat[:, idxs] = 0
 
+        return mat, row_vals, col_vals
+    
+    def _unmask_at_idxs(self, mat, idxs, row_vals, col_vals, batch_no=None):
+        if batch_no is not None:
+            lb, ub = batch_no * self.batch_size, (batch_no + 1) * self.batch_size
+            idxs = idxs[(idxs >= lb) & (idxs < ub)]
+            idxs = idxs % self.batch_size
+
+        mat[idxs, :] = row_vals
+        mat[:, idxs] = col_vals
+
         return mat
 
-    def predict(self, left_name, right_name, k, embed_type, cv_idxs=None):
+    def fit(self):
+        self.batch_construct_dense_sim_mats()
+        self.X = self.get_sparse_adj_mat(self.X_name)
+        self.Y = self.get_sparse_adj_mat(self.Y_name)
+
+    
+    def predict(self, k, cv_idxs=None, kfold=1, split_no=0):
         # TODO: Bring in feature side / ensembling
-        # for se in self.sample_embeds:
-        self.batch_construct_dense_sim_mats(left_name, right_name)
-        left = self.get_sparse_adj_mat(left_name)
-        right_hat = sp.sparse.csr_array(self.shapes[right_name]) # Init empty sparse arr
-        path_pref = self.get_sim_mat_path_pref(embed_type, left_name, right_name)
+        path_pref = self.get_sim_mat_path_pref(self.embed_type, self.X_name, self.Y_name)
+        left = self.X
+        right_hat = sp.sparse.csr_array(self.shapes[self.Y_name]) # Init empty sparse arr
         
-        k_thresholds = self._batch_knn_and_norm(path_pref, k)
+        k_thresholds = self.knn_thresholds[k, kfold][split_no]
         
         print("Predicting")
         for i in range(self.n_batches):
-            # print(f"Batch {i}")
             path = path_pref + f"_batch_{i}.npy"
             sim_mat_i = np.load(path)
 
             # Zero out rows & cols at cv_idxs (e.g., HPO)
             if cv_idxs is not None:
-                sim_mat_i = self._zero_at_idxs(sim_mat_i, cv_idxs, batch_no=i)
+                sim_mat_i, _, _ = self._mask_at_idxs(sim_mat_i, cv_idxs, batch_no=i)
 
             # Infer shape from first batch
             if i == 0:
@@ -232,10 +254,9 @@ class cf:
 
         return right_hat
 
-    def evaluate(self, left_name, right_name, k, embed_type, test, cv_idxs=None):
-        Y_hat = self.predict(left_name, right_name, k, embed_type, cv_idxs)
-        Y_true = self.get_sparse_adj_mat(right_name)
-        Y_true = Y_true.toarray()
+    def evaluate(self, Y_hat, test, cv_idxs=None):
+        print("Evalutating")
+        Y_true = self.Y.toarray()
 
         # Pick out test set if HPO
         if cv_idxs is not None:
@@ -250,14 +271,14 @@ class cf:
         metric = test(Y_true.ravel(), Y_hat.ravel())
         return metric
     
-    def kfold_knn_opt(self, kfold, embed_type, grid_search:dict, seed=1234):
-        rng = np.random.default_rng(seed=seed)
-        cv_idxs = np.arange(self.shapes[self.X_name][0])
-        rng.shuffle(cv_idxs)
+    def kfold_knn_opt(self, kfold, grid_search:dict, seed=1234):
+        splits = self._kfold_splits(kfold, seed)
+        ks = grid_search['ks']
         gs_keys = list(grid_search.keys())
         gs_values = list(grid_search.values())
         hyperparams = list(product(*gs_values))
-        fold_size = int(self.shapes[self.X_name][0] / kfold)
+
+        self._precompute_knn_thresholds(ks, splits, kfold)
 
         res = defaultdict(list)
         # TODO: use gs vals and keys to do multiple hypparams
@@ -269,11 +290,9 @@ class cf:
             
             inside_F1s = []
             inside_thresholds = []
-            for i in range(kfold):
-                metric = self.evaluate(self.X_name, self.X_name, elt[0],
-                                        embed_type, precision_recall_curve,
-                                        cv_idxs[i * fold_size : (i + 1) * fold_size]
-                                        )
+            for s, split in enumerate(splits):
+                Y_hat = self.predict(elt[0], cv_idxs=split, kfold=kfold, split_no=s)
+                metric = self.evaluate(Y_hat, precision_recall_curve, split)
                 precision, recall, thresholds_pr = metric
                 best_F1 = np.max(np.sqrt(recall * precision))
                 best_threshold = thresholds_pr[np.argmax(np.sqrt(recall * precision))]
@@ -288,12 +307,10 @@ class cf:
             res["thresholds_err"].append(inside_thresholds.std() / np.sqrt(kfold))
 
             # Save
-            save_json(res, f"../artifacts/cf/{kfold}_fold_hpo_{X_name}_{embed_type}_fixed_norm_test.json")
-            print(f"Last hyperparameter set save: {gs_keys} = {elt}, # {j} / {len(hyperparams)}")
+            save_json(res, f"../artifacts/cf/{kfold}_fold_hpo_{self.X_name}_{self.embed_type}_knn_speedup_test.json")
+            print(f"Last hyperparameter set saved: {gs_keys} = {elt}, # {j+1} / {len(hyperparams)}")
 
         return res
-
-
     
     def get_adj_mat_path(self, ds_name):
         return f"../data/{ds_name}/cf_adj_mat.npz"
@@ -325,31 +342,20 @@ class cf:
 if __name__ == '__main__':
     import time
     from sklearn.metrics import roc_auc_score, accuracy_score
-    X_name, Y_name = 'swissprot', 'price'
-    sample_embeds = ['esm']
+    X_name, Y_name = 'swissprot', 'swissprot'
+    embed_type = 'esm'
     master_ec_path = '../data/master_ec_idxs.csv'
     # k = 3
 
     master_ec_df = pd.read_csv(master_ec_path, delimiter='\t')
     master_ec_idxs = {k: i for i, k in enumerate(master_ec_df.loc[:, 'EC number'])}
 
-    cf_model = cf(X_name, Y_name, sample_embeds, master_ec_idxs)
-
-    # y_hat = cf.predict(X_name, Y_name, k, 'esm')
-    # metric = cf.evaluate(X_name, Y_name, k, sample_embeds[0], roc_auc_score)
-    # metric = cf.evaluate(X_name, X_name, k, sample_embeds[0], roc_auc_score, np.array([0,1,2,3]))
-    # print(metric)
-
     kfold = 5
-    gs_dict = {sample_embeds[0]:[3,]}
-    res = cf_model.kfold_knn_opt(kfold, sample_embeds[0], gs_dict)
+    gs_dict = {'ks':[3,]}
+    cf_model = cf(X_name, Y_name, embed_type, master_ec_idxs) # Init
+    cf_model.fit() # Fit
+    res = cf_model.kfold_knn_opt(kfold, gs_dict) # k-fold knn opt
 
-    # metric = cf_model.evaluate('new', 'new', k, sample_embeds[0], precision_recall_curve, np.random.random_integers(0, 391, size=(78,)))
-    # precision, recall, thresholds_pr = metric
-    # best_f1 = np.max(np.sqrt(recall * precision))
-    # best_threshold = thresholds_pr[np.argmax(np.sqrt(recall * precision))]
-    # print(f"Max F1:{best_f1}")
-    # print(f"Best decision threshold: {best_threshold}")
 
     # tic = time.perf_counter()
     # pass
