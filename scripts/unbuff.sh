@@ -3,11 +3,11 @@
 #SBATCH -p b1039
 #SBATCH -N 1
 #SBATCH -n 1
-#SBATCH --mem=192G
-#SBATCH -t 24:00:00
+#SBATCH --mem=50G
+#SBATCH -t 4:00:00
 #SBATCH --job-name="kfold_esm"
-#SBATCH --output=../logs/outlog_cf_kfold_esm
-#SBATCH --error=../logs/errlog_cf_kfold_esm
+#SBATCH --output=../logs/outlog_cf_kfold_esm_fix_norm
+#SBATCH --error=../logs/errlog_cf_kfold_esm_fix_norm
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=stefan.pate@northwestern.edu
