@@ -24,6 +24,7 @@ class cf:
         self.Y_idxs = None
         self.batch_size = batch_size
         self.shapes = {}
+        self.knn_thresholds = None
 
         # Get id to index for samples and features
         nf = len(self.idxs['feature'])
@@ -126,6 +127,11 @@ class cf:
         return splits
     
     def _precompute_knn_thresholds(self, ks, splits, kfold=1):
+        '''
+        Pre-computes k-thresholds for multiple ks for later
+        kfold cv / HPO. Zeros out rows & cols in sim mat corresponding
+        to the test split.
+        '''
         print("kNN thresholding & normalizing")
         path_pref = self.get_sim_mat_path_pref(self.embed_type, self.X_name, self.Y_name)
         max_k = max(ks) # k-thresholds for lesser ks come along with max_k
@@ -155,17 +161,13 @@ class cf:
         for k in ks:
             self.knn_thresholds[k, kfold] = max_threshes[:, -k, :]
 
-    def _batch_knn_and_norm(self, path_pref, k, cv_idxs=None):
+    def _batch_knn_thresholds(self, k):
         print("kNN thresholding & normalizing")
+        path_pref = self.get_sim_mat_path_pref(self.embed_type, self.X_name, self.Y_name)
         for i in range(self.n_batches):
-            # print(f"Batch {i}")
 
             path = path_pref + f"_batch_{i}.npy"
             sim_mat_i = np.load(path)
-
-            # Zero out rows & cols at cv_idxs (e.g., HPO)
-            if cv_idxs is not None:
-                sim_mat_i, _, _ = self._mask_at_idxs(sim_mat_i, cv_idxs, batch_no=i)
 
             # Infer shape from first batch
             if i == 0:
@@ -225,8 +227,12 @@ class cf:
         path_pref = self.get_sim_mat_path_pref(self.embed_type, self.X_name, self.Y_name)
         left = self.X
         right_hat = sp.sparse.csr_array(self.shapes[self.Y_name]) # Init empty sparse arr
-        
-        k_thresholds = self.knn_thresholds[k, kfold][split_no]
+
+        # Get k-thresholds
+        if self.knn_thresholds is None:
+            k_thresholds = self._batch_knn_thresholds(k) # Predicting outside train set
+        else:
+            k_thresholds = self.knn_thresholds[k, kfold][split_no] # Cross validation
         
         print("Predicting")
         for i in range(self.n_batches):
@@ -341,21 +347,29 @@ class cf:
 
 if __name__ == '__main__':
     import time
-    from sklearn.metrics import roc_auc_score, accuracy_score
-    X_name, Y_name = 'swissprot', 'swissprot'
-    embed_type = 'esm'
+    from sklearn.metrics import roc_auc_score, accuracy_score, f1_score
     master_ec_path = '../data/master_ec_idxs.csv'
-    # k = 3
-
     master_ec_df = pd.read_csv(master_ec_path, delimiter='\t')
     master_ec_idxs = {k: i for i, k in enumerate(master_ec_df.loc[:, 'EC number'])}
 
-    kfold = 5
-    gs_dict = {'ks':[3,]}
+    # X_name, Y_name = 'swissprot', 'swissprot'
+    # embed_type = 'clean'
+    # kfold = 5
+    # gs_dict = {'ks':[1, 3, 5, 10, 50]}
+    # cf_model = cf(X_name, Y_name, embed_type, master_ec_idxs) # Init
+    # cf_model.fit() # Fit
+    # res = cf_model.kfold_knn_opt(kfold, gs_dict) # k-fold knn opt
+
+    X_name, Y_name = 'swissprot', 'price'
+    embed_type = 'esm'
+    k = 3
+    decision_threshold = 0.41
     cf_model = cf(X_name, Y_name, embed_type, master_ec_idxs) # Init
     cf_model.fit() # Fit
-    res = cf_model.kfold_knn_opt(kfold, gs_dict) # k-fold knn opt
-
+    # Y_hat = cf_model.predict(k)
+    # Y_pred = Y_hat > decision_threshold
+    # metric = cf_model.evaluate(Y_pred, f1_score)
+    # print(metric)
 
     # tic = time.perf_counter()
     # pass
