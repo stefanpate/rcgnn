@@ -8,6 +8,7 @@ from itertools import product
 from sklearn.metrics import precision_recall_curve
 import time
 from collections import defaultdict
+from datetime import datetime
 
 class cf:
     
@@ -25,6 +26,7 @@ class cf:
         self.batch_size = batch_size
         self.shapes = {}
         self.knn_thresholds = None
+        self.timestamp = datetime.now().strftime("%y%m%d_%H_%M_%S")
 
         # Get id to index for samples and features
         nf = len(self.idxs['feature'])
@@ -260,21 +262,16 @@ class cf:
 
         return right_hat
 
-    def evaluate(self, Y_hat, test, cv_idxs=None):
+    def _evaluate(self, Y_hat, test, cv_idxs=None):
         print("Evalutating")
         Y_true = self.Y.toarray()
 
         # Pick out test set if HPO
         if cv_idxs is not None:
-            Y_true = Y_true[cv_idxs, :]
-            Y_hat = Y_hat[cv_idxs, :]
+            Y_true = Y_true[cv_idxs, :].ravel()
+            Y_hat = Y_hat[cv_idxs, :].ravel()
 
-        # ROC doesn't like when no groud truth sample in a class
-        in_sample_classes = np.where(Y_true.sum(axis=0) > 0)[0]
-        Y_true = Y_true[:, in_sample_classes]
-        Y_hat = Y_hat[:, in_sample_classes]
-
-        metric = test(Y_true.ravel(), Y_hat.ravel())
+        metric = test(Y_true, Y_hat)
         return metric
     
     def kfold_knn_opt(self, kfold, grid_search:dict, seed=1234):
@@ -298,10 +295,11 @@ class cf:
             inside_thresholds = []
             for s, split in enumerate(splits):
                 Y_hat = self.predict(elt[0], cv_idxs=split, kfold=kfold, split_no=s)
-                metric = self.evaluate(Y_hat, precision_recall_curve, split)
+                metric = self._evaluate(Y_hat, precision_recall_curve, split)
                 precision, recall, thresholds_pr = metric
-                best_F1 = np.max(np.sqrt(recall * precision))
-                best_threshold = thresholds_pr[np.argmax(np.sqrt(recall * precision))]
+                F1 = (2 * precision * recall) / (precision + recall) # Harmonic mean
+                best_F1 = np.max(F1)
+                best_threshold = thresholds_pr[np.argmax(F1)]
                 inside_F1s.append(best_F1)
                 inside_thresholds.append(best_threshold)
 
@@ -313,7 +311,7 @@ class cf:
             res["thresholds_err"].append(inside_thresholds.std() / np.sqrt(kfold))
 
             # Save
-            save_json(res, f"../artifacts/cf/{kfold}_fold_hpo_{self.X_name}_{self.embed_type}_knn_speedup_test.json")
+            save_json(res, f"../artifacts/cf/{kfold}_fold_hpo_{self.X_name}_{self.embed_type}_{self.timestamp}.json")
             print(f"Last hyperparameter set saved: {gs_keys} = {elt}, # {j+1} / {len(hyperparams)}")
 
         return res
@@ -322,8 +320,6 @@ class cf:
         return f"../data/{ds_name}/cf_adj_mat.npz"
 
     def get_sim_mat_path_pref(self, type, left, right):
-        # return f"../data/sim_mats/{type}_{left}_{right}"
-        # return f"/media/stef/EXTHD/hiec_scratch/{type}_{left}_{right}"
         return f"/scratch/spn1560/{type}_{left}_{right}"
     
     def load_dense_embeds(self, ds_name, embed_type, do_norm=True):
@@ -347,25 +343,25 @@ class cf:
 
 if __name__ == '__main__':
     import time
-    from sklearn.metrics import roc_auc_score, accuracy_score, f1_score
     master_ec_path = '../data/master_ec_idxs.csv'
     master_ec_df = pd.read_csv(master_ec_path, delimiter='\t')
     master_ec_idxs = {k: i for i, k in enumerate(master_ec_df.loc[:, 'EC number'])}
 
-    # X_name, Y_name = 'swissprot', 'swissprot'
-    # embed_type = 'clean'
-    # kfold = 5
-    # gs_dict = {'ks':[1, 3, 5, 10, 50]}
-    # cf_model = cf(X_name, Y_name, embed_type, master_ec_idxs) # Init
-    # cf_model.fit() # Fit
-    # res = cf_model.kfold_knn_opt(kfold, gs_dict) # k-fold knn opt
-
-    X_name, Y_name = 'swissprot', 'price'
-    embed_type = 'esm'
-    k = 3
-    decision_threshold = 0.41
+    X_name, Y_name = 'price', 'price'
+    embed_type = 'clean'
+    kfold = 5
+    gs_dict = {'ks':[1,]}
     cf_model = cf(X_name, Y_name, embed_type, master_ec_idxs) # Init
     cf_model.fit() # Fit
+    res = cf_model.kfold_knn_opt(kfold, gs_dict) # k-fold knn opt
+    print(res)
+
+    # X_name, Y_name = 'swissprot', 'price'
+    # embed_type = 'esm'
+    # k = 3
+    # decision_threshold = 0.41
+    # cf_model = cf(X_name, Y_name, embed_type, master_ec_idxs) # Init
+    # cf_model.fit() # Fit
     # Y_hat = cf_model.predict(k)
     # Y_pred = Y_hat > decision_threshold
     # metric = cf_model.evaluate(Y_pred, f1_score)
