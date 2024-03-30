@@ -317,7 +317,7 @@ class cf:
         return res
     
     def get_adj_mat_path(self, ds_name):
-        return f"../data/{ds_name}/cf_adj_mat.npz"
+        return f"../data/{ds_name}/adj_mat.npz"
 
     def get_sim_mat_path_pref(self, type, left, right):
         return f"/scratch/spn1560/{type}_{left}_{right}"
