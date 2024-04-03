@@ -103,19 +103,27 @@ def load_design_matrix(ds_name, embed_type, sample_idx, do_norm=True):
         Returns
             - X: Design matrixs (samples x embedding dim)
         '''
-        print(f"Loading {embed_type} embeddings for {ds_name} dataset")
-        magic_key = 33
-        data_path = f"../data/{ds_name}/"
-        X = []
-        for i, elt in enumerate(sample_idx):
-            X.append(load_embed(data_path + f"{embed_type}/{elt}.pt", embed_key=magic_key)[1])
+        path = f"/scratch/spn1560/{ds_name}_{embed_type}_X.npy"
+        if os.path.exists(path):
+            X = np.load(path)
+        else:
 
-            if i % 5000 == 0:
-                print(f"Embedding #{i} / {len(sample_idx)}")
+            print(f"Loading {embed_type} embeddings for {ds_name} dataset")
+            magic_key = 33
+            data_path = f"../data/{ds_name}/"
+            X = []
+            for i, elt in enumerate(sample_idx):
+                X.append(load_embed(data_path + f"{embed_type}/{elt}.pt", embed_key=magic_key)[1])
 
-        X = np.vstack(X)
-        
-        if do_norm:
-            X /= np.sqrt(np.square(X).sum(axis=1)).reshape(-1,1)
+                if i % 5000 == 0:
+                    print(f"Embedding #{i} / {len(sample_idx)}")
+
+            X = np.vstack(X)
+            
+            if do_norm:
+                X /= np.sqrt(np.square(X).sum(axis=1)).reshape(-1,1)
+
+            # Save to scratch
+            np.save(path, X)
 
         return X

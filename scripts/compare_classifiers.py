@@ -14,11 +14,11 @@ def nested_cv(X, y, model, param_grid, hpo_metric, scoring_metrics, inner_k, out
 
     n_splt = 1
     for train_index, test_index in outer_cv.split(X):
-        print(n_splt)
+        print(f"Outer split #{n_splt} / {outer_k}")
         X_train, X_test = X[train_index], X[test_index]
         y_train, y_test = y[train_index], y[test_index]
         
-        grid_search = GridSearchCV(estimator=model, param_grid=param_grid, scoring=hpo_metric, cv=inner_cv)
+        grid_search = GridSearchCV(estimator=model, param_grid=param_grid, scoring=hpo_metric, cv=inner_cv, n_jobs=10)
         grid_search.fit(X_train, y_train)
         inner_best_estimator = grid_search.best_estimator_ # Take this to generate outer score (estimate generalization score)
         n_splt += 1
@@ -39,7 +39,6 @@ def nested_cv(X, y, model, param_grid, hpo_metric, scoring_metrics, inner_k, out
 
 if __name__ == '__main__':
 
-    from sklearn.datasets import load_iris, make_multilabel_classification
     from sklearn.multioutput import MultiOutputClassifier
     from sklearn.naive_bayes import GaussianNB
     from sklearn.linear_model import LogisticRegression
@@ -48,18 +47,24 @@ if __name__ == '__main__':
     from sklearn.metrics import accuracy_score, roc_auc_score, f1_score, precision_score, recall_score
     from itertools import product
     from src.utils import load_sparse_adj_mat, load_design_matrix
-    import pandas as pd
     import pickle
     import json
+    import numpy as np
 
     # Settings
     train_data_name = 'swissprot'
     embed_type = 'esm'
-    inner_kfold = 5
-    outer_kfold = 5
+    inner_kfold = 3
+    outer_kfold = 3
     hpo_metric = 'f1_weighted'
     do_save = True
 
+    # Load dataset
+    y, idx_sample, idx_feature = load_sparse_adj_mat(train_data_name)
+    sample_idx = {v:k for k,v in idx_sample.items()}
+    X = load_design_matrix(train_data_name, embed_type, sample_idx, do_norm=True)
+    y = y.toarray() # Use dense array for now... don't know why sklearn complaining about sparse array...
+    
     # Classifier names
     names = [
         # "svm",
@@ -71,21 +76,21 @@ if __name__ == '__main__':
     # Classifier objects
     classifiers = [
         # MultiOutputClassifier(SVC()),
-        RandomForestClassifier(),
+        RandomForestClassifier(n_jobs=1),
         # MultiOutputClassifier(GaussianNB()),
         # MultiOutputClassifier(LogisticRegression())
     ]
 
-    # Construct svm estimators of varied params for MultiOutputClassifier
-    # wrapper during grid search
-    svm_params = {'kernel' : ['linear', 'rbf'], 'C' : [0.1, 1]}
-    svm_param_combos = list(product(*svm_params.values())) # Cartesian product of svm parameters
-    svm_estimators = [SVC(**{k:param_combo[i] for i, k in enumerate(svm_params.keys())}) for param_combo in svm_param_combos] # Construct svm estimators
+    # # Construct svm estimators of varied params for MultiOutputClassifier
+    # # wrapper during grid search
+    # svm_params = {'kernel' : ['linear', 'rbf'], 'C' : [0.1, 1]}
+    # svm_param_combos = list(product(*svm_params.values())) # Cartesian product of svm parameters
+    # svm_estimators = [SVC(**{k:param_combo[i] for i, k in enumerate(svm_params.keys())}) for param_combo in svm_param_combos] # Construct svm estimators
 
     # Params for grid search
     parameter_grids = [
         # {'estimator' : svm_estimators},
-        {'n_estimators' : [10, 100]},
+        {'max_depth': [3], 'n_estimators': [50], 'max_samples': [int(np.sqrt(X.shape[0]))]},
         # {'estimator' : [GaussianNB()]},
         # {'estimator' : [LogisticRegression()]}
     ]
@@ -93,26 +98,16 @@ if __name__ == '__main__':
     # Metrics to evaluate generalization error
     scoring_metrics = {
         'accuracy': accuracy_score,
-        'f1_weighted' : lambda y, y_pred : f1_score(y, y_pred, average='weighted'),
-        'recall_weighted' : lambda y, y_pred : recall_score(y, y_pred, average='weighted'),
-        'precision_weighted' : lambda y, y_pred : precision_score(y, y_pred, average='weighted'),
-        'roc_auc_weighted' : lambda y, y_pred : roc_auc_score(y, y_pred, average='weighted'),
-        'roc_auc_macro' : lambda y, y_pred : roc_auc_score(y, y_pred, average='macro'),
+        'f1_weighted' : lambda y, y_pred : f1_score(y, y_pred, average='weighted', zero_division=0),
+        'recall_weighted' : lambda y, y_pred : recall_score(y, y_pred, average='weighted', zero_division=0),
+        'precision_weighted' : lambda y, y_pred : precision_score(y, y_pred, average='weighted', zero_division=0),
+        # 'roc_auc_weighted' : lambda y, y_pred : roc_auc_score(y, y_pred, average='weighted'),
+        # 'roc_auc_macro' : lambda y, y_pred : roc_auc_score(y, y_pred, average='macro'),
         'f1_samples' : lambda y, y_pred : f1_score(y, y_pred, average='samples', zero_division=0),
         'recall_samples' : lambda y, y_pred : recall_score(y, y_pred, average='samples', zero_division=0),
         'precision_samples' : lambda y, y_pred : precision_score(y, y_pred, average='samples', zero_division=0)
     }
     
-    # Load dataset
-    y, idx_sample, idx_feature = load_sparse_adj_mat(train_data_name)
-    sample_idx = {v:k for k,v in idx_sample.items()}
-    X = load_design_matrix(train_data_name, embed_type, sample_idx, do_norm=True)
-    y = y.toarray() # Use dense array for now... don't know why sklearn complaining about sparse array...
-
-    # # Toy datasets
-    # X, y = make_multilabel_classification(n_classes=3, random_state=0)
-    # X, y = load_iris(return_X_y=True)
- 
     # Nested CV w/ HPO + best model selection and final fit
     for name, model, param_grid in zip(names, classifiers, parameter_grids):
         print(f"Tuning: {name}")
@@ -133,9 +128,5 @@ if __name__ == '__main__':
 
             with open(f"../artifacts/model_evals/{prefix}.json", 'w') as f:
                 json.dump(generalization_scores, f)
-
-            
-
-
 
     print('done')
