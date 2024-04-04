@@ -1,15 +1,18 @@
 #!/bin/bash
 #SBATCH -A p30041
-#SBATCH -p normal
+#SBATCH -p short
 #SBATCH -N 1
-#SBATCH -n 10
-#SBATCH --mem=192G
-#SBATCH -t 10:00:00
-#SBATCH --job-name="fit_scl"
-#SBATCH --output=../logs/nest_max_smpl_scl
-#SBATCH --error=../logs/tmp_e1
+#SBATCH -n 8
+#SBATCH --mem=150G
+#SBATCH -t 2:00:00
+#SBATCH --job-name="rf_fit_test"
+#SBATCH --output=../logs/rf_fit_test
+#SBATCH --error=../logs/e_tmp
+#SBATCH --mail-type=END
+#SBATCH --mail-type=FAIL
+#SBATCH --mail-user=stefan.pate@northwestern.edu
 ulimit -c 0
 module load python/anaconda3.6
 module load gcc/9.2.0
 source activate hiec
-python model_fit_scaling.py
+python -u rf_convenient_nested_cv.py
