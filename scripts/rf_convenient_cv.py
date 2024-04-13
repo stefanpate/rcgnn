@@ -1,3 +1,10 @@
+'''
+Should ultimately create a true straight CV script and
+a fit final model script. 
+
+Just using this to do some exploratory runs for now
+'''
+
 import multiprocessing as mp
 from collections import namedtuple
 import pickle
@@ -36,7 +43,7 @@ def fit_eval(q_in, q_out, scoring_metrics, lock, do_save=False, train_data_name=
             with lock:
                 print(f"Saving: {meta_data}")
 
-            fn = f"{timestamp}_random_forest_train_data_{train_data_name}_{embed_type}_embeddings_model_no_{meta_data.outer_split}"
+            fn = f"{timestamp}_random_forest_train_data_{train_data_name}_{embed_type}_embeddings_model_no_{meta_data.outer_split}_exploratory"
             
             with open(f"../artifacts/trained_models/{fn}.pkl", 'wb') as f:
                 pickle.dump(model, f)
@@ -67,12 +74,11 @@ if __name__ == '__main__':
     # Settings
     train_data_name = 'swissprot'
     embed_type = 'esm'
-    outer_kfold = 2
-    inner_kfold = 2
+    kfold = 3
     hpo_metric = 'f1_weighted'
     seed = 1234
     do_save = True
-    n_cores = 33
+    n_cores = 4
     qsize = 1
     inner_eval_name = 'f1_weighted'
     inner_eval_metric = {inner_eval_name : lambda y, y_pred : f1_score(y, y_pred, average='weighted', zero_division=0)}
@@ -92,7 +98,7 @@ if __name__ == '__main__':
     }
 
     # Load dataset
-    n_classes = 150
+    n_classes = 500
     y = sp.sparse.load_npz(f"/scratch/spn1560/swissprot_esm_y_top_{n_classes}_classes.npz")
     y = sp.sparse.csr_matrix(y)
     X = np.load(f"/scratch/spn1560/swissprot_esm_X_top_{n_classes}_classes.npy")
@@ -100,72 +106,21 @@ if __name__ == '__main__':
     # sample_idx = {v:k for k,v in idx_sample.items()}
     # X = load_design_matrix(train_data_name, embed_type, sample_idx, do_norm=True)
 
-
     # Params for grid search
-    max_depths = [9] # [3, 5, 7]
-    n_estimators = [int(np.sqrt(X.shape[0])), int(np.sqrt(X.shape[0]) * 2)] # [50, 75, 100]
-    max_samples = [int(np.sqrt(X.shape[0])), int(np.sqrt(X.shape[0]) * 10)]
-    max_features = [int(np.sqrt(X.shape[1])), int(np.sqrt(X.shape[1]) * 10)]
+    max_depths = [22, 32, 42] # [3, 5, 7]
+    n_estimators = [int(np.sqrt(X.shape[0]))] # [50, 75, 100]
+    max_samples = [int(np.sqrt(X.shape[0]))]
+    max_features = [int(np.sqrt(X.shape[1]))]
     params = [ParamSet(*elt) for elt in product(max_depths, max_samples, max_features, n_estimators)]
-    T = max(n_estimators)
+    assert len(params) == kfold
 
-    # Splits for nested cv
-    inner_cv = KFold(n_splits=inner_kfold, shuffle=True, random_state=seed)
-    outer_cv = KFold(n_splits=outer_kfold, shuffle=True, random_state=seed)
+    cv = KFold(n_splits=kfold, shuffle=True, random_state=seed)
 
     '''
-    Inner CV
-    '''
-    inner_tic = time.perf_counter()
-
-    # Initialize queues and pool
-    to_fit = mp.Queue(maxsize=qsize)
-    fitted = mp.Queue()
-    the_lock = mp.Lock()
-    pool = mp.Pool(n_cores, initializer=fit_eval, initargs=(to_fit, fitted, inner_eval_metric, the_lock))
-
-    # Populate the in queue
-    for o, (train_val_idxs, test_idxs) in enumerate(outer_cv.split(X)): # Outer data splits
-        for i, (train_idxs, val_idxs) in enumerate(inner_cv.split(X[train_val_idxs])): # Inner data splits
-            X_train, y_train = X[train_val_idxs][train_idxs], y[train_val_idxs][train_idxs]
-            X_val, y_val = X[train_val_idxs][val_idxs], y[train_val_idxs][val_idxs]
-            for h, param in enumerate(params): # Hyperparameter grid search
-                model = RandomForestClassifier(n_estimators=param.n_estimators, max_depth=param.max_depth, max_features=param.max_features, random_state=seed)
-                meta_data = MetaData(outer_split=o, inner_split=i, hp_idx=h)
-                to_fit.put((model, X_train, y_train.toarray(), X_val, y_val.toarray(), meta_data))
-
-                with the_lock:
-                    print(f"Queued: {meta_data}")
-
-    # Signal to workers: 'all done'
-    for _ in range(n_cores):
-        to_fit.put(None)
-
-    pool.close()
-    pool.join()
-
-    del X_train, y_train, X_val, y_val
-
-    inner_toc = time.perf_counter()
-    print(f"Inner cv took {inner_toc - inner_tic:.2f} seconds")
-
-    '''
-    Outer cv
+    CV
     '''
     outer_tic = time.perf_counter()
     
-    # Pull inner cv results out of queue
-    inner_res = [np.empty(shape=(len(params), inner_kfold)) for _ in range(outer_kfold)]
-    while not fitted.empty():
-        scores, meta_data = fitted.get()
-        inner_res[meta_data.outer_split][meta_data.hp_idx, meta_data.inner_split] = scores[inner_eval_name]
-
-    # Assemble best inner hps
-    best_inner_params = []
-    for os in inner_res:
-        idx = np.argmax(os.mean(axis=1)) # HPs that gave highest average score
-        best_inner_params.append(params[idx])
-
     # Initialize queues and pool
     to_fit = mp.Queue(maxsize=qsize)
     fitted = mp.Queue()
@@ -176,16 +131,16 @@ if __name__ == '__main__':
                    )
 
     # Populate the in queue
-    for oh, (train_idxs, test_idxs) in enumerate(outer_cv.split(X)): # Outer data splits == Number of inner best hps
+    for oh, (train_idxs, test_idxs) in enumerate(cv.split(X)): # Outer data splits == Number of inner best hps
         X_train, y_train = X[train_idxs], y[train_idxs]
         X_test, y_test = X[test_idxs], y[test_idxs]
-        param = best_inner_params[oh]
+        param = params[oh]
         model = RandomForestClassifier(n_estimators=param.n_estimators, max_depth=param.max_depth, max_features=param.max_features, random_state=seed)
         meta_data = MetaData(outer_split=oh)
         to_fit.put((model, X_train, y_train.toarray(), X_test, y_test.toarray(), meta_data))
 
         with the_lock:
-            print(f"Queued: model #{meta_data.outer_split}. Max depth: {param.max_depth}, Max samples: {param.max_samples}, N trees: {param.n_estimators}, Max features: {param.max_features}")
+            print(f"Queued: {meta_data}")
 
     # Signal to workers: 'all done'
     for _ in range(n_cores):

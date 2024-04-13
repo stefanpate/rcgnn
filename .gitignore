@@ -4,3 +4,4 @@ erx_hiec_rampup.txt
 /CLEAN
 /data
 __pycache__
+/artifacts/trained_models
