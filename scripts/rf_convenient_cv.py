@@ -98,7 +98,7 @@ if __name__ == '__main__':
     }
 
     # Load dataset
-    n_classes = 500
+    n_classes = 1000
     y = sp.sparse.load_npz(f"/scratch/spn1560/swissprot_esm_y_top_{n_classes}_classes.npz")
     y = sp.sparse.csr_matrix(y)
     X = np.load(f"/scratch/spn1560/swissprot_esm_X_top_{n_classes}_classes.npy")
@@ -107,7 +107,7 @@ if __name__ == '__main__':
     # X = load_design_matrix(train_data_name, embed_type, sample_idx, do_norm=True)
 
     # Params for grid search
-    max_depths = [22, 32, 42] # [3, 5, 7]
+    max_depths = [32, 45, 52] # [3, 5, 7]
     n_estimators = [int(np.sqrt(X.shape[0]))] # [50, 75, 100]
     max_samples = [int(np.sqrt(X.shape[0]))]
     max_features = [int(np.sqrt(X.shape[1]))]
