@@ -35,9 +35,12 @@ def fit_eval(q_in, q_out, scoring_metrics, lock, do_save=False, train_data_name=
             print(f"Evaluating: {meta_data}")
 
         scores = {}
+        eval_tic = time.perf_counter()
         for name, metric in scoring_metrics.items():
             y_pred = model.predict(X_test)
             scores[name] = metric(y_test, y_pred)
+        eval_toc = time.perf_counter()
+        print(f"Evaluated in {eval_toc - eval_tic:.2f} seconds")
         
         if do_save:
             with lock:
@@ -45,10 +48,10 @@ def fit_eval(q_in, q_out, scoring_metrics, lock, do_save=False, train_data_name=
 
             fn = f"{timestamp}_random_forest_train_data_{train_data_name}_{embed_type}_embeddings_model_no_{meta_data.outer_split}_exploratory"
             
-            with open(f"../artifacts/trained_models/{fn}.pkl", 'wb') as f:
+            with open(f"/projects/p30041/spn1560/hiec/artifacts/trained_models/{fn}.pkl", 'wb') as f:
                 pickle.dump(model, f)
 
-            with open(f"../artifacts/model_evals/{fn}.json", 'w') as f:
+            with open(f"/projects/p30041/spn1560/hiec/artifacts/model_evals/{fn}.json", 'w') as f:
                 json.dump(scores, f)
         
         q_out.put((scores, meta_data))
@@ -60,7 +63,7 @@ if __name__ == '__main__':
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.metrics import accuracy_score, roc_auc_score, f1_score, precision_score, recall_score
     from itertools import product
-    from src.utils import load_sparse_adj_mat, load_design_matrix
+    from src.utils import construct_sparse_adj_mat, load_design_matrix
     import numpy as np
     from src.utils import ensure_dirs
     from datetime import datetime
@@ -69,10 +72,8 @@ if __name__ == '__main__':
     now = datetime.now()
     timestamp = now.strftime("%y%m%d_%H_%M_%S")
 
-    ensure_dirs("/scratch/spn1560/random_forests")
-
     # Settings
-    train_data_name = 'swissprot'
+    train_data_name = 'sp_ops'
     embed_type = 'esm'
     kfold = 3
     hpo_metric = 'f1_weighted'
@@ -98,16 +99,19 @@ if __name__ == '__main__':
     }
 
     # Load dataset
-    n_classes = 1000
-    y = sp.sparse.load_npz(f"/scratch/spn1560/swissprot_esm_y_top_{n_classes}_classes.npz")
-    y = sp.sparse.csr_matrix(y)
-    X = np.load(f"/scratch/spn1560/swissprot_esm_X_top_{n_classes}_classes.npy")
-    # y, idx_sample, idx_feature = load_sparse_adj_mat(train_data_name)
-    # sample_idx = {v:k for k,v in idx_sample.items()}
-    # X = load_design_matrix(train_data_name, embed_type, sample_idx, do_norm=True)
+    # # Subset
+    # n_classes = 5
+    # y = sp.sparse.load_npz(f"/scratch/spn1560/{train_data_name}_esm_y_top_{n_classes}_classes.npz")
+    # y = sp.sparse.csr_matrix(y)
+    # X = np.load(f"/scratch/spn1560/{train_data_name}_esm_X_top_{n_classes}_classes.npy")
+
+    # Full
+    y, idx_sample, idx_feature = construct_sparse_adj_mat(train_data_name)
+    sample_idx = {v:k for k,v in idx_sample.items()}
+    X = load_design_matrix(train_data_name, embed_type, sample_idx, do_norm=True)
 
     # Params for grid search
-    max_depths = [32, 45, 52] # [3, 5, 7]
+    max_depths = [20, 30, 40] # [3, 5, 7]
     n_estimators = [int(np.sqrt(X.shape[0]))] # [50, 75, 100]
     max_samples = [int(np.sqrt(X.shape[0]))]
     max_features = [int(np.sqrt(X.shape[1]))]

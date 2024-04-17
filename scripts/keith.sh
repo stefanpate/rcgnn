@@ -3,10 +3,10 @@
 #SBATCH -p normal
 #SBATCH -N 1
 #SBATCH -n 4
-#SBATCH --mem=75G
-#SBATCH -t 48:00:00
-#SBATCH --job-name="rf_top_1000_classes_swissprot_run_1"
-#SBATCH --output=../logs/rf_top_1000_classes_swissprot_run_1
+#SBATCH --mem=16G
+#SBATCH -t 8:00:00
+#SBATCH --job-name="rf_sp_ops_run_2"
+#SBATCH --output=../logs/rf_sp_ops_run_2
 #SBATCH --error=../logs/e_tmp
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL

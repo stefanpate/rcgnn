@@ -1,6 +1,6 @@
 from src.CLEAN.utils import *
 
-dataset = 'new'
+dataset = 'sp_ops'
 outdir = f"../data/{dataset}/esm/"
 csv_path = f"../data/{dataset}/{dataset}.csv" 
 fasta_path = f"../data/{dataset}/{dataset}.fasta"
