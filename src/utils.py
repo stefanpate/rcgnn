@@ -50,7 +50,7 @@ def ensure_dirs(path):
     if not os.path.exists(path):
         os.makedirs(path)
 
-def load_sparse_adj_mat(ds_name):
+def construct_sparse_adj_mat(ds_name):
         '''
         Returns sparse representation of sample x feature adjacency matrix
         and lookup of sample names from row idx key.
@@ -71,14 +71,14 @@ def load_sparse_adj_mat(ds_name):
         print(f"Constructing {ds_name} sparse adjacency matrix")
         row, col, data = [], [], [] # For csr
         for i, elt in enumerate(df.index):
-            ecs = df.loc[elt, 'EC number'].split(';')
+            labels = df.loc[elt, 'Label'].split(';')
             sample_idx[elt] = i
-            for ec in ecs:
-                if ec in feature_idx:
-                    j = feature_idx[ec]
+            for label in labels:
+                if label in feature_idx:
+                    j = feature_idx[label]
                 else:
                     j = len(feature_idx)
-                    feature_idx[ec] = j
+                    feature_idx[label] = j
                 row.append(i)
                 col.append(j)
                 data.append(1)
@@ -103,6 +103,7 @@ def load_design_matrix(ds_name, embed_type, sample_idx, do_norm=True):
         Returns
             - X: Design matrixs (samples x embedding dim)
         '''
+        # Load from scratch if pre-saved
         path = f"/scratch/spn1560/{ds_name}_{embed_type}_X.npy"
         if os.path.exists(path):
             X = np.load(path)
