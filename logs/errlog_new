@@ -1,5 +1,0 @@
-Traceback (most recent call last):
-  File "/home/spn1560/hiec/scripts/nth_level_error.py", line 57, in <module>
-    this_embeds = swissprot_embeds[embed_idxs[3][this_l4_ec]]
-                  ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TypeError: list indices must be integers or slices, not list

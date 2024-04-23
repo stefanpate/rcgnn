@@ -1,4 +1,0 @@
-Traceback (most recent call last):
-  File "nth_level_error.py", line 6, in <module>
-    from src.utils import load_embed, save_json
-ModuleNotFoundError: No module named 'src'
