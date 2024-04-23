@@ -1,0 +1,2 @@
+	mean_fit_time	std_fit_time	mean_score_time	std_score_time	param_lr	params	split0_test_score	split1_test_score	mean_test_score	std_test_score	rank_test_score
+0	0.42026031017303467	0.16752231121063232	0.02056419849395752	0.0008984804153442383	0.005	{'lr': 0.005}	-1.3043710706898075	-1.52032754306716	-1.4123493068784838	0.10797823618867619	1
