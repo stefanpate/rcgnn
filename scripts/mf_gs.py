@@ -6,50 +6,6 @@ import torch
 
 seed = 1234
 rng = np.random.default_rng(seed=seed) # Seed random number generator
-
-class MatrixFactorization(torch.nn.Module):
-    def __init__(self, n_users, n_items, n_factors, scl_embeds=False):
-        super().__init__()
-        self.user_factors = torch.nn.Embedding(n_users, n_factors, sparse=False)
-        self.item_factors = torch.nn.Embedding(n_items, n_factors, sparse=False)
-
-        if scl_embeds:
-            self.user_factors.weight = self.scale_embed(self.user_factors.weight)
-            self.item_factors.weight = self.scale_embed(self.item_factors.weight)
-            torch.nn.init.normal_(self.user_biases.weight, mean=0, std=3e-1)
-            torch.nn.init.normal_(self.item_biases.weight, mean=0, std=3e-1)
-
-    def logits(self, user, item):
-        return (self.user_factors(user) * self.item_factors(item)).sum(dim=1, keepdim=True)
-
-    def forward(self, X):
-        user, item = X[:,0].reshape(-1,), X[:,1].reshape(-1,)
-        return torch.sigmoid(self.logits(user, item))
-    
-    def scale_embed(self, embedding):
-        np_embed = embedding.detach().numpy()
-        np_embed /= np.linalg.norm(np_embed, axis=1).reshape(-1,1)
-        return torch.nn.Parameter(torch.FloatTensor(np_embed))
-    
-class BiasedMatrixFactorization(MatrixFactorization):
-    def __init__(self, n_users, n_items, n_factors, scl_embeds=False):
-        super().__init__(n_users, n_items, n_factors, scl_embeds)
-        self.user_biases = torch.nn.Embedding(n_users, 1, sparse=False)
-        self.item_biases = torch.nn.Embedding(n_items, 1, sparse=False)
-
-    def forward(self, X):
-        user, item = X[:,0].reshape(-1,1), X[:,1].reshape(-1,1)
-        dot_prods = super.logits(user, item)
-        dot_prods += (self.user_biases(user) + self.item_biases(item))
-        return torch.sigmoid(dot_prods)
-    
-class LinearMatrixFactorization(MatrixFactorization):
-    def __init__(self, n_users, n_items, n_factors, scl_embeds=False):
-        super().__init__(n_users, n_items, n_factors, scl_embeds)
-
-    def forward(self, X):
-        user, item = X[:,0].reshape(-1,1), X[:,1].reshape(-1,1)
-        return super.logits(user, item)
     
 def negative_sample_bipartite(n_samples, n_rows, n_cols, obs_pairs):
     # Sample subset of unobserved pairs
@@ -65,6 +21,7 @@ def negative_sample_bipartite(n_samples, n_rows, n_cols, obs_pairs):
 
 
 if __name__ == '__main__':
+    from src.mf import MatrixFactorization
     from skorch import NeuralNetClassifier
     from skorch.dataset import Dataset
     from skorch.helper import predefined_split
@@ -154,14 +111,24 @@ if __name__ == '__main__':
         module__n_items=n_items,
     )
 
+    # # Grid search
+    # hps = {
+    #     'lr':[1e-3, 5e-3, 1e-2],
+    #     'max_epochs':[1000, 5000, 10000],
+    #     'batch_size':[1, 5, 10],
+    #     'optimizer__weight_decay':[5e-4, 1e-3, 5e-3],
+    #     'module__n_factors':[5, 10, 20],
+    #     'module__scl_embeds':[True, False]
+    # }
+
     # Grid search
     hps = {
-        'lr':[1e-3, 5e-3, 1e-2],
-        'max_epochs':[1000, 5000, 10000],
-        'batch_size':[1, 5, 10],
-        'optimizer__weight_decay':[5e-4, 1e-3, 5e-3],
-        'module__n_factors':[5, 10, 20],
-        'module__scl_embeds':[True, False]
+        'lr':[5e-3,],
+        'max_epochs':[5000, 10000],
+        'batch_size':[1, 10],
+        'optimizer__weight_decay':[1e-3,],
+        'module__n_factors':[10,],
+        'module__scl_embeds':[False,]
     }
 
     gs = GridSearchCV(
@@ -170,13 +137,14 @@ if __name__ == '__main__':
         cv=cv_idxs,
         scoring=custom_nll,
         verbose=3,
-        n_jobs=-1
+        n_jobs=2
     )
 
     model.set_params(train_split=False) # Redundant w/ gs
     gs.fit(X, y)
 
     # Re-fit on entire dataset
+    best_params = gs.best_params_
 
     # Split observed positives
     X_train, X_test, y_train, y_test = train_test_split(obs_pairs, np.ones(shape=(len(obs_pairs), 1)),
@@ -201,7 +169,7 @@ if __name__ == '__main__':
 
     val_ds = Dataset(X_test, y_test) # Predefined validation split
 
-    best_params = {}
+    
     best_model = NeuralNetClassifier(
         module=MatrixFactorization,
         criterion=torch.nn.BCELoss(),
@@ -211,7 +179,6 @@ if __name__ == '__main__':
         module__n_items=n_items,
         train_split=predefined_split(val_ds),
         **best_params
-
     )
 
     best_model.fit(X_train, y_train)

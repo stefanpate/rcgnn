@@ -1,7 +1,6 @@
 '''
 Matrix factorization
 '''
-
 import numpy as np
 import torch
 
@@ -14,8 +13,6 @@ class MatrixFactorization(torch.nn.Module):
         if scl_embeds:
             self.user_factors.weight = self.scale_embed(self.user_factors.weight)
             self.item_factors.weight = self.scale_embed(self.item_factors.weight)
-            torch.nn.init.normal_(self.user_biases.weight, mean=0, std=3e-1)
-            torch.nn.init.normal_(self.item_biases.weight, mean=0, std=1e-1)
 
     def logits(self, user, item):
         return (self.user_factors(user) * self.item_factors(item)).sum(dim=1, keepdim=True)
@@ -34,6 +31,12 @@ class BiasedMatrixFactorization(MatrixFactorization):
         super().__init__(n_users, n_items, n_factors, scl_embeds)
         self.user_biases = torch.nn.Embedding(n_users, 1, sparse=False)
         self.item_biases = torch.nn.Embedding(n_items, 1, sparse=False)
+
+        if scl_embeds:
+            self.user_factors.weight = self.scale_embed(self.user_factors.weight)
+            self.item_factors.weight = self.scale_embed(self.item_factors.weight)
+            torch.nn.init.normal_(self.user_biases.weight, mean=0, std=3e-1)
+            torch.nn.init.normal_(self.item_biases.weight, mean=0, std=3e-1)
 
     def forward(self, X):
         user, item = X[:,0].reshape(-1,1), X[:,1].reshape(-1,1)
