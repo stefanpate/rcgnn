@@ -30,8 +30,9 @@ if __name__ == '__main__':
     import numpy as np
     import pandas as pd
     from datetime import datetime
-    from src.utils import ensure_dirs
+    from src.utils import ensure_dirs, construct_sparse_adj_mat
     import pickle
+    import time
 
     seed = 1234
     rng = np.random.default_rng(seed=seed) # Seed random number generator
@@ -43,27 +44,23 @@ if __name__ == '__main__':
     n_items = 1_00
     k = 2 # K nearest neighbors to "link" in adj matrix
     density = 0.01 # For random adj mat
+    dataset_name = 'sp_ops' # random | knn | one of the datasets
 
     # Training parameters
-    # n_epochs = 1000
-    # n_factors = 10 # dim of embeddings
-    # bs = 1 # Batch size
-    # lr = 5e-3 # Learning rate
-    # reg = 1e-3 # Regularization
-    neg_multiple = 1 # How many negative samples per
+    sk_jobs = 24
+    neg_multiple = 5 # How many negative samples per
     n_splits = 3
     kfold = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
     custom_nll = make_scorer(log_loss, labels=[0., 1.], greater_is_better=False, needs_proba=True)
+    refit = True # Refit best model from grid search on all data
 
     # Saving parameters
-    trained_models_dir = "../artifacts/trained_models/mf"
+    trained_models_dir = "/projects/p30041/spn1560/hiec/artifacts/trained_models/mf"
     eval_models_dir = "../artifacts/model_evals/mf"
     ensure_dirs(trained_models_dir)
     ensure_dirs(eval_models_dir)
 
     # Generate adjacency matrix
-    dataset_name = 'knn' # random | knn
-
     if dataset_name == 'knn':
         obs_pairs = []
         for i in range(n_users):
@@ -81,6 +78,12 @@ if __name__ == '__main__':
         obs_pairs = list(zip(obs_rows, obs_cols))
         ratings = np.zeros(shape=(n_users, n_items))
         ratings[obs_rows, obs_cols] = 1
+
+    else:
+        ratings, idx_sample, idx_feature = construct_sparse_adj_mat(dataset_name)
+        ratings = ratings.toarray()
+        obs_pairs = list(zip(*ratings.nonzero()))
+        n_users, n_items = ratings.shape
 
     # Split data for cv
     neg_pairs = []
@@ -124,11 +127,11 @@ if __name__ == '__main__':
     # Grid search
     hps = {
         'lr':[5e-3,],
-        'max_epochs':[5000, 10000],
-        'batch_size':[1, 10],
-        'optimizer__weight_decay':[1e-3,],
-        'module__n_factors':[10,],
-        'module__scl_embeds':[False,]
+        'max_epochs':[7500,],
+        'batch_size':[10, 25],
+        'optimizer__weight_decay':[5e-3],
+        'module__n_factors':[10, 100],
+        'module__scl_embeds':[False, True]
     }
 
     gs = GridSearchCV(
@@ -137,56 +140,63 @@ if __name__ == '__main__':
         cv=cv_idxs,
         scoring=custom_nll,
         verbose=3,
-        n_jobs=2
+        n_jobs=sk_jobs,
+        pre_dispatch='2*n_jobs'
     )
 
     model.set_params(train_split=False) # Redundant w/ gs
+    tic = time.perf_counter()
     gs.fit(X, y)
+    toc = time.perf_counter()
+    print(f"Grid search w/ n_jobs={sk_jobs} took {toc-tic:.2f} seconds")
 
-    # Re-fit on entire dataset
-    best_params = gs.best_params_
-
-    # Split observed positives
-    X_train, X_test, y_train, y_test = train_test_split(obs_pairs, np.ones(shape=(len(obs_pairs), 1)),
-                                                        train_size=0.8,
-                                                        shuffle=True,
-                                                        random_state=seed)
-    
-    # Sample negatives
-    n_neg = len(X_train) * neg_multiple
-    nps = negative_sample_bipartite(n_neg, n_users, n_items, X_train) # Sample negatives
-
-    # Enforce right type
-    X_train = np.array(X_train + nps).astype(np.int64)
-    y_train = np.concatenate((y_train, np.zeros(shape=(len(nps), 1)))).astype(np.float32)
-    X_test = np.array(X_test).astype(np.int64)
-    y_test = y_test.astype(np.float32)
-
-    # Shuffle traindata with negatives
-    p = rng.permutation(X_train.shape[0])
-    X_train = X_train[p]
-    y_train = y_train[p]
-
-    val_ds = Dataset(X_test, y_test) # Predefined validation split
-
-    
-    best_model = NeuralNetClassifier(
-        module=MatrixFactorization,
-        criterion=torch.nn.BCELoss(),
-        optimizer=torch.optim.SGD,
-        device=device,
-        module__n_users=n_users,
-        module__n_items=n_items,
-        train_split=predefined_split(val_ds),
-        **best_params
-    )
-
-    best_model.fit(X_train, y_train)
-
-    # Save results
+    # Save grid search results
     gs_res = pd.DataFrame(gs.cv_results_)
     gs_res.to_csv(f"{eval_models_dir}/{timestamp}_grid_search_{dataset_name}_neg_multiple_{neg_multiple}.csv", sep='\t')    
-    with open(f"{trained_models_dir}/{timestamp}_best_model_{dataset_name}_neg_multiple_{neg_multiple}.pkl", 'wb') as f:
-        pickle.dump(best_model, f)
+    
+    # Re-fit on entire dataset
+    if refit:
+        best_params = gs.best_params_
+
+        # Split observed positives
+        X_train, X_test, y_train, y_test = train_test_split(obs_pairs, np.ones(shape=(len(obs_pairs), 1)),
+                                                            train_size=0.8,
+                                                            shuffle=True,
+                                                            random_state=seed)
+        
+        # Sample negatives
+        n_neg = len(X_train) * neg_multiple
+        nps = negative_sample_bipartite(n_neg, n_users, n_items, X_train) # Sample negatives
+
+        # Enforce right type
+        X_train = np.array(X_train + nps).astype(np.int64)
+        y_train = np.concatenate((y_train, np.zeros(shape=(len(nps), 1)))).astype(np.float32)
+        X_test = np.array(X_test).astype(np.int64)
+        y_test = y_test.astype(np.float32)
+
+        # Shuffle traindata with negatives
+        p = rng.permutation(X_train.shape[0])
+        X_train = X_train[p]
+        y_train = y_train[p]
+
+        val_ds = Dataset(X_test, y_test) # Predefined validation split
+
+        
+        best_model = NeuralNetClassifier(
+            module=MatrixFactorization,
+            criterion=torch.nn.BCELoss(),
+            optimizer=torch.optim.SGD,
+            device=device,
+            module__n_users=n_users,
+            module__n_items=n_items,
+            train_split=predefined_split(val_ds),
+            **best_params
+        )
+
+        best_model.fit(X_train, y_train)
+
+        # Save best_model
+        with open(f"{trained_models_dir}/{timestamp}_best_model_{dataset_name}_neg_multiple_{neg_multiple}.pkl", 'wb') as f:
+            pickle.dump(best_model, f)
 
     print('done')
