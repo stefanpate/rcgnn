@@ -51,8 +51,10 @@ class LinearMatrixFactorization(MatrixFactorization):
     def forward(self, X):
         user, item = X[:,0].reshape(-1,1), X[:,1].reshape(-1,1)
         return super.logits(user, item)
+
+def negative_sample_bipartite(n_samples, n_rows, n_cols, obs_pairs, seed):
+    rng = np.random.default_rng(seed=seed)
     
-def negative_sample_bipartite(n_samples, n_rows, n_cols, obs_pairs, rng):
     # Sample subset of unobserved pairs
     unobs_pairs = []
     while len(unobs_pairs) < n_samples:

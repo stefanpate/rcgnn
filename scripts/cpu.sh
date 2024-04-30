@@ -5,9 +5,9 @@
 #SBATCH -n 4
 #SBATCH --mem=10G
 #SBATCH -t 8:00:00
-#SBATCH --job-name="sp_ops_fit_8"
-#SBATCH --output=../logs/sp_ops_fit_8
-#SBATCH --error=../logs/e_tmp_2
+#SBATCH --job-name="sp_ops_continue_fit_8"
+#SBATCH --output=../logs/sp_ops_continue_fit_8
+#SBATCH --error=../logs/e_tmp_3
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=stefan.pate@northwestern.edu

@@ -7,18 +7,6 @@ import multiprocessing as mp
 
 seed = 1234
 rng = np.random.default_rng(seed=seed) # Seed random number generator
-    
-def negative_sample_bipartite(n_samples, n_rows, n_cols, obs_pairs):
-    # Sample subset of unobserved pairs
-    unobs_pairs = []
-    while len(unobs_pairs) < n_samples:
-        i = rng.integers(0, n_rows)
-        j = rng.integers(0, n_cols)
-
-        if (i, j) not in obs_pairs:
-            unobs_pairs.append((i, j))
-
-    return unobs_pairs
 
 def fit_eval(q_in, q_out, lock):
     while True:
@@ -46,7 +34,7 @@ def fit_eval(q_in, q_out, lock):
 
 
 if __name__ == '__main__':
-    from src.mf import MatrixFactorization
+    from src.mf import MatrixFactorization, negative_sample_bipartite
     from skorch import NeuralNetClassifier
     from skorch.dataset import Dataset
     from skorch.helper import predefined_split
@@ -120,7 +108,7 @@ if __name__ == '__main__':
         test_idxs.append(test)
         train_obs = [obs_pairs[elt] for elt in train]
         n_neg = train.shape[0] * neg_multiple
-        nps = negative_sample_bipartite(n_neg, n_users, n_items, train_obs) # Sample negatives
+        nps = negative_sample_bipartite(n_neg, n_users, n_items, train_obs, seed=seed) # Sample negatives
         ntis = np.array([i + n_obs for i in range(len(nps))])
         neg_pairs += nps
         train_idxs.append(np.hstack((train, ntis)))
@@ -247,7 +235,7 @@ if __name__ == '__main__':
         
         # Sample negatives
         n_neg = len(X_train) * neg_multiple
-        nps = negative_sample_bipartite(n_neg, n_users, n_items, X_train) # Sample negatives
+        nps = negative_sample_bipartite(n_neg, n_users, n_items, X_train, seed=seed) # Sample negatives
 
         # Enforce right type
         X_train = np.array(X_train + nps).astype(np.int64)

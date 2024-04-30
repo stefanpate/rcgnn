@@ -4,6 +4,10 @@ import json
 import numpy as np
 import torch
 import os
+from sklearn.model_selection import KFold
+
+data_dir = "/projects/p30041/spn1560/hiec/data"
+scratch_path = "/scratch/spn1560"
 
 def save_json(data, save_to):
     with open(save_to, 'w') as f:
@@ -93,8 +97,6 @@ def construct_sparse_adj_mat(ds_name):
 
 def load_design_matrix(ds_name, embed_type, sample_idx, do_norm=True):
         '''
-        x
-
         Args
             - ds_name: Str name of dataset
             - embed_type: Str
@@ -128,3 +130,6 @@ def load_design_matrix(ds_name, embed_type, sample_idx, do_norm=True):
             np.save(path, X)
 
         return X
+
+def split_data(ds_name, sample_embed_type, n_splits, seed):
+    

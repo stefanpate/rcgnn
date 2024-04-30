@@ -7,22 +7,10 @@ import multiprocessing as mp
 
 seed = 1234
 rng = np.random.default_rng(seed=seed) # Seed random number generator
-    
-def negative_sample_bipartite(n_samples, n_rows, n_cols, obs_pairs):
-    # Sample subset of unobserved pairs
-    unobs_pairs = []
-    while len(unobs_pairs) < n_samples:
-        i = rng.integers(0, n_rows)
-        j = rng.integers(0, n_cols)
-
-        if (i, j) not in obs_pairs:
-            unobs_pairs.append((i, j))
-
-    return unobs_pairs
 
 
 if __name__ == '__main__':
-    from src.mf import MatrixFactorization
+    from src.mf import MatrixFactorization, negative_sample_bipartite
     from skorch import NeuralNetClassifier
     from skorch.dataset import Dataset
     from skorch.helper import predefined_split
@@ -51,7 +39,9 @@ if __name__ == '__main__':
     # Training parameters
     neg_multiple = 1 # How many negative samples per
     custom_nll = make_scorer(log_loss, labels=[0., 1.], greater_is_better=False, needs_proba=True)
-    refit = True # Refit best model from grid search on all data
+    warm_start = True # Continue training model where you left off
+    ws_fn = "240429_12_21_45_fit_model_sp_ops_neg_multiple_1_seed_1234.pkl" # Filenema of desired warm start model
+    ws_n_epochs = 2500
 
     # Saving parameters
     trained_models_dir = "/projects/p30041/spn1560/hiec/artifacts/trained_models/mf"
@@ -85,7 +75,7 @@ if __name__ == '__main__':
 
     hps = {
         'lr':5e-3,
-        'max_epochs':5000,
+        'max_epochs':2000,
         'batch_size':10,
         'optimizer__weight_decay':1e-4,
         'module__n_factors':20,
@@ -100,7 +90,7 @@ if __name__ == '__main__':
     
     # Sample negatives
     n_neg = len(X_train) * neg_multiple
-    nps = negative_sample_bipartite(n_neg, n_users, n_items, X_train) # Sample negatives
+    nps = negative_sample_bipartite(n_neg, n_users, n_items, X_train, seed=seed) # Sample negatives
 
     # Enforce right type
     X_train = np.array(X_train + nps).astype(np.int64)
@@ -114,27 +104,34 @@ if __name__ == '__main__':
     y_train = y_train[p]
     val_ds = Dataset(X_test, y_test) # Predefined validation split
 
-    # Construct model and fit
+    # Load  or construct model and fit
+    if warm_start:
+        with open(f"{trained_models_dir}/{ws_fn}", 'rb') as f:
+            model = pickle.load(f)
 
-    best_model = NeuralNetClassifier(
-        module=MatrixFactorization,
-        criterion=torch.nn.BCELoss(),
-        optimizer=torch.optim.SGD,
-        device=device,
-        module__n_users=n_users,
-        module__n_items=n_items,
-        train_split=predefined_split(val_ds),
-        **hps
-    )
+        model.warm_start = warm_start
+        model.max_epochs = ws_n_epochs
+
+    else:
+        model = NeuralNetClassifier(
+            module=MatrixFactorization,
+            criterion=torch.nn.BCELoss(),
+            optimizer=torch.optim.SGD,
+            device=device,
+            module__n_users=n_users,
+            module__n_items=n_items,
+            train_split=predefined_split(val_ds),
+            **hps
+        )
 
     tic = time.perf_counter()
-    best_model.fit(X_train, y_train)
+    model.fit(X_train, y_train)
     toc = time.perf_counter()
 
     print(f"{hps['max_epochs']} epochs took {toc - tic:.2f} seconds")
 
-    # Save best_model
+    # Save model
     with open(f"{trained_models_dir}/{timestamp}_fit_model_{dataset_name}_neg_multiple_{neg_multiple}_seed_{seed}.pkl", 'wb') as f:
-        pickle.dump(best_model, f)
+        pickle.dump(model, f)
 
     print('done')
