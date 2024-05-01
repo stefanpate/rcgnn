@@ -53,6 +53,9 @@ class LinearMatrixFactorization(MatrixFactorization):
         return super.logits(user, item)
 
 def negative_sample_bipartite(n_samples, n_rows, n_cols, obs_pairs, seed):
+    if type(obs_pairs) == np.ndarray:
+        obs_pairs = [tuple(obs_pairs[i, :]) for i in range(obs_pairs.shape[0])]
+
     rng = np.random.default_rng(seed=seed)
     
     # Sample subset of unobserved pairs
@@ -64,4 +67,4 @@ def negative_sample_bipartite(n_samples, n_rows, n_cols, obs_pairs, seed):
         if (i, j) not in obs_pairs:
             unobs_pairs.append((i, j))
 
-    return unobs_pairs
+    return np.array(unobs_pairs)

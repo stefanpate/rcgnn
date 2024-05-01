@@ -5,6 +5,14 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python Debugger: Current File with Arguments",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": ["-d", "sp_ops", "-e", "1234", "-n", "3", "-s", "0", "-p", "0", "-g", "mf_sp_ops_0"]
+        },
+        {
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",

@@ -1,0 +1,5 @@
+  epoch    train_loss    valid_acc    valid_loss     dur
+-------  ------------  -----------  ------------  ------
+      1        [36m0.6997[0m       [32m0.4930[0m        [35m0.7000[0m  0.9316
+1 epochs took 0.95 seconds
+done

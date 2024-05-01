@@ -1,12 +1,6 @@
 '''
 Grid search for matrix factorization using skorch
 '''
-import numpy as np
-import torch
-import multiprocessing as mp
-
-seed = 1234
-rng = np.random.default_rng(seed=seed) # Seed random number generator
 
 def fit_eval(q_in, q_out, lock):
     while True:
@@ -34,6 +28,7 @@ def fit_eval(q_in, q_out, lock):
 
 
 if __name__ == '__main__':
+    import multiprocessing as mp
     from src.mf import MatrixFactorization, negative_sample_bipartite
     from skorch import NeuralNetClassifier
     from skorch.dataset import Dataset
@@ -47,6 +42,9 @@ if __name__ == '__main__':
     import pickle
     import time
     from itertools import product
+    import torch
+
+    print(mp.cpu_count())
 
     seed = 1234
     rng = np.random.default_rng(seed=seed) # Seed random number generator
@@ -67,7 +65,7 @@ if __name__ == '__main__':
     n_splits = 3
     kfold = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
     custom_nll = make_scorer(log_loss, labels=[0., 1.], greater_is_better=False, needs_proba=True)
-    refit = True # Refit best model from grid search on all data
+    refit = False # Refit best model from grid search on all data
 
     # Saving parameters
     trained_models_dir = "/projects/p30041/spn1560/hiec/artifacts/trained_models/mf"
@@ -132,7 +130,7 @@ if __name__ == '__main__':
 
     hps = {
         'lr':[5e-3,],
-        'max_epochs':[5000,],
+        'max_epochs':[1,],
         'batch_size':[10,],
         'optimizer__weight_decay':[5e-3],
         'module__n_factors':[10,],
@@ -217,8 +215,8 @@ if __name__ == '__main__':
     gs_res.reset_index(inplace=True)
     gs_res.sort_values(by=['mean_val_loss'], inplace=True, ascending=True)
 
-    # Save grid search results
-    gs_res.to_csv(f"{eval_models_dir}/{timestamp}_grid_search_{dataset_name}_neg_multiple_{neg_multiple}.csv", sep='\t')
+    # # Save grid search results
+    # gs_res.to_csv(f"{eval_models_dir}/{timestamp}_grid_search_{dataset_name}_neg_multiple_{neg_multiple}.csv", sep='\t')
     gs_toc = time.perf_counter()
     print(f"Grid search on {n_cores} cores took {gs_toc - gs_tic:.2f} seconds")  
     

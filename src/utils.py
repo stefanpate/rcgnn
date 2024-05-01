@@ -7,7 +7,7 @@ import os
 from sklearn.model_selection import KFold
 
 data_dir = "/projects/p30041/spn1560/hiec/data"
-scratch_path = "/scratch/spn1560"
+scratch_dir = "/scratch/spn1560"
 
 def save_json(data, save_to):
     with open(save_to, 'w') as f:
@@ -95,7 +95,7 @@ def construct_sparse_adj_mat(ds_name):
             
         return adj, idx_sample, idx_feature
 
-def load_design_matrix(ds_name, embed_type, sample_idx, do_norm=True):
+def load_design_matrix(ds_name, embed_type, sample_idx, do_norm=True, scratch_dir=scratch_dir, data_dir=data_dir):
         '''
         Args
             - ds_name: Str name of dataset
@@ -106,14 +106,14 @@ def load_design_matrix(ds_name, embed_type, sample_idx, do_norm=True):
             - X: Design matrixs (samples x embedding dim)
         '''
         # Load from scratch if pre-saved
-        path = f"/scratch/spn1560/{ds_name}_{embed_type}_X.npy"
+        path = f"{scratch_dir}/{ds_name}_{embed_type}_X.npy"
         if os.path.exists(path):
             X = np.load(path)
         else:
 
             print(f"Loading {embed_type} embeddings for {ds_name} dataset")
             magic_key = 33
-            data_path = f"../data/{ds_name}/"
+            data_path = f"{data_dir}/{ds_name}/"
             X = []
             for i, elt in enumerate(sample_idx):
                 X.append(load_embed(data_path + f"{embed_type}/{elt}.pt", embed_key=magic_key)[1])
@@ -131,5 +131,59 @@ def load_design_matrix(ds_name, embed_type, sample_idx, do_norm=True):
 
         return X
 
-def split_data(ds_name, sample_embed_type, n_splits, seed):
+def split_data(ds_name, sample_embed_type, n_splits, seed, X=None, y=None):
+    fn_pref = f"{ds_name}_{sample_embed_type}_embeds_{n_splits}_splits_{seed}_seed"
+    X_train_fns = [f"X_train_{fn_pref}_{i}_split_idx" for i in range(n_splits)]
+    y_train_fns = [f"y_train_{fn_pref}_{i}_split_idx" for i in range(n_splits)]
+    X_test_fns = [f"X_test_{fn_pref}_{i}_split_idx" for i in range(n_splits)]
+    y_test_fns = [f"y_test_{fn_pref}_{i}_split_idx" for i in range(n_splits)]
+    list_of_fn_lists = [X_train_fns, y_train_fns, X_test_fns, y_test_fns]
+
+    all_fns = X_train_fns + X_test_fns + y_train_fns + y_test_fns
     
+    # Check if data split files already there
+    if all([os.path.exists(f"{scratch_dir}/{fn}") for fn in all_fns]):
+        print(f"Found existing data splits for {ds_name} {sample_embed_type} n_splits={n_splits} seed={seed}")
+
+    # Split provided data
+    elif X is not None and y is not None:
+        kfold = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
+        for i, (train_idx, test_idx) in enumerate(kfold.split(X)):
+            list_of_data = [X[train_idx], y[train_idx], X[test_idx], y[test_idx]]
+
+            for j in range(4):
+                path = f"{scratch_dir}/{list_of_fn_lists[j][i]}"
+                np.save(path, list_of_data[j])
+
+    # TODO
+    # Load data from projects dir then split    
+    # else:
+    #     # Load adjacency matrix and idx-label dicts
+    #     adj, idx_sample, idx_feature = construct_sparse_adj_mat(ds_name)
+    #     dummy_X = np.empty(shape=(adj.shape[0, 1]))
+    #     kfold = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
+    #     for i, (train_idx, test_idx) in enumerate(kfold.split(X)):
+
+def load_data_split(ds_name, sample_embed_type, n_splits, seed, split_idx):
+    '''
+    Returns list of data split in order X_train, y_train, X_test, y_test
+    '''
+    fn_id = f"{ds_name}_{sample_embed_type}_embeds_{n_splits}_splits_{seed}_seed_{split_idx}_split_idx"
+    fn_prefs = ["X_train", 'y_train', 'X_test', 'y_test']
+    
+    data = []
+    for pref in fn_prefs:
+        path = f"{scratch_dir}/{pref}_{fn_id}.npy"
+        data.append(np.load(path))
+
+    return data
+
+def save_hps_to_scratch(hp, gs_name, hp_idx):
+    with open(f"{scratch_dir}/{gs_name}_{hp_idx}_hp_idx.json", 'w') as f:
+        json.dump(hp, f)
+
+def load_hps_from_scratch(gs_name, hp_idx):
+    with open(f"{scratch_dir}/{gs_name}_{hp_idx}_hp_idx.json", 'r') as f:
+        hp = json.load(f)
+
+    return hp

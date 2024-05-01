@@ -1,0 +1,1 @@
+{"train_loss": [0.6997233517187879], "val_loss": [0.7000196046762533], "fit_time": 0.9477553032338619, "hp_idx": 0, "split_idx": 0, "lr": [], "max_epochs": [], "batch_size": [], "optimizer__weight_decay": [], "module__n_factors": [], "module__scl_embeds": []}
