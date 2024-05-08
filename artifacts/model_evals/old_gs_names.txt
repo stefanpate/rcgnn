@@ -1,0 +1,9 @@
+mf_sp_ops_0
+mf_sp_ops_1
+mf_sp_ops_cv_best_0
+mf_sp_ops_cv_best_1
+test_pretrained
+mf_sp_ops_esm_pt_0
+mf_sp_ops_esm_pt_1
+mf_sp_ops_best_5fold
+mf_sp_ops_esm_pt_best_5fold

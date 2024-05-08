@@ -216,7 +216,7 @@ if __name__ == '__main__':
     gs_res.sort_values(by=['mean_val_loss'], inplace=True, ascending=True)
 
     # # Save grid search results
-    # gs_res.to_csv(f"{eval_models_dir}/{timestamp}_grid_search_{dataset_name}_neg_multiple_{neg_multiple}.csv", sep='\t')
+    gs_res.to_csv(f"{eval_models_dir}/{timestamp}_grid_search_{dataset_name}_neg_multiple_{neg_multiple}.csv", sep='\t')
     gs_toc = time.perf_counter()
     print(f"Grid search on {n_cores} cores took {gs_toc - gs_tic:.2f} seconds")  
     

@@ -1,0 +1,9 @@
+Loading data
+Loading sp_ops sample and feature idx dicts
+Fitting model
+  epoch    train_loss    valid_acc    valid_loss     dur
+-------  ------------  -----------  ------------  ------
+      1        [36m0.6943[0m       [32m0.5142[0m        [35m0.6954[0m  2.3180
+1 epochs took 2.36 seconds
+Saving results
+done

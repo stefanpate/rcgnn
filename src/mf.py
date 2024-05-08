@@ -1,8 +1,12 @@
 '''
 Matrix factorization
 '''
+from src.utils import load_design_matrix
 import numpy as np
 import torch
+
+data_dir = "/projects/p30041/spn1560/hiec/data"
+scratch_dir = "/scratch/spn1560"
 
 class MatrixFactorization(torch.nn.Module):
     def __init__(self, n_users, n_items, n_factors, scl_embeds=False):
@@ -51,8 +55,58 @@ class LinearMatrixFactorization(MatrixFactorization):
     def forward(self, X):
         user, item = X[:,0].reshape(-1,1), X[:,1].reshape(-1,1)
         return super.logits(user, item)
+    
+class PretrainedMatrixFactorization(MatrixFactorization):
+    def __init__(
+            self,
+            user_embeds: np.ndarray | None = None,
+            item_embeds: np.ndarray | None = None,
+            n_users: int | None = None,
+            n_items: int | None = None,
+            scl_embeds=False
+    ):
+        # Decide usage mode
+        if (user_embeds is None and n_users is None) or (item_embeds is None and n_items is None):
+            raise ValueError("Must provide pretrained embeddings or number of rows/cols for both users and items")
+        elif user_embeds is None and item_embeds is None:
+            raise ValueError("Must provided pretrained embeddings for either users or items")
+        elif user_embeds is not None and item_embeds is None: # Pretrained user embeds
+            self.pretrained = 'users'
+            n_users, n_factors = user_embeds.shape
+        elif user_embeds is None and item_embeds is not None: # Pretrained item embeds
+            self.pretrained = 'items'
+            n_items, n_factors = item_embeds.shape
+        elif user_embeds is not None and item_embeds is not None: # Both pretrained
+            if user_embeds.shape[1] != item_embeds.shape[1]:
+                raise ValueError("Dimension of user and item embeddings must match")
+            self.pretrained = 'both'
+            n_users, n_factors = user_embeds.shape
+            n_items = item_embeds.shape[0]
+
+        super().__init__(n_users, n_items, n_factors, scl_embeds=False)
+
+        # Overwrite embeddings from super w/ untrainable pretrained embeddings
+        if self.pretrained == 'users':
+            user_embeds = torch.from_numpy(user_embeds)
+            self.user_factors = torch.nn.Embedding.from_pretrained(user_embeds, freeze=True)
+        elif self.pretrained == 'items':
+            item_embeds = torch.from_numpy(item_embeds)
+            self.item_factors = torch.nn.Embedding.from_pretrained(item_embeds, freeze=True)
+        elif self.pretrained == 'both':
+            user_embeds = torch.from_numpy(user_embeds)
+            item_embeds = torch.from_numpy(item_embeds)
+            self.user_factors = torch.nn.Embedding.from_pretrained(user_embeds, freeze=True)
+            self.item_factors = torch.nn.Embedding.from_pretrained(item_embeds, freeze=True)
+
+        if scl_embeds:
+            self.user_factors.weight = self.scale_embed(self.user_factors.weight)
+            self.item_factors.weight = self.scale_embed(self.item_factors.weight)
 
 def negative_sample_bipartite(n_samples, n_rows, n_cols, obs_pairs, seed):
+    '''
+    Samples n_samples negative pairs from an n_rows x n_cols adjacency matrix
+    given obs_pairs, positive pairs which should not be sampled
+    '''
     if type(obs_pairs) == np.ndarray:
         obs_pairs = [tuple(obs_pairs[i, :]) for i in range(obs_pairs.shape[0])]
 
@@ -68,3 +122,12 @@ def negative_sample_bipartite(n_samples, n_rows, n_cols, obs_pairs, seed):
             unobs_pairs.append((i, j))
 
     return np.array(unobs_pairs)
+
+def load_pretrained_embeds(ds_name, special_hps_for_gs, scratch_dir=scratch_dir):
+    special_hps_for_model = {}
+    for key in ['user_embeds', 'item_embeds']:
+        if special_hps_for_gs[key] is not None:
+            pt_embeds = np.load(f"{scratch_dir}/{ds_name}_{special_hps_for_gs[key]}_X.npy")
+            special_hps_for_model[f"module__{key}"] = pt_embeds
+
+    return special_hps_for_model

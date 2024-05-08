@@ -13,8 +13,11 @@ def write_shell_script(
         seed,
         n_splits,
         split_idx,
-        hp_idx
+        hp_idx,
+        save_models
         ):
+    
+    should_save = lambda x: " --save-gs-models" if x else ''
     
     shell_script = f"""#!/bin/bash
     #SBATCH -A {allocation}
@@ -33,7 +36,7 @@ def write_shell_script(
     module load python/anaconda3.6
     module load gcc/9.2.0
     source activate hiec
-    python -u mf_fit.py -d {ds_name} -e {seed} -n {n_splits} -s {split_idx} -p {hp_idx} -g {gs_name}
+    python -u mf_fit.py -d {ds_name} -e {seed} -n {n_splits} -s {split_idx} -p {hp_idx} -g {gs_name}{should_save(save_models)}
     """
     shell_script = shell_script.replace("    ", "") # Remove tabs
     return shell_script
@@ -41,13 +44,39 @@ def write_shell_script(
 # Args
 dataset_name = 'sp_ops'
 embed_type = None # esm | clean
-n_splits = 3
+n_splits = 5
 seed = 1234
-gs_name = 'mf_sp_ops_0'
+gs_name = 'mf_sp_ops_esm_pt_best_5fold'
 allocation = 'b1039'
 partition = 'b1039'
-mem = '8G'
-time = '4' # Hours
+mem = '16G'
+time = '30' # Hours
+save_models = True
+
+# Hyperparameters
+hps = {
+    'lr':[5e-3],
+    'max_epochs':[7500],
+    'batch_size':[5],
+    'optimizer__weight_decay':[5e-5],
+    'module__scl_embeds':[True],
+    'neg_multiple': [1],
+    # 'module__n_factors':[20, 50, 100]
+    'user_embeds':["esm_rank_20", "esm_rank_50", "esm_rank_100"]
+}
+
+# Check gs_name not used before
+old_gs_path = "../artifacts/model_evals/old_gs_names.txt"
+with open(old_gs_path, 'r') as f:
+    old_gs_names = [elt.rstrip() for elt in f.readlines()]
+
+if gs_name in old_gs_names:
+    raise ValueError(f"{gs_name} has already been used as a grid search name")
+
+old_gs_names.append(gs_name) # Add current gs_name
+
+with open(old_gs_path, 'w') as f:
+    f.write('\n'.join(elt for elt in old_gs_names))
 
 # Load data
 print("Loading data")
@@ -55,15 +84,6 @@ adj, idx_sample, idx_feature = construct_sparse_adj_mat(dataset_name)
 X = np.array(list(zip(*adj.nonzero())))
 y = np.ones(shape=(X.shape[0], 1))
 
-# Hyperparameters
-hps = {
-    'lr':[5e-3,],
-    'max_epochs':[1,], # 7500
-    'batch_size':[10, 25],
-    'optimizer__weight_decay':[1e-4, 5e-5],
-    'module__n_factors':[20, 50],
-    'module__scl_embeds':[True, False]
-}
 
 # Cartesian product of hyperparams
 hp_keys = list(hps.keys())
@@ -77,8 +97,6 @@ for i, hp in enumerate(hp_cart_prod):
 # Split data
 print("Splitting dataset")
 split_data(dataset_name, embed_type, n_splits, seed, X, y)
-
-
 
 # Submit slurm jobs to fit
 print("Submitting jobs")
@@ -94,13 +112,11 @@ for hp_idx, hp in enumerate(hp_cart_prod):
             seed,
             n_splits,
             split_idx,
-            hp_idx
+            hp_idx,
+            save_models
         )
         
         with open("batch.sh", 'w') as f:
             f.write(shell_script)
 
         subprocess.run(["sbatch", "batch.sh"])
-
-        break
-    break

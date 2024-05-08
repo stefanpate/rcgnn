@@ -95,6 +95,34 @@ def construct_sparse_adj_mat(ds_name):
             
         return adj, idx_sample, idx_feature
 
+def get_sample_feature_idxs(ds_name):
+        '''
+        Load in dicts mapping sample and feature labels
+        to a standard indexing 
+        '''      
+        # Load from dataset "table of contents csv"
+        df = pd.read_csv(f"../data/{ds_name}/{ds_name}.csv", delimiter='\t')
+        df.set_index('Entry', inplace=True)
+        sample_idx = {}
+        feature_idx = {}
+        
+        # Construct ground truth protein-function matrix
+        print(f"Loading {ds_name} sample and feature idx dicts")
+        for i, elt in enumerate(df.index):
+            labels = df.loc[elt, 'Label'].split(';')
+            sample_idx[elt] = i
+            for label in labels:
+                if label in feature_idx:
+                    j = feature_idx[label]
+                else:
+                    j = len(feature_idx)
+                    feature_idx[label] = j
+
+        idx_sample = {v:k for k,v in sample_idx.items()}
+        idx_feature = {v:k for k,v in feature_idx.items()}
+            
+        return idx_sample, idx_feature
+
 def load_design_matrix(ds_name, embed_type, sample_idx, do_norm=True, scratch_dir=scratch_dir, data_dir=data_dir):
         '''
         Args
@@ -111,23 +139,26 @@ def load_design_matrix(ds_name, embed_type, sample_idx, do_norm=True, scratch_di
             X = np.load(path)
         else:
 
-            print(f"Loading {embed_type} embeddings for {ds_name} dataset")
-            magic_key = 33
-            data_path = f"{data_dir}/{ds_name}/"
-            X = []
-            for i, elt in enumerate(sample_idx):
-                X.append(load_embed(data_path + f"{embed_type}/{elt}.pt", embed_key=magic_key)[1])
+            try:
+                print(f"Loading {embed_type} embeddings for {ds_name} dataset")
+                magic_key = 33
+                data_path = f"{data_dir}/{ds_name}/"
+                X = []
+                for i, elt in enumerate(sample_idx):
+                    X.append(load_embed(data_path + f"{embed_type}/{elt}.pt", embed_key=magic_key)[1])
 
-                if i % 5000 == 0:
-                    print(f"Embedding #{i} / {len(sample_idx)}")
+                    if i % 5000 == 0:
+                        print(f"Embedding #{i} / {len(sample_idx)}")
 
-            X = np.vstack(X)
-            
-            if do_norm:
-                X /= np.sqrt(np.square(X).sum(axis=1)).reshape(-1,1)
+                X = np.vstack(X)
+                
+                if do_norm:
+                    X /= np.sqrt(np.square(X).sum(axis=1)).reshape(-1,1)
 
-            # Save to scratch
-            np.save(path, X)
+                # Save to scratch
+                np.save(path, X)
+            except:
+                print("Data not found in projects dir")
 
         return X
 
