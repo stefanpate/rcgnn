@@ -5,9 +5,13 @@ import numpy as np
 import torch
 import os
 from sklearn.model_selection import KFold
+from collections import namedtuple
 
 data_dir = "/projects/p30041/spn1560/hiec/data"
 scratch_dir = "/scratch/spn1560"
+
+DatabaseEntry = namedtuple("DatabaseEntry", "db, id", defaults=[None, None])
+Enzyme = namedtuple("Enzyme", "uniprot_id, sequence, ec, validation_score, existence, reviewed, organism", defaults=[None, None, None, None, None, None, None])
 
 def save_json(data, save_to):
     with open(save_to, 'w') as f:
@@ -54,25 +58,26 @@ def ensure_dirs(path):
     if not os.path.exists(path):
         os.makedirs(path)
 
-def construct_sparse_adj_mat(ds_name):
+def construct_sparse_adj_mat(ds_name, toc):
         '''
         Returns sparse representation of sample x feature adjacency matrix
         and lookup of sample names from row idx key.
 
         Args
             - ds_name: Str name of dataset
+            - toc: Table of contents csv
 
         Returns
             -
         '''      
         # Load from dataset "table of contents csv"
-        df = pd.read_csv(f"../data/{ds_name}/{ds_name}.csv", delimiter='\t')
+        df = pd.read_csv(f"../data/{ds_name}/{toc}.csv", delimiter='\t')
         df.set_index('Entry', inplace=True)
         sample_idx = {}
         feature_idx = {}
         
         # Construct ground truth protein-function matrix
-        print(f"Constructing {ds_name} sparse adjacency matrix")
+        print(f"Constructing {ds_name}:{toc} sparse adjacency matrix")
         row, col, data = [], [], [] # For csr
         for i, elt in enumerate(df.index):
             labels = df.loc[elt, 'Label'].split(';')
@@ -95,19 +100,22 @@ def construct_sparse_adj_mat(ds_name):
             
         return adj, idx_sample, idx_feature
 
-def get_sample_feature_idxs(ds_name):
+def get_sample_feature_idxs(ds_name, toc):
         '''
         Load in dicts mapping sample and feature labels
         to a standard indexing 
+
+        Args:
+            - toc: Table of contents csv
         '''      
         # Load from dataset "table of contents csv"
-        df = pd.read_csv(f"../data/{ds_name}/{ds_name}.csv", delimiter='\t')
+        df = pd.read_csv(f"../data/{ds_name}/{toc}.csv", delimiter='\t')
         df.set_index('Entry', inplace=True)
         sample_idx = {}
         feature_idx = {}
         
         # Construct ground truth protein-function matrix
-        print(f"Loading {ds_name} sample and feature idx dicts")
+        print(f"Loading {ds_name}:{toc} sample and feature idx dicts")
         for i, elt in enumerate(df.index):
             labels = df.loc[elt, 'Label'].split(';')
             sample_idx[elt] = i
@@ -123,24 +131,25 @@ def get_sample_feature_idxs(ds_name):
             
         return idx_sample, idx_feature
 
-def load_design_matrix(ds_name, embed_type, sample_idx, do_norm=True, scratch_dir=scratch_dir, data_dir=data_dir):
+def load_design_matrix(ds_name, toc, embed_type, sample_idx, do_norm=True, scratch_dir=scratch_dir, data_dir=data_dir):
         '''
         Args
             - ds_name: Str name of dataset
             - embed_type: Str
             - sample_idx: {sample_label : row_idx}
+            - toc: Table of contents csv
 
         Returns
             - X: Design matrixs (samples x embedding dim)
         '''
         # Load from scratch if pre-saved
-        path = f"{scratch_dir}/{ds_name}_{embed_type}_X.npy"
+        path = f"{scratch_dir}/{ds_name}_{toc}_{embed_type}_X.npy"
         if os.path.exists(path):
             X = np.load(path)
         else:
 
             try:
-                print(f"Loading {embed_type} embeddings for {ds_name} dataset")
+                print(f"Loading {embed_type} embeddings for {ds_name}:{toc} dataset")
                 magic_key = 33
                 data_path = f"{data_dir}/{ds_name}/"
                 X = []
@@ -162,8 +171,8 @@ def load_design_matrix(ds_name, embed_type, sample_idx, do_norm=True, scratch_di
 
         return X
 
-def split_data(ds_name, sample_embed_type, n_splits, seed, X=None, y=None):
-    fn_pref = f"{ds_name}_{sample_embed_type}_embeds_{n_splits}_splits_{seed}_seed"
+def split_data(ds_name, toc, sample_embed_type, n_splits, seed, X=None, y=None):
+    fn_pref = f"{ds_name}_{toc}_{sample_embed_type}_embeds_{n_splits}_splits_{seed}_seed"
     X_train_fns = [f"X_train_{fn_pref}_{i}_split_idx" for i in range(n_splits)]
     y_train_fns = [f"y_train_{fn_pref}_{i}_split_idx" for i in range(n_splits)]
     X_test_fns = [f"X_test_{fn_pref}_{i}_split_idx" for i in range(n_splits)]
@@ -195,11 +204,11 @@ def split_data(ds_name, sample_embed_type, n_splits, seed, X=None, y=None):
     #     kfold = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
     #     for i, (train_idx, test_idx) in enumerate(kfold.split(X)):
 
-def load_data_split(ds_name, sample_embed_type, n_splits, seed, split_idx):
+def load_data_split(ds_name, toc, sample_embed_type, n_splits, seed, split_idx):
     '''
     Returns list of data split in order X_train, y_train, X_test, y_test
     '''
-    fn_id = f"{ds_name}_{sample_embed_type}_embeds_{n_splits}_splits_{seed}_seed_{split_idx}_split_idx"
+    fn_id = f"{ds_name}_{toc}_{sample_embed_type}_embeds_{n_splits}_splits_{seed}_seed_{split_idx}_split_idx"
     fn_prefs = ["X_train", 'y_train', 'X_test', 'y_test']
     
     data = []
@@ -218,3 +227,32 @@ def load_hps_from_scratch(gs_name, hp_idx):
         hp = json.load(f)
 
     return hp
+
+def load_known_rxns(path):
+    with open(path, 'r') as f:
+        data = json.load(f)
+
+    for _,v in data.items():
+
+        # Convert enzymes and db entries to namedtuples
+        enzymes = []
+        for e in v['enzymes']:
+            for i in range(len(e)):
+                if type(e[i]) == list: # Convert list ec to tuple for hashing, set ops
+                    e[i]= tuple(e[i])
+
+            enzymes.append(Enzyme(*e))
+
+
+        # enzymes = [Enzyme(*elt) for elt in v['enzymes']]
+
+        # # Convert EC number list to tuple
+        # for e in enzymes:
+        #     e.ec = tuple(e.ec)
+
+        v['enzymes'] = enzymes
+
+        db_entries = [DatabaseEntry(*elt) for elt in v['db_entries']]
+        v['db_entries'] = db_entries
+
+    return data
