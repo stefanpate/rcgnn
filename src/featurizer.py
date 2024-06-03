@@ -1,4 +1,4 @@
-from typing import Sequence, Union
+from typing import Sequence, Union, List, Tuple
 import numpy as np
 from rdkit.Chem import MolFromSmiles
 from rdkit.Chem.rdchem import Atom, HybridizationType, Mol, Bond, BondType
@@ -413,17 +413,17 @@ class RCVNReactionMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[d
 
     def __call__(
         self,
-        rxn: dict,
+        rxn: Tuple[List[Mol], List[Mol], List[list]],
+        atom_features_extra: np.ndarray | None = None,
+        bond_features_extra: np.ndarray | None = None,
     ) -> MolGraph:
         
-        rcs = list(chain(*rxn['rcs']))
-        lhs, rhs = rxn['smarts'].split('>>')
-        reactants = [MolFromSmiles(elt) for elt in lhs.split('.')]
-        products = [MolFromSmiles(elt) for elt in rhs.split('.')]
+        reactants, products, rcs = rxn
         n_atoms_mol = [mol.GetNumAtoms() for mol in reactants + products]
         cumsum_atoms = [sum(n_atoms_mol[:i]) for i in range(len(n_atoms_mol))]
         n_atoms = sum(n_atoms_mol)
         n_bonds = sum([mol.GetNumBonds() for mol in reactants + products])
+        n_virtual_edges = sum(len(elt) for elt in rcs)
 
         if n_atoms == 0:
             V = np.zeros((1, self.atom_fdim), dtype=np.single)
@@ -436,7 +436,7 @@ class RCVNReactionMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[d
                     V.append(self.atom_featurizer(a))
             V = np.array(V, dtype=np.single)
         
-        E = np.empty((2 * n_bonds, self.bond_fdim))
+        E = np.empty((2 * (n_bonds + n_virtual_edges), self.bond_fdim))
         edge_index = [[], []]
 
         edge_i = 0
@@ -458,7 +458,6 @@ class RCVNReactionMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[d
                     edge_index[1].extend([v, u])
                     edge_i += 2
 
-        
         # Add virtual node to node feat matrix
         V = np.vstack((V, np.zeros(shape=(1, self.atom_fdim))))
         

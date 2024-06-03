@@ -66,12 +66,17 @@ def construct_sparse_adj_mat(ds_name, toc):
         Args
             - ds_name: Str name of dataset
             - toc: Table of contents csv
-
         Returns
-            -
-        '''      
+            - adj: Sparse adjacency matrix
+            - idx_sample: Index to label dict for samples
+            - idx_feature: Index to label dict for features / classes
+        '''
+        try:
+            df = pd.read_csv(f"../data/{ds_name}/{toc}.csv", delimiter='\t')
+        except FileNotFoundError:
+            df = pd.read_csv(f"./data/{ds_name}/{toc}.csv", delimiter='\t')
+
         # Load from dataset "table of contents csv"
-        df = pd.read_csv(f"../data/{ds_name}/{toc}.csv", delimiter='\t')
         df.set_index('Entry', inplace=True)
         sample_idx = {}
         feature_idx = {}

@@ -1,0 +1,142 @@
+Queued: MetaData(outer_split=0, inner_split=0, hp_idx=0)
+Queued: MetaData(outer_split=0, inner_split=0, hp_idx=1)
+Fitting: MetaData(outer_split=0, inner_split=0, hp_idx=0)
+Queued: MetaData(outer_split=0, inner_split=0, hp_idx=2)
+Fitting: MetaData(outer_split=0, inner_split=0, hp_idx=1)
+Queued: MetaData(outer_split=0, inner_split=0, hp_idx=3)
+Fitting: MetaData(outer_split=0, inner_split=0, hp_idx=2)
+Queued: MetaData(outer_split=0, inner_split=0, hp_idx=4)
+Fitting: MetaData(outer_split=0, inner_split=0, hp_idx=3)
+Queued: MetaData(outer_split=0, inner_split=0, hp_idx=5)
+Fitting: MetaData(outer_split=0, inner_split=0, hp_idx=4)
+Queued: MetaData(outer_split=0, inner_split=0, hp_idx=6)
+Fitting: MetaData(outer_split=0, inner_split=0, hp_idx=5)
+Queued: MetaData(outer_split=0, inner_split=0, hp_idx=7)
+Fitting: MetaData(outer_split=0, inner_split=0, hp_idx=6)
+Queued: MetaData(outer_split=0, inner_split=1, hp_idx=0)
+Fitting: MetaData(outer_split=0, inner_split=0, hp_idx=7)
+Queued: MetaData(outer_split=0, inner_split=1, hp_idx=1)
+Fitting: MetaData(outer_split=0, inner_split=1, hp_idx=0)
+Queued: MetaData(outer_split=0, inner_split=1, hp_idx=2)
+Fitting: MetaData(outer_split=0, inner_split=1, hp_idx=1)
+Queued: MetaData(outer_split=0, inner_split=1, hp_idx=3)
+Fitting: MetaData(outer_split=0, inner_split=1, hp_idx=2)
+Fit MetaData(outer_split=0, inner_split=0, hp_idx=2) in 0.35 seconds
+Evaluating: MetaData(outer_split=0, inner_split=0, hp_idx=2)
+Fit MetaData(outer_split=0, inner_split=0, hp_idx=0) in 0.43 seconds
+Evaluating: MetaData(outer_split=0, inner_split=0, hp_idx=0)
+Queued: MetaData(outer_split=0, inner_split=1, hp_idx=4)
+Fitting: MetaData(outer_split=0, inner_split=1, hp_idx=3)
+Queued: MetaData(outer_split=0, inner_split=1, hp_idx=5)
+Fitting: MetaData(outer_split=0, inner_split=1, hp_idx=4)
+Queued: MetaData(outer_split=0, inner_split=1, hp_idx=6)
+Fitting: MetaData(outer_split=0, inner_split=1, hp_idx=5)
+Queued: MetaData(outer_split=0, inner_split=1, hp_idx=7)
+Fitting: MetaData(outer_split=0, inner_split=1, hp_idx=6)
+Queued: MetaData(outer_split=1, inner_split=0, hp_idx=0)
+Fitting: MetaData(outer_split=0, inner_split=1, hp_idx=7)
+Queued: MetaData(outer_split=1, inner_split=0, hp_idx=1)
+Fitting: MetaData(outer_split=1, inner_split=0, hp_idx=0)
+Fit MetaData(outer_split=0, inner_split=1, hp_idx=0) in 0.32 seconds
+Evaluating: MetaData(outer_split=0, inner_split=1, hp_idx=0)
+Queued: MetaData(outer_split=1, inner_split=0, hp_idx=2)
+Fitting: MetaData(outer_split=1, inner_split=0, hp_idx=1)
+Queued: MetaData(outer_split=1, inner_split=0, hp_idx=3)
+Fit MetaData(outer_split=0, inner_split=1, hp_idx=2) in 0.32 seconds
+Evaluating: MetaData(outer_split=0, inner_split=1, hp_idx=2)
+Fitting: MetaData(outer_split=1, inner_split=0, hp_idx=2)
+Fit MetaData(outer_split=0, inner_split=0, hp_idx=4) in 0.59 seconds
+Evaluating: MetaData(outer_split=0, inner_split=0, hp_idx=4)
+Queued: MetaData(outer_split=1, inner_split=0, hp_idx=4)
+Fitting: MetaData(outer_split=1, inner_split=0, hp_idx=3)
+Queued: MetaData(outer_split=1, inner_split=0, hp_idx=5)
+Fitting: MetaData(outer_split=1, inner_split=0, hp_idx=4)
+Fit MetaData(outer_split=0, inner_split=0, hp_idx=6) in 0.59 seconds
+Evaluating: MetaData(outer_split=0, inner_split=0, hp_idx=6)
+Queued: MetaData(outer_split=1, inner_split=0, hp_idx=6)
+Fitting: MetaData(outer_split=1, inner_split=0, hp_idx=5)
+Queued: MetaData(outer_split=1, inner_split=0, hp_idx=7)
+Fitting: MetaData(outer_split=1, inner_split=0, hp_idx=6)
+Queued: MetaData(outer_split=1, inner_split=1, hp_idx=0)
+Fitting: MetaData(outer_split=1, inner_split=0, hp_idx=7)
+Fit MetaData(outer_split=1, inner_split=0, hp_idx=0) in 0.32 seconds
+Evaluating: MetaData(outer_split=1, inner_split=0, hp_idx=0)
+Queued: MetaData(outer_split=1, inner_split=1, hp_idx=1)
+Fitting: MetaData(outer_split=1, inner_split=1, hp_idx=0)
+Queued: MetaData(outer_split=1, inner_split=1, hp_idx=2)
+Fitting: MetaData(outer_split=1, inner_split=1, hp_idx=1)
+Queued: MetaData(outer_split=1, inner_split=1, hp_idx=3)
+Fit MetaData(outer_split=1, inner_split=0, hp_idx=2) in 0.32 seconds
+Evaluating: MetaData(outer_split=1, inner_split=0, hp_idx=2)
+Fitting: MetaData(outer_split=1, inner_split=1, hp_idx=2)
+Fit MetaData(outer_split=0, inner_split=1, hp_idx=4) in 0.58 seconds
+Evaluating: MetaData(outer_split=0, inner_split=1, hp_idx=4)
+Queued: MetaData(outer_split=1, inner_split=1, hp_idx=4)
+Fitting: MetaData(outer_split=1, inner_split=1, hp_idx=3)
+Queued: MetaData(outer_split=1, inner_split=1, hp_idx=5)
+Fit MetaData(outer_split=0, inner_split=1, hp_idx=6) in 0.58 seconds
+Evaluating: MetaData(outer_split=0, inner_split=1, hp_idx=6)
+Fitting: MetaData(outer_split=1, inner_split=1, hp_idx=4)
+Queued: MetaData(outer_split=1, inner_split=1, hp_idx=6)
+Fitting: MetaData(outer_split=1, inner_split=1, hp_idx=5)
+Queued: MetaData(outer_split=1, inner_split=1, hp_idx=7)
+Fitting: MetaData(outer_split=1, inner_split=1, hp_idx=6)
+Fitting: MetaData(outer_split=1, inner_split=1, hp_idx=7)
+Fit MetaData(outer_split=1, inner_split=1, hp_idx=0) in 0.31 seconds
+Evaluating: MetaData(outer_split=1, inner_split=1, hp_idx=0)
+Fit MetaData(outer_split=1, inner_split=1, hp_idx=2) in 0.31 seconds
+Evaluating: MetaData(outer_split=1, inner_split=1, hp_idx=2)
+Fit MetaData(outer_split=1, inner_split=0, hp_idx=4) in 0.58 seconds
+Evaluating: MetaData(outer_split=1, inner_split=0, hp_idx=4)
+Fit MetaData(outer_split=1, inner_split=0, hp_idx=6) in 0.58 seconds
+Evaluating: MetaData(outer_split=1, inner_split=0, hp_idx=6)
+Fit MetaData(outer_split=1, inner_split=1, hp_idx=4) in 0.57 seconds
+Evaluating: MetaData(outer_split=1, inner_split=1, hp_idx=4)
+Fit MetaData(outer_split=1, inner_split=1, hp_idx=6) in 0.56 seconds
+Evaluating: MetaData(outer_split=1, inner_split=1, hp_idx=6)
+Fit MetaData(outer_split=0, inner_split=0, hp_idx=1) in 3.17 seconds
+Evaluating: MetaData(outer_split=0, inner_split=0, hp_idx=1)
+Fit MetaData(outer_split=0, inner_split=0, hp_idx=3) in 3.11 seconds
+Evaluating: MetaData(outer_split=0, inner_split=0, hp_idx=3)
+Fit MetaData(outer_split=0, inner_split=1, hp_idx=1) in 3.09 seconds
+Evaluating: MetaData(outer_split=0, inner_split=1, hp_idx=1)
+Fit MetaData(outer_split=0, inner_split=1, hp_idx=3) in 3.09 seconds
+Evaluating: MetaData(outer_split=0, inner_split=1, hp_idx=3)
+Fit MetaData(outer_split=1, inner_split=0, hp_idx=1) in 3.07 seconds
+Evaluating: MetaData(outer_split=1, inner_split=0, hp_idx=1)
+Fit MetaData(outer_split=1, inner_split=0, hp_idx=3) in 3.07 seconds
+Evaluating: MetaData(outer_split=1, inner_split=0, hp_idx=3)
+Fit MetaData(outer_split=1, inner_split=1, hp_idx=1) in 3.04 seconds
+Evaluating: MetaData(outer_split=1, inner_split=1, hp_idx=1)
+Fit MetaData(outer_split=1, inner_split=1, hp_idx=3) in 2.98 seconds
+Evaluating: MetaData(outer_split=1, inner_split=1, hp_idx=3)
+Fit MetaData(outer_split=0, inner_split=0, hp_idx=5) in 5.71 seconds
+Evaluating: MetaData(outer_split=0, inner_split=0, hp_idx=5)
+Fit MetaData(outer_split=0, inner_split=0, hp_idx=7) in 5.71 seconds
+Evaluating: MetaData(outer_split=0, inner_split=0, hp_idx=7)
+Fit MetaData(outer_split=0, inner_split=1, hp_idx=5) in 5.66 seconds
+Evaluating: MetaData(outer_split=0, inner_split=1, hp_idx=5)
+Fit MetaData(outer_split=0, inner_split=1, hp_idx=7) in 5.66 seconds
+Evaluating: MetaData(outer_split=0, inner_split=1, hp_idx=7)
+Fit MetaData(outer_split=1, inner_split=0, hp_idx=5) in 5.69 seconds
+Evaluating: MetaData(outer_split=1, inner_split=0, hp_idx=5)
+Fit MetaData(outer_split=1, inner_split=0, hp_idx=7) in 5.69 seconds
+Evaluating: MetaData(outer_split=1, inner_split=0, hp_idx=7)
+Fit MetaData(outer_split=1, inner_split=1, hp_idx=5) in 5.58 seconds
+Evaluating: MetaData(outer_split=1, inner_split=1, hp_idx=5)
+Fit MetaData(outer_split=1, inner_split=1, hp_idx=7) in 5.59 seconds
+Evaluating: MetaData(outer_split=1, inner_split=1, hp_idx=7)
+Inner cv took 7.64 seconds
+Queued: model #0. Max depth: 7, Max samples: 100, N trees: 100, Max features: 35
+Queued: model #1. Max depth: 7, Max samples: 100, N trees: 100, Max features: 35
+Fitting: MetaData(outer_split=0, inner_split=None, hp_idx=None)
+Fitting: MetaData(outer_split=1, inner_split=None, hp_idx=None)
+Fit MetaData(outer_split=0, inner_split=None, hp_idx=None) in 11.68 seconds
+Evaluating: MetaData(outer_split=0, inner_split=None, hp_idx=None)
+Fit MetaData(outer_split=1, inner_split=None, hp_idx=None) in 11.81 seconds
+Evaluating: MetaData(outer_split=1, inner_split=None, hp_idx=None)
+Saving: MetaData(outer_split=0, inner_split=None, hp_idx=None)
+Saving: MetaData(outer_split=1, inner_split=None, hp_idx=None)
+Outer cv took 13.63 seconds
+Model #1: Accuracy = 0.961132150687662, F1 = 0.979727778395008
+Model #0: Accuracy = 0.9587402830376719, F1 = 0.9774084976925626

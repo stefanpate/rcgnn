@@ -1,0 +1,19 @@
+Queued: MetaData(outer_split=0, inner_split=None, hp_idx=None)
+Queued: MetaData(outer_split=1, inner_split=None, hp_idx=None)
+Fitting: MetaData(outer_split=0, inner_split=None, hp_idx=None)
+Queued: MetaData(outer_split=2, inner_split=None, hp_idx=None)
+Fitting: MetaData(outer_split=1, inner_split=None, hp_idx=None)
+Fitting: MetaData(outer_split=2, inner_split=None, hp_idx=None)
+Fit MetaData(outer_split=0, inner_split=None, hp_idx=None) in 4121.73 seconds
+Evaluating: MetaData(outer_split=0, inner_split=None, hp_idx=None)
+Fit MetaData(outer_split=2, inner_split=None, hp_idx=None) in 4412.56 seconds
+Evaluating: MetaData(outer_split=2, inner_split=None, hp_idx=None)
+Saving: MetaData(outer_split=0, inner_split=None, hp_idx=None)
+Saving: MetaData(outer_split=2, inner_split=None, hp_idx=None)
+Fit MetaData(outer_split=1, inner_split=None, hp_idx=None) in 5143.97 seconds
+Evaluating: MetaData(outer_split=1, inner_split=None, hp_idx=None)
+Saving: MetaData(outer_split=1, inner_split=None, hp_idx=None)
+Outer cv took 5922.50 seconds
+Model #0: Accuracy = 0.874449032617269, F1 = 0.9250451895984274
+Model #2: Accuracy = 0.9397271714922049, F1 = 0.9677578484241914
+Model #1: Accuracy = 0.9139291017074982, F1 = 0.9527385231514665
