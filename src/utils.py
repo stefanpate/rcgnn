@@ -261,3 +261,54 @@ def load_known_rxns(path):
         v['db_entries'] = db_entries
 
     return data
+
+def write_shell_script(
+        allocation,
+        partition,
+        mem,
+        time,
+        script,
+        arg_str,
+        job_name
+        ):
+    
+    '''
+    Args
+    ----
+    allocation:str
+        p30041 | b1039
+    partition:str
+        gengpu | short | normal | long | b1039
+    mem:str
+        memory required e.g., 8G
+    time:str
+        hours of compute e.g., 4
+    script:str
+        script name, e.g., file.py
+    arg_str:
+        string of args following script name e.g,. -d 4 --example
+    '''
+    
+    should_save = lambda x: " --save-gs-models" if x else ''
+    
+    shell_script = f"""#!/bin/bash
+    #SBATCH -A {allocation}
+    #SBATCH -p {partition}
+    #SBATCH -N 1
+    #SBATCH -n 1
+    #SBATCH --mem={mem}
+    #SBATCH -t {time}:00:00
+    #SBATCH --job-name={job_name}
+    #SBATCH --output=../logs/out/{job_name}
+    #SBATCH --error=../logs/error/{job_name}
+    #SBATCH --mail-type=END
+    #SBATCH --mail-type=FAIL
+    #SBATCH --mail-user=stefan.pate@northwestern.edu
+    ulimit -c 0
+    module load python/anaconda3.6
+    module load gcc/9.2.0
+    source activate hiec
+    python -u mf_fit.py {arg_str}
+    """
+    shell_script = shell_script.replace("    ", "") # Remove tabs
+    return shell_script

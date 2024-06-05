@@ -1,8 +1,9 @@
 from chemprop import models, nn
 from chemprop.data import build_dataloader
-from src import data
 from src.utils import load_known_rxns, construct_sparse_adj_mat, ensure_dirs
 from src.featurizer import RCVNReactionMolGraphFeaturizer, MultiHotAtomFeaturizer, MultiHotBondFeaturizer
+from src.nn import LastAggregation
+from src.data import RxnRCDatapoint, RxnRCDataset
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import CSVLogger
 import numpy as np
@@ -16,7 +17,7 @@ toc = 'sp_folded_pt_rxns_x_min_ops'
 krs = load_known_rxns("../data/sprhea/known_rxns_240310_v2_folded_protein_transcript.json")
 seed = 1234
 
-exp_name = f"rc_gnn_v0_{dataset}_{toc}_{n_epochs}_epochs_seed_{seed}"
+exp_name = f"rc_gnn_last_agg_{dataset}_{toc}_{n_epochs}_epochs_seed_{seed}"
 ensure_dirs(eval_dir)
 
 # Load data
@@ -39,11 +40,11 @@ featurizer = RCVNReactionMolGraphFeaturizer(
 )
 
 # Construct dataset
-datapoints_train = [data.RxnRCDatapoint.from_smi(kr, y=y_train[i]) for i, kr in enumerate(X_train)]
-datapoints_test = [data.RxnRCDatapoint.from_smi(kr, y=y_test[i]) for i, kr in enumerate(X_test)]
+datapoints_train = [RxnRCDatapoint.from_smi(kr, y=y_train[i]) for i, kr in enumerate(X_train)]
+datapoints_test = [RxnRCDatapoint.from_smi(kr, y=y_test[i]) for i, kr in enumerate(X_test)]
 
-dataset_train = data.RxnRCDataset(datapoints_train, featurizer=featurizer)
-dataset_test = data.RxnRCDataset(datapoints_test, featurizer=featurizer)
+dataset_train = RxnRCDataset(datapoints_train, featurizer=featurizer)
+dataset_test = RxnRCDataset(datapoints_test, featurizer=featurizer)
 
 data_loader_train = build_dataloader(dataset_train, shuffle=False)
 data_loader_test = build_dataloader(dataset_test, shuffle=False)
@@ -51,7 +52,7 @@ data_loader_test = build_dataloader(dataset_test, shuffle=False)
 # Construct model
 dv, de = featurizer.shape
 mp = nn.BondMessagePassing(d_v=dv, d_e=de)
-agg = nn.MeanAggregation()
+agg = LastAggregation()
 ffn = nn.MulticlassClassificationFFN(n_classes=n_classes)
 mpnn = models.MPNN(
     message_passing=mp,
