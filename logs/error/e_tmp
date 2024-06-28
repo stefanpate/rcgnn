@@ -1,16 +1,30 @@
 GPU available: False, used: False
 TPU available: False, using: 0 TPU cores
 IPU available: False, using: 0 IPUs
-GPU available: False, used: False
 HPU available: False, using: 0 HPUs
+/home/spn1560/.conda/envs/hiec/lib/python3.11/site-packages/lightning/pytorch/trainer/configuration_validator.py:74: You defined a `validation_step` but have no `val_dataloader`. Skipping val loop.
+Missing logger folder: ../artifacts/model_evals/gnn/vn_global_mean_agg_sprhea_sp_folded_pt_rxns_x_min_ops_75_epochs_seed_1234_split_1_of_5
+Loading `train_dataloader` to estimate number of stepping batches.
+
+  | Name            | Type                        | Params
+----------------------------------------------------------------
+0 | message_passing | BondMessagePassing          | 222 K 
+1 | agg             | MeanAggregation             | 0     
+2 | bn              | BatchNorm1d                 | 600   
+3 | predictor       | MulticlassClassificationFFN | 220 K 
+4 | X_d_transform   | Identity                    | 0     
+----------------------------------------------------------------
+444 K     Trainable params
+0         Non-trainable params
+444 K     Total params
+1.777     Total estimated model params size (MB)
+SLURM auto-requeueing enabled. Setting signal handlers.
+`Trainer.fit` stopped: `max_epochs=75` reached.
+GPU available: False, used: False
 TPU available: False, using: 0 TPU cores
 IPU available: False, using: 0 IPUs
 HPU available: False, using: 0 HPUs
-/home/spn1560/.conda/envs/hiec/lib/python3.11/site-packages/lightning/pytorch/trainer/configuration_validator.py:74: You defined a `validation_step` but have no `val_dataloader`. Skipping val loop.
-/home/spn1560/.conda/envs/hiec/lib/python3.11/site-packages/lightning/pytorch/trainer/configuration_validator.py:74: You defined a `validation_step` but have no `val_dataloader`. Skipping val loop.
-Missing logger folder: ../artifacts/model_evals/gnn/vn_global_mean_agg_sprhea_sp_folded_pt_rxns_x_min_ops_75_epochs_seed_1234_split_1_of_5
-Missing logger folder: ../artifacts/model_evals/gnn/vn_global_mean_agg_sprhea_sp_folded_pt_rxns_x_min_ops_75_epochs_seed_1234_split_1_of_5
-Loading `train_dataloader` to estimate number of stepping batches.
+Missing logger folder: ../artifacts/model_evals/gnn/vn_global_mean_agg_sprhea_sp_folded_pt_rxns_x_min_ops_75_epochs_seed_1234_split_2_of_5
 Loading `train_dataloader` to estimate number of stepping batches.
 
   | Name            | Type                        | Params
@@ -25,6 +39,14 @@ Loading `train_dataloader` to estimate number of stepping batches.
 0         Non-trainable params
 444 K     Total params
 1.777     Total estimated model params size (MB)
+SLURM auto-requeueing enabled. Setting signal handlers.
+`Trainer.fit` stopped: `max_epochs=75` reached.
+GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+Missing logger folder: ../artifacts/model_evals/gnn/vn_global_mean_agg_sprhea_sp_folded_pt_rxns_x_min_ops_75_epochs_seed_1234_split_3_of_5
+Loading `train_dataloader` to estimate number of stepping batches.
 
   | Name            | Type                        | Params
 ----------------------------------------------------------------
@@ -39,4 +61,46 @@ Loading `train_dataloader` to estimate number of stepping batches.
 444 K     Total params
 1.777     Total estimated model params size (MB)
 SLURM auto-requeueing enabled. Setting signal handlers.
+`Trainer.fit` stopped: `max_epochs=75` reached.
+GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+Missing logger folder: ../artifacts/model_evals/gnn/vn_global_mean_agg_sprhea_sp_folded_pt_rxns_x_min_ops_75_epochs_seed_1234_split_4_of_5
+Loading `train_dataloader` to estimate number of stepping batches.
+
+  | Name            | Type                        | Params
+----------------------------------------------------------------
+0 | message_passing | BondMessagePassing          | 222 K 
+1 | agg             | MeanAggregation             | 0     
+2 | bn              | BatchNorm1d                 | 600   
+3 | predictor       | MulticlassClassificationFFN | 220 K 
+4 | X_d_transform   | Identity                    | 0     
+----------------------------------------------------------------
+444 K     Trainable params
+0         Non-trainable params
+444 K     Total params
+1.777     Total estimated model params size (MB)
 SLURM auto-requeueing enabled. Setting signal handlers.
+`Trainer.fit` stopped: `max_epochs=75` reached.
+GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+Missing logger folder: ../artifacts/model_evals/gnn/vn_global_mean_agg_sprhea_sp_folded_pt_rxns_x_min_ops_75_epochs_seed_1234_split_5_of_5
+Loading `train_dataloader` to estimate number of stepping batches.
+
+  | Name            | Type                        | Params
+----------------------------------------------------------------
+0 | message_passing | BondMessagePassing          | 222 K 
+1 | agg             | MeanAggregation             | 0     
+2 | bn              | BatchNorm1d                 | 600   
+3 | predictor       | MulticlassClassificationFFN | 220 K 
+4 | X_d_transform   | Identity                    | 0     
+----------------------------------------------------------------
+444 K     Trainable params
+0         Non-trainable params
+444 K     Total params
+1.777     Total estimated model params size (MB)
+SLURM auto-requeueing enabled. Setting signal handlers.
+`Trainer.fit` stopped: `max_epochs=75` reached.

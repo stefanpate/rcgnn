@@ -1,5 +1,5 @@
 from itertools import product
-from src.utils import construct_sparse_adj_mat, split_data, save_hps_to_scratch
+from src.utils import construct_sparse_adj_mat, split_data, save_hps_to_scratch, write_shell_script
 import numpy as np
 import subprocess
 
@@ -42,7 +42,8 @@ def write_shell_script(
     return shell_script
 
 # Args
-dataset_name = 'sp_ops'
+dataset_name = 'sprhea'
+toc= 'sp_folded_pt.csv' # 'sp_ops'
 embed_type = None # esm | clean
 n_splits = 5
 seed = 1234
@@ -84,7 +85,6 @@ adj, idx_sample, idx_feature = construct_sparse_adj_mat(dataset_name)
 X = np.array(list(zip(*adj.nonzero())))
 y = np.ones(shape=(X.shape[0], 1))
 
-
 # Cartesian product of hyperparams
 hp_keys = list(hps.keys())
 hp_cart_prod = [{hp_keys[i] : elt[i] for i in range(len(elt))} for elt in product(*hps.values())]
@@ -102,6 +102,7 @@ split_data(dataset_name, embed_type, n_splits, seed, X, y)
 print("Submitting jobs")
 for hp_idx, hp in enumerate(hp_cart_prod):
     for split_idx in range(n_splits):
+        arg_str = f"-d {dataset_name} -t {toc} -e {seed} -n {n_splits} -s {split_idx} -p {hp_idx} -g {gs_name}" # f"-d {ds_name} -e {seed} -n {n_splits} -s {split_idx} -p {hp_idx} -g {gs_name}{should_save(save_models)"
         shell_script = write_shell_script(
             allocation,
             partition,

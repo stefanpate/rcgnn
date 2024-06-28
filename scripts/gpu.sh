@@ -3,11 +3,11 @@
 #SBATCH -p gengpu
 #SBATCH -N 1
 #SBATCH -n 1
-#SBATCH --mem=8G
-#SBATCH -t 7:00:00
-#SBATCH --job-name="vn_global_mean_agg_pred_min_ops"
-#SBATCH --output=../logs/out/vn_global_mean_agg_pred_min_ops
-#SBATCH --error=../logs/error/e_tmp
+#SBATCH --mem=10G
+#SBATCH -t 12:00:00
+#SBATCH --job-name="vn_only_agg_pred_min_ops"
+#SBATCH --output=../logs/out/vn_only_agg_pred_min_ops
+#SBATCH --error=../logs/error/e_tmp_1
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=stefan.pate@northwestern.edu

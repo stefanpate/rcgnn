@@ -202,12 +202,12 @@ def split_data(ds_name, toc, sample_embed_type, n_splits, seed, X=None, y=None):
 
     # TODO
     # Load data from projects dir then split    
-    # else:
-    #     # Load adjacency matrix and idx-label dicts
-    #     adj, idx_sample, idx_feature = construct_sparse_adj_mat(ds_name)
-    #     dummy_X = np.empty(shape=(adj.shape[0, 1]))
-    #     kfold = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
-    #     for i, (train_idx, test_idx) in enumerate(kfold.split(X)):
+    else:
+        # Load adjacency matrix and idx-label dicts
+        adj, idx_sample, idx_feature = construct_sparse_adj_mat(ds_name)
+        dummy_X = np.empty(shape=(adj.shape[0, 1]))
+        kfold = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
+        for i, (train_idx, test_idx) in enumerate(kfold.split(X)):
 
 def load_data_split(ds_name, toc, sample_embed_type, n_splits, seed, split_idx):
     '''
@@ -267,7 +267,7 @@ def write_shell_script(
         partition,
         mem,
         time,
-        script,
+        file,
         arg_str,
         job_name
         ):
@@ -283,7 +283,7 @@ def write_shell_script(
         memory required e.g., 8G
     time:str
         hours of compute e.g., 4
-    script:str
+    file:str
         script name, e.g., file.py
     arg_str:
         string of args following script name e.g,. -d 4 --example
@@ -308,7 +308,7 @@ def write_shell_script(
     module load python/anaconda3.6
     module load gcc/9.2.0
     source activate hiec
-    python -u mf_fit.py {arg_str}
+    python -u {file} {arg_str}
     """
     shell_script = shell_script.replace("    ", "") # Remove tabs
     return shell_script

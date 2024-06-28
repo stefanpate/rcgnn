@@ -16,14 +16,14 @@ import numpy as np
 from sklearn.model_selection import KFold
 
 # Args
-eval_dir = "../artifacts/model_evals/gnn"
+eval_dir = "/projects/p30041/spn1560/hiec/artifacts/model_evals/gnn"
 n_epochs = 75
 dataset = 'sprhea'
 toc = 'sp_folded_pt_rxns_x_min_ops'
 krs = load_known_rxns("../data/sprhea/known_rxns_240310_v2_folded_protein_transcript.json")
 seed = 1234
 n_splits = 5
-exp_name = "vn_global_mean_agg"
+exp_name = "vn_only_agg"
 
 ensure_dirs(eval_dir)
 kfold = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
@@ -66,7 +66,7 @@ for i, (train_idx, test_idx) in enumerate(kfold.split(y)):
     # Construct model
     dv, de = featurizer.shape
     mp = nn.BondMessagePassing(d_v=dv, d_e=de)
-    agg = nn.MeanAggregation()
+    agg = LastAggregation() # nn.MeanAggregation()
     ffn = nn.MulticlassClassificationFFN(n_classes=n_classes)
     mpnn = models.MPNN(
         message_passing=mp,
