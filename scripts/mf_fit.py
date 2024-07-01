@@ -25,8 +25,8 @@ def generate_adjacency_matrix(mode, seed, n_users=100, n_items=100, k=2, density
     return obs_pairs, n_users, n_items
         
 if __name__ == '__main__':
-    from src.mf import MatrixFactorization, PretrainedMatrixFactorization, negative_sample_bipartite, load_pretrained_embeds
-    from src.utils import ensure_dirs, construct_sparse_adj_mat, load_data_split, load_hps_from_scratch, get_sample_feature_idxs
+    from src.mf import MatrixFactorization, PretrainedMatrixFactorization, load_pretrained_embeds
+    from src.utils import ensure_dirs, construct_sparse_adj_mat, load_data_split, load_hps_from_scratch, get_sample_feature_idxs, negative_sample_bipartite
     from skorch import NeuralNetClassifier
     from skorch.dataset import Dataset
     from skorch.helper import predefined_split
@@ -139,15 +139,16 @@ if __name__ == '__main__':
                                                             random_state=seed)
         n_users, n_items = len(idx_sample), len(idx_feature) # Size of adj mat depends on dataset
     
-    # Sample negatives
-    n_neg = len(X_train) * special_hps_for_gs['neg_multiple']
-    nps = negative_sample_bipartite(n_neg, n_users, n_items, X_train, seed=seed) # Sample negatives
+    # TODO: remove this because im sampling negatives in batch_fit now
+    # # Sample negatives
+    # n_neg = len(X_train) * special_hps_for_gs['neg_multiple']
+    # nps = negative_sample_bipartite(n_neg, n_users, n_items, X_train, seed=seed) # Sample negatives
 
-    # Add in negative samples and enforce the right data type
-    X_train = np.vstack((X_train, nps)).astype(np.int64)
-    y_train = np.concatenate((y_train, np.zeros(shape=(len(nps), 1)))).astype(np.float32)
-    X_test = np.array(X_test).astype(np.int64)
-    y_test = y_test.astype(np.float32)
+    # # Add in negative samples and enforce the right data type
+    # X_train = np.vstack((X_train, nps)).astype(np.int64)
+    # y_train = np.concatenate((y_train, np.zeros(shape=(len(nps), 1)))).astype(np.float32)
+    # X_test = np.array(X_test).astype(np.int64)
+    # y_test = y_test.astype(np.float32)
 
     # Shuffle traindata with negatives
     p = rng.permutation(X_train.shape[0])

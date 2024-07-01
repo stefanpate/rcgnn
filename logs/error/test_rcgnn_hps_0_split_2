@@ -1,0 +1,22 @@
+GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+/home/spn1560/.conda/envs/hiec/lib/python3.11/site-packages/lightning/pytorch/trainer/configuration_validator.py:74: You defined a `validation_step` but have no `val_dataloader`. Skipping val loop.
+Loading `train_dataloader` to estimate number of stepping batches.
+/home/spn1560/.conda/envs/hiec/lib/python3.11/site-packages/lightning/pytorch/loops/fit_loop.py:298: The number of training batches (1) is smaller than the logging interval Trainer(log_every_n_steps=50). Set a lower value for log_every_n_steps if you want to see logs for the training epoch.
+
+  | Name            | Type                    | Params
+------------------------------------------------------------
+0 | message_passing | BondMessagePassing      | 222 K 
+1 | agg             | MeanAggregation         | 0     
+2 | bn              | BatchNorm1d             | 600   
+3 | predictor       | BinaryClassificationFFN | 474 K 
+4 | X_d_transform   | Identity                | 0     
+------------------------------------------------------------
+697 K     Trainable params
+0         Non-trainable params
+697 K     Total params
+2.791     Total estimated model params size (MB)
+SLURM auto-requeueing enabled. Setting signal handlers.
+`Trainer.fit` stopped: `max_epochs=1` reached.

@@ -102,27 +102,6 @@ class PretrainedMatrixFactorization(MatrixFactorization):
             self.user_factors.weight = self.scale_embed(self.user_factors.weight)
             self.item_factors.weight = self.scale_embed(self.item_factors.weight)
 
-def negative_sample_bipartite(n_samples, n_rows, n_cols, obs_pairs, seed):
-    '''
-    Samples n_samples negative pairs from an n_rows x n_cols adjacency matrix
-    given obs_pairs, positive pairs which should not be sampled
-    '''
-    if type(obs_pairs) == np.ndarray:
-        obs_pairs = [tuple(obs_pairs[i, :]) for i in range(obs_pairs.shape[0])]
-
-    rng = np.random.default_rng(seed=seed)
-    
-    # Sample subset of unobserved pairs
-    unobs_pairs = []
-    while len(unobs_pairs) < n_samples:
-        i = rng.integers(0, n_rows)
-        j = rng.integers(0, n_cols)
-
-        if (i, j) not in obs_pairs:
-            unobs_pairs.append((i, j))
-
-    return np.array(unobs_pairs)
-
 def load_pretrained_embeds(ds_name, special_hps_for_gs, scratch_dir=scratch_dir):
     special_hps_for_model = {}
     for key in ['user_embeds', 'item_embeds']:

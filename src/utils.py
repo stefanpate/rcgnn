@@ -176,52 +176,152 @@ def load_design_matrix(ds_name, toc, embed_type, sample_idx, do_norm=True, scrat
 
         return X
 
-def split_data(ds_name, toc, sample_embed_type, n_splits, seed, X=None, y=None):
-    fn_pref = f"{ds_name}_{toc}_{sample_embed_type}_embeds_{n_splits}_splits_{seed}_seed"
-    X_train_fns = [f"X_train_{fn_pref}_{i}_split_idx" for i in range(n_splits)]
-    y_train_fns = [f"y_train_{fn_pref}_{i}_split_idx" for i in range(n_splits)]
-    X_test_fns = [f"X_test_{fn_pref}_{i}_split_idx" for i in range(n_splits)]
-    y_test_fns = [f"y_test_{fn_pref}_{i}_split_idx" for i in range(n_splits)]
-    list_of_fn_lists = [X_train_fns, y_train_fns, X_test_fns, y_test_fns]
+def split_data(
+        X,
+        y,
+        ds_name,
+        toc,
+        n_splits,
+        seed,
+        neg_multiple=0,
+        do_save=True
+        ):
+    '''
+    Args
+    ----
+    X:list or array - All (sample, feature) index pairs of whole dataset
+    y:list or array -  Labels of pairs in X
+    ds_name:str - Dataset name
+    toc:str - Name of table of contents i.e., csv file with (sample, feature, sequence)
+    n_splits:int - Number cv splits
+    seed:float - Random seed for this split
+    neg_multiple:int - Multiple of positive samples there are of negative samples
 
-    all_fns = X_train_fns + X_test_fns + y_train_fns + y_test_fns
+    Returns
+    -------
+    split_guide:pandas df - entries of (train/test, split_idx, X1, X2, y)
+        where
+        train/test:str - 'train' or 'test' split
+        split_idx:int - The cv data split index
+        X1:int - smaple_idx e.g., protein_idx
+        X2:int - label_idx e.g., reaction_idx
+        y:int - (sample, label) pair hyperlabels, e.g., 0 or 1
+    '''
+
+    fn = f"{ds_name}_{toc}_{n_splits}_splits_{seed}_seed_{neg_multiple}_neg_multiple.csv"
+    rng = np.random.default_rng(seed=seed)
     
     # Check if data split files already there
-    if all([os.path.exists(f"{scratch_dir}/{fn}") for fn in all_fns]):
-        print(f"Found existing data splits for {ds_name} {sample_embed_type} n_splits={n_splits} seed={seed}")
+    if os.path.exists(f"{scratch_dir}/{fn}"):
+        print(f"Found existing data splits for {ds_name} {toc} n_splits={n_splits} seed={seed}")
 
-    # Split provided data
-    elif X is not None and y is not None:
-        kfold = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
-        for i, (train_idx, test_idx) in enumerate(kfold.split(X)):
-            list_of_data = [X[train_idx], y[train_idx], X[test_idx], y[test_idx]]
+    if type(X) is list:
+        X = np.array(X)
+    if type(y) is list:
+        y = np.array(y)
 
-            for j in range(4):
-                path = f"{scratch_dir}/{list_of_fn_lists[j][i]}"
-                np.save(path, list_of_data[j])
+    # Infer adjacency mat dims
+    n_rows = X[:,0].max()
+    n_cols = X[:, 1].max()
 
-    # TODO
-    # Load data from projects dir then split    
-    else:
-        # Load adjacency matrix and idx-label dicts
-        adj, idx_sample, idx_feature = construct_sparse_adj_mat(ds_name)
-        dummy_X = np.empty(shape=(adj.shape[0, 1]))
-        kfold = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
-        for i, (train_idx, test_idx) in enumerate(kfold.split(X)):
-
-def load_data_split(ds_name, toc, sample_embed_type, n_splits, seed, split_idx):
-    '''
-    Returns list of data split in order X_train, y_train, X_test, y_test
-    '''
-    fn_id = f"{ds_name}_{toc}_{sample_embed_type}_embeds_{n_splits}_splits_{seed}_seed_{split_idx}_split_idx"
-    fn_prefs = ["X_train", 'y_train', 'X_test', 'y_test']
     
+    # Split provided data
+    cols = ['train/test', 'split_idx', 'X1', 'X2', 'y']
     data = []
-    for pref in fn_prefs:
-        path = f"{scratch_dir}/{pref}_{fn_id}.npy"
-        data.append(np.load(path))
+    kfold = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
+    for i, (train_idx, test_idx) in enumerate(kfold.split(X)):
 
-    return data
+        # Sample negatives
+        train_negs = _negative_sample_bipartite(int(len(train_idx) * neg_multiple), n_rows, n_cols, obs_pairs=X[train_idx], rng=rng)
+        test_negs = _negative_sample_bipartite(int(X.shape[0] * neg_multiple), n_rows, n_cols, obs_pairs=X, rng=rng)
+
+        # Stack negatives on positives
+        X_train, y_train = np.vstack((X[train_idx], train_negs)), np.vstack((y[train_idx], np.zeros(shape=train_negs.shape[0]).reshape(-1,1)))
+        X_test, y_test = np.vstack((X[test_idx], test_negs)), np.vstack((y[test_idx], np.zeros(shape=test_negs.shape[0]).reshape(-1,1)))
+
+        # Append to data for split_guide
+        train_rows = list(zip(['train' for _ in range(len(train_idx))], [i for _ in range(len(train_idx))], X_train[:, 0], X_train[:, 1], y_train.reshape(-1,)))
+        test_rows = list(zip(['test' for _ in range(len(test_idx))], [i for _ in range(len(test_idx))], X_test[:, 0], X_test[:, 1], y_test.reshape(-1,)))
+        data += train_rows
+        data += test_rows
+
+    split_guide = pd.DataFrame(data=data, columns=cols)
+
+    if do_save:
+        split_guide.to_csv(f"{scratch_dir}/{fn}", sep='\t')
+
+    return split_guide
+
+def load_data_split(
+        ds_name,
+        toc,
+        sample_embed_type,
+        n_splits,
+        seed,
+        idx_sample,
+        idx_feature,
+        split_idx,
+        neg_multiple=0
+        ):
+    '''
+    Args
+    ----
+    ds_name:str - Dataset name
+    toc:str - Name of table of contents i.e., csv file with (sample, label, sequence)
+    sample_embed_type:str
+    n_splits:int - Number cv splits
+    seed:float - Random seed for this split
+    idx_sample:dict
+    idx_feature:dict
+    split_idx:int
+    neg_multiple:int - Multiple of positive samples there are of negative samples
+
+    Returns
+    -------
+
+
+    '''
+    fn_split_guide_pref = f"{ds_name}_{toc}_{n_splits}_splits_{seed}_seed_{neg_multiple}_neg_multiple"
+    fn_pref = fn_split_guide_pref + f"_{split_idx}_split_idx"
+    fns = [fn_pref + suff for suff in ['_train.npy', '_test.npy']]
+    if all([os.path.exists(f"{scratch_dir}/{fn}") for fn in fns]):
+        train_data, test_data = [np.load(f"{scratch_dir}/{fn}") for fn in fns]
+
+    else:
+
+        split_guide = pd.read_csv(f"{scratch_dir}/{fn_split_guide_pref}.csv", sep='\t')
+        train_split =  split_guide.loc[(split_guide['train/test'] == 'train') & (split_guide['split_idx'] == split_idx)]
+        test_split =  split_guide.loc[(split_guide['train/test'] == 'test') & (split_guide['split_idx'] == split_idx)]
+
+        sample_name = idx_sample[list(idx_sample.keys())[0]]
+        test_embed = load_embed(f"{data_dir}/{ds_name}/{sample_embed_type}/{sample_name}.pt", embed_key=33)[1].numpy()
+        d = test_embed.size
+        tp = np.dtype([('sample_embed', np.float32, (d,)), ('feature', '<U100'), ('y', int)])
+        tmp = []
+        for split in [train_split, test_split]:
+            samples = []
+            features = []
+            y = [elt for elt in split.loc[:, 'y']]
+            for sample_idx in split.loc[:, 'X1']:
+                sample_name = idx_sample[sample_idx]
+                samples.append(load_embed(f"{data_dir}/{ds_name}/{sample_embed_type}/{sample_name}.pt", embed_key=33)[1])
+
+            for feature_idx in split.loc[:, 'X2']:
+                features.append(idx_feature[feature_idx])
+
+            data = np.zeros(len(samples), dtype=tp)
+            data['sample_embed'] = samples
+            data['feature'] = features
+            data['y'] = y
+            tmp.append(data)
+
+        train_data, test_data = tmp
+        
+        for (fn, data) in zip(fns, tmp):
+            np.save(f"{scratch_dir}/{fn}", data)
+
+        
+    return train_data, test_data
 
 def save_hps_to_scratch(hp, gs_name, hp_idx):
     with open(f"{scratch_dir}/{gs_name}_{hp_idx}_hp_idx.json", 'w') as f:
@@ -262,6 +362,25 @@ def load_known_rxns(path):
 
     return data
 
+def _negative_sample_bipartite(n_samples, n_rows, n_cols, obs_pairs, rng):
+    '''
+    Samples n_samples negative pairs from an n_rows x n_cols adjacency matrix
+    given obs_pairs, positive pairs which should not be sampled
+    '''
+    if type(obs_pairs) == np.ndarray:
+        obs_pairs = [tuple(obs_pairs[i, :]) for i in range(obs_pairs.shape[0])]
+    
+    # Sample subset of unobserved pairs
+    unobs_pairs = []
+    while len(unobs_pairs) < n_samples:
+        i = rng.integers(0, n_rows)
+        j = rng.integers(0, n_cols)
+
+        if (i, j) not in obs_pairs:
+            unobs_pairs.append((i, j))
+
+    return np.array(unobs_pairs)
+
 def write_shell_script(
         allocation,
         partition,
@@ -289,7 +408,7 @@ def write_shell_script(
         string of args following script name e.g,. -d 4 --example
     '''
     
-    should_save = lambda x: " --save-gs-models" if x else ''
+    # should_save = lambda x: " --save-gs-models" if x else '' # TODO backwards compat w/ MF
     
     shell_script = f"""#!/bin/bash
     #SBATCH -A {allocation}
