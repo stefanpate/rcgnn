@@ -1,0 +1,22 @@
+GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+/home/spn1560/.conda/envs/hiec/lib/python3.11/site-packages/lightning/pytorch/trainer/configuration_validator.py:74: You defined a `validation_step` but have no `val_dataloader`. Skipping val loop.
+Missing logger folder: /projects/p30041/spn1560/hiec/artifacts/model_evals/gnn/two_channel_mean_agg_binaryffn_pred_neg_1_sprhea_sp_folded_pt_25_epochs_seed_1234_split_2_of_5
+Loading `train_dataloader` to estimate number of stepping batches.
+
+  | Name            | Type                    | Params
+------------------------------------------------------------
+0 | message_passing | BondMessagePassing      | 222 K 
+1 | agg             | MeanAggregation         | 0     
+2 | bn              | BatchNorm1d             | 600   
+3 | predictor       | BinaryClassificationFFN | 474 K 
+4 | X_d_transform   | Identity                | 0     
+------------------------------------------------------------
+697 K     Trainable params
+0         Non-trainable params
+697 K     Total params
+2.791     Total estimated model params size (MB)
+SLURM auto-requeueing enabled. Setting signal handlers.
+`Trainer.fit` stopped: `max_epochs=25` reached.

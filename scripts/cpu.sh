@@ -4,10 +4,10 @@
 #SBATCH -N 1
 #SBATCH -n 1
 #SBATCH --mem=8G
-#SBATCH -t 2:00:00
+#SBATCH -t 1:00:00
 #SBATCH --job-name="batch_fit"
-#SBATCH --output=../logs/batch_fit
-#SBATCH --error=../logs/e_tmp
+#SBATCH --output=../logs/out/batch_fit
+#SBATCH --error=../logs/out/e_tmp
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=stefan.pate@northwestern.edu

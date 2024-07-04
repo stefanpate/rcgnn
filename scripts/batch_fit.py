@@ -3,23 +3,33 @@ from src.utils import construct_sparse_adj_mat, split_data, save_hps_to_scratch,
 import numpy as np
 import subprocess
 
-
 # Args
 dataset_name = 'sprhea'
-toc= 'sp_folded_pt' # 'sp_ops'
+toc= 'sp_folded_pt' # Name of file with protein id | features/labels | sequence
+n_splits = 3
 neg_multiple = 1
-n_splits = 5
 seed = 1234
-gs_name = 'two_channel_mean_agg_binaryffn_pred_neg_1'
+gs_name = 'two_channel_mean_agg_binaryffn_pred_neg_1' # Grid search name
 allocation = 'p30041'
 partition = 'gengpu'
 mem = '16G'
-time = '16' # Hours
+time = '9' # Hours
 sample_embed_type = 'esm'
 fit_script = 'two_channel_fit.py'
-save_models = True
+# save_models = True # TODO mf backwards compatibility
 
 # Hyperparameters
+
+# RC GNN
+hps = {
+    'n_epochs':[25],
+    'pred_head':['binary'], # 'binary' | 'dot_sig'
+    'agg':['mean'], # 'mean' | 'last'
+    'd_prot':[1280],
+    'd_h_mpnn':[300],
+    'neg_multiple':[neg_multiple], # DO NOT SET HERE. Set above. One value at a time for now
+    'model':['mpnn_dim_red'] # 'mpnn' | 'mpnn_dim_red'
+}
 
 # # Matrix factorization
 # hps = {
@@ -32,16 +42,6 @@ save_models = True
 #     # 'module__n_factors':[20, 50, 100]
 #     'user_embeds':["esm_rank_20", "esm_rank_50", "esm_rank_100"]
 # }
-
-# RC GNN
-hps = {
-    'n_epochs':[75],
-    'pred_head':['binary'],
-    'agg':['mean'],
-    'd_prot':[1280],
-    'd_h_mpnn':[300],
-    'neg_multiple':[neg_multiple]
-}
 
 # TODO: backwards compatibility rcgnn w/ mf on handling duplicates under same gs_name
 # # Check gs_name not used before
@@ -87,25 +87,27 @@ split_guide = split_data(X,
 '''
 arg_str
 -------
-MF: f"-d {ds_name} -e {seed} -n {n_splits} -s {split_idx} -p {hp_idx} -g {gs_name}{should_save(save_models)"
-RC GNN / 2c: f"-d {dataset_name} -t {toc} -e {seed} -n {n_splits} -s {split_idx} -p {hp_idx} -g {gs_name} -m {sample_embed_type}" 
+Matrix Factorization: f"-d {ds_name} -e {seed} -n {n_splits} -s {split_idx} -p {hp_idx} -g {gs_name}{should_save(save_models)"
+RC GNN / 2channel: f"-d {dataset_name} -t {toc} -e {seed} -n {n_splits} -s {split_idx} -p {hp_idx} -g {gs_name} -m {sample_embed_type}" 
 '''
 
-# print("Submitting jobs")
-# for hp_idx, hp in enumerate(hp_cart_prod):
-#     for split_idx in range(n_splits):
-#         arg_str = f"-d {dataset_name} -t {toc} -e {seed} -n {n_splits} -s {split_idx} -p {hp_idx} -g {gs_name} -m {sample_embed_type}"
-#         shell_script = write_shell_script(
-#             allocation,
-#             partition,
-#             mem,
-#             time,
-#             fit_script,
-#             arg_str,
-#             job_name=f"{gs_name}_hps_{hp_idx}_split_{split_idx}"
-#         )
+print("Submitting jobs")
+for hp_idx, hp in enumerate(hp_cart_prod):
+    for split_idx in range(n_splits):
         
-#         with open("batch.sh", 'w') as f:
-#             f.write(shell_script)
+        arg_str = f"-d {dataset_name} -t {toc} -e {seed} -n {n_splits} -s {split_idx} -p {hp_idx} -g {gs_name} -m {sample_embed_type}"
+        
+        shell_script = write_shell_script(
+            allocation,
+            partition,
+            mem,
+            time,
+            fit_script,
+            arg_str,
+            job_name=f"{gs_name}_hps_{hp_idx}_split_{split_idx}"
+        )
+        
+        with open("batch.sh", 'w') as f:
+            f.write(shell_script)
 
-#         subprocess.run(["sbatch", "batch.sh"])
+        subprocess.run(["sbatch", "batch.sh"])

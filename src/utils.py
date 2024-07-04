@@ -6,6 +6,7 @@ import torch
 import os
 from sklearn.model_selection import KFold
 from collections import namedtuple
+import re
 
 data_dir = "/projects/p30041/spn1560/hiec/data"
 scratch_dir = "/scratch/spn1560"
@@ -214,6 +215,8 @@ def split_data(
     # Check if data split files already there
     if os.path.exists(f"{scratch_dir}/{fn}"):
         print(f"Found existing data splits for {ds_name} {toc} n_splits={n_splits} seed={seed}")
+        split_guide = pd.read_csv(f"{scratch_dir}/{fn}", sep='\t')
+        return split_guide
 
     if type(X) is list:
         X = np.array(X)
@@ -233,22 +236,27 @@ def split_data(
 
         # Sample negatives
         train_negs = _negative_sample_bipartite(int(len(train_idx) * neg_multiple), n_rows, n_cols, obs_pairs=X[train_idx], rng=rng)
-        test_negs = _negative_sample_bipartite(int(X.shape[0] * neg_multiple), n_rows, n_cols, obs_pairs=X, rng=rng)
+        test_negs = _negative_sample_bipartite(int(len(test_idx) * neg_multiple), n_rows, n_cols, obs_pairs=X, rng=rng)
 
         # Stack negatives on positives
         X_train, y_train = np.vstack((X[train_idx], train_negs)), np.vstack((y[train_idx], np.zeros(shape=train_negs.shape[0]).reshape(-1,1)))
         X_test, y_test = np.vstack((X[test_idx], test_negs)), np.vstack((y[test_idx], np.zeros(shape=test_negs.shape[0]).reshape(-1,1)))
 
+        # Shuffle within data splits
+        p = rng.permutation(X_train.shape[0])
+        X_train = X_train[p]
+        y_train = y_train[p]
+
         # Append to data for split_guide
-        train_rows = list(zip(['train' for _ in range(len(train_idx))], [i for _ in range(len(train_idx))], X_train[:, 0], X_train[:, 1], y_train.reshape(-1,)))
-        test_rows = list(zip(['test' for _ in range(len(test_idx))], [i for _ in range(len(test_idx))], X_test[:, 0], X_test[:, 1], y_test.reshape(-1,)))
+        train_rows = list(zip(['train' for _ in range(y_train.size)], [i for _ in range(y_train.size)], X_train[:, 0], X_train[:, 1], y_train.reshape(-1,)))
+        test_rows = list(zip(['test' for _ in range(y_test.size)], [i for _ in range(y_test.size)], X_test[:, 0], X_test[:, 1], y_test.reshape(-1,)))
         data += train_rows
         data += test_rows
 
     split_guide = pd.DataFrame(data=data, columns=cols)
 
     if do_save:
-        split_guide.to_csv(f"{scratch_dir}/{fn}", sep='\t')
+        split_guide.to_csv(f"{scratch_dir}/{fn}", sep='\t', index=False)
 
     return split_guide
 
@@ -284,6 +292,7 @@ def load_data_split(
     fn_split_guide_pref = f"{ds_name}_{toc}_{n_splits}_splits_{seed}_seed_{neg_multiple}_neg_multiple"
     fn_pref = fn_split_guide_pref + f"_{split_idx}_split_idx"
     fns = [fn_pref + suff for suff in ['_train.npy', '_test.npy']]
+    
     if all([os.path.exists(f"{scratch_dir}/{fn}") for fn in fns]):
         train_data, test_data = [np.load(f"{scratch_dir}/{fn}") for fn in fns]
 
@@ -431,3 +440,16 @@ def write_shell_script(
     """
     shell_script = shell_script.replace("    ", "") # Remove tabs
     return shell_script
+
+def read_last_ckpt(exp_dir):
+    def get_step(chkpt_str):
+        pattern = r'=(\d+)\.'
+        match = re.search(pattern, chkpt_str)
+        return int(match.group(1))
+
+    versions = sorted([(fn, int(fn.split('_')[-1])) for fn in os.listdir(exp_dir)], key=lambda x : x[-1])
+    latest_version = versions[-1][0]
+    chkpts = sorted([(fn, get_step(fn)) for fn in os.listdir(f"{exp_dir}/{latest_version}/checkpoints")], key=lambda x : x[-1])
+    latest_chkpt = chkpts[-1][0]
+
+    return f"{exp_dir}/{latest_version}/{latest_chkpt}"

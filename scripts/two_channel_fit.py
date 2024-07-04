@@ -2,29 +2,46 @@
 Fit "two channel" (reaction gnn + esm) model
 '''
 
-from chemprop import models, nn
 from chemprop.data import build_dataloader
-from src.utils import load_known_rxns, construct_sparse_adj_mat, ensure_dirs, load_data_split, load_hps_from_scratch
+from chemprop.models import MPNN
+from chemprop.nn import MeanAggregation, BinaryClassificationFFN, BondMessagePassing
+from src.utils import load_known_rxns, construct_sparse_adj_mat, load_data_split, load_hps_from_scratch, save_json
 from src.featurizer import RCVNReactionMolGraphFeaturizer, MultiHotAtomFeaturizer, MultiHotBondFeaturizer
-from src.nn import LastAggregation
+from src.nn import LastAggregation, DotSig
+from src.model import MPNNDimRed
 from src.data import RxnRCDatapoint, RxnRCDataset
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import CSVLogger
 import numpy as np
 from argparse import ArgumentParser
+import torch
+import os
+from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score
+import yaml
 
 eval_dir = "/projects/p30041/spn1560/hiec/artifacts/model_evals/gnn"
 
+# Aggregation fcns
 agg_dict = {
     'last':LastAggregation(),
-    'mean':nn.MeanAggregation(),
+    'mean':MeanAggregation(),
 }
 
+# Prediction heads
 pred_head_dict = {
-    'binary':nn.BinaryClassificationFFN,
+    'binary':BinaryClassificationFFN,
+    'dot_sig':DotSig
 }
 
-# CLI parsing
+# For evaluation
+scorers = {
+    'f1': lambda y_true, y_pred: f1_score(y_true, y_pred),
+    'precision': lambda y_true, y_pred: precision_score(y_true, y_pred),
+    'recall': lambda y_true, y_pred: recall_score(y_true, y_pred),
+    'accuracy': accuracy_score
+}
+
+# Parse CL args
 parser = ArgumentParser()
 parser.add_argument("-d", "--dataset-name", type=str)
 parser.add_argument("-t", "--toc", type=str)
@@ -46,8 +63,6 @@ split_idx = args.split_idx
 hp_idx = args.hp_idx
 gs_name = args.gs_name
 
-adj, idx_sample, idx_feature = construct_sparse_adj_mat(dataset_name, toc) # Load adj mat
-
 print("Loading hyperparameters")
 hps = load_hps_from_scratch(gs_name, hp_idx) # Load hyperparams
 
@@ -55,9 +70,10 @@ hps = load_hps_from_scratch(gs_name, hp_idx) # Load hyperparams
 d_prot = hps['d_prot'] # Protein embed dimension
 d_h_mpnn = hps['d_h_mpnn'] # Hidden layer of message passing
 n_epochs = hps['n_epochs']
-pred_head = pred_head_dict[hps['pred_head']](input_dim=d_prot+d_h_mpnn)
-agg = agg_dict[hps['agg']]
 neg_multiple = hps['neg_multiple']
+
+adj, idx_sample, idx_feature = construct_sparse_adj_mat(dataset_name, toc) # Load adj mat
+exp_name_batch = f"{gs_name}_{dataset_name}_{toc}_{n_epochs}_epochs_seed_{seed}_split_{split_idx+1}_of_{n_splits}" # Name this experiment
 
 # Load data split
 print("Loading data")
@@ -72,7 +88,7 @@ train_data, test_data = load_data_split(dataset_name,
                                                   neg_multiple
                                                   )
 
-known_rxns = load_known_rxns(f"../data/{dataset_name}/known_rxns_{toc}.json")
+known_rxns = load_known_rxns(f"../data/{dataset_name}/known_rxns_{toc}.json") # Load reaction dataset
 
 # Init featurizer
 featurizer = RCVNReactionMolGraphFeaturizer(
@@ -80,8 +96,7 @@ featurizer = RCVNReactionMolGraphFeaturizer(
     bond_featurizer=MultiHotBondFeaturizer()
 )
 
-exp_name_batch = f"{gs_name}_{dataset_name}_{toc}_{n_epochs}_epochs_seed_{seed}_split_{split_idx+1}_of_{n_splits}"
-
+# Prep data
 print("Constructing datasets & dataloaders")
 datapoints_train = []
 for row in train_data:
@@ -104,12 +119,23 @@ data_loader_test = build_dataloader(dataset_test, shuffle=False)
 # Construct model
 print("Building model")
 dv, de = featurizer.shape
-mp = nn.BondMessagePassing(d_v=dv, d_e=de, d_h=d_h_mpnn)
-mpnn = models.MPNN(
-    message_passing=mp,
-    agg=agg,
-    predictor=pred_head,
-)
+mp = BondMessagePassing(d_v=dv, d_e=de, d_h=d_h_mpnn)
+pred_head = pred_head_dict[hps['pred_head']](input_dim=d_h_mpnn * 2)
+agg = agg_dict[hps['agg']]
+
+if hps['model'] == 'mpnn':
+    model = MPNN(
+        message_passing=mp,
+        agg=agg,
+        predictor=pred_head,
+    )
+elif hps['model'] == 'mpnn_dim_red':
+    model = MPNNDimRed(
+        reduce_X_d=torch.nn.Linear(in_features=d_prot, out_features=d_h_mpnn),
+        message_passing=mp,
+        agg=agg,
+        predictor=pred_head,
+    )
 
 # Make trainer
 logger = CSVLogger(eval_dir, name=exp_name_batch)
@@ -125,6 +151,46 @@ trainer = pl.Trainer(
 # Train
 print("Training")
 trainer.fit(
-    model=mpnn,
+    model=model,
     train_dataloaders=data_loader_train,
 )
+
+# Predict
+print("Testing")
+with torch.inference_mode():
+    trainer = pl.Trainer(
+        logger=None,
+        enable_progress_bar=True,
+        accelerator="auto",
+        devices=1
+    )
+    test_preds = trainer.predict(model, data_loader_test)
+
+
+# Evaluate
+logits = np.vstack(test_preds)
+y_pred = (logits > 0.5).astype(np.int64).reshape(-1,)
+y_true = test_data['y']
+
+scores = {}
+for k, scorer in scorers.items():
+    scores[k] = scorer(y_true, y_pred)
+
+print(scores)
+sup_dir = f"{eval_dir}/{exp_name_batch}"
+versions = sorted([(fn, int(fn.split('_')[-1])) for fn in os.listdir(sup_dir)], key=lambda x : x[-1])
+latest_version = versions[-1][0]
+save_json(scores, f"{sup_dir}/{latest_version}/test_scores.json")
+
+# Append to hyperparam yaml file
+
+# # Load existing
+# with open(f"{sup_dir}/{latest_version}/hparams.yaml", 'r') as file:
+#     existing_data = yaml.safe_load(file)
+
+# # Append new data to existing data
+# existing_data.update(hps)
+
+# # Write combined data back to YAML file
+# with open(f"{sup_dir}/{latest_version}/hparams.yaml", 'w') as file:
+#     yaml.dump(existing_data, file)

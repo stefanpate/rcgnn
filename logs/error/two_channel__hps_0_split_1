@@ -1,0 +1,61 @@
+/home/spn1560/.conda/envs/hiec/lib/python3.11/site-packages/lightning/pytorch/utilities/parsing.py:199: Attribute 'reduce_X_d' is an instance of `nn.Module` and is already saved during checkpointing. It is recommended to ignore them using `self.save_hyperparameters(ignore=['reduce_X_d'])`.
+GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+/home/spn1560/.conda/envs/hiec/lib/python3.11/site-packages/lightning/pytorch/trainer/configuration_validator.py:74: You defined a `validation_step` but have no `val_dataloader`. Skipping val loop.
+Missing logger folder: /projects/p30041/spn1560/hiec/artifacts/model_evals/gnn/two_channel__sprhea_sp_folded_pt_20p_1_epochs_seed_1234_split_2_of_2
+Loading `train_dataloader` to estimate number of stepping batches.
+
+  | Name            | Type                    | Params
+------------------------------------------------------------
+0 | message_passing | BondMessagePassing      | 222 K 
+1 | agg             | MeanAggregation         | 0     
+2 | bn              | BatchNorm1d             | 600   
+3 | predictor       | BinaryClassificationFFN | 180 K 
+4 | X_d_transform   | Identity                | 0     
+5 | reduce_X_d      | Linear                  | 384 K 
+------------------------------------------------------------
+788 K     Trainable params
+0         Non-trainable params
+788 K     Total params
+3.152     Total estimated model params size (MB)
+SLURM auto-requeueing enabled. Setting signal handlers.
+`Trainer.fit` stopped: `max_epochs=1` reached.
+GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+/home/spn1560/.conda/envs/hiec/lib/python3.11/site-packages/lightning/pytorch/trainer/connectors/logger_connector/logger_connector.py:75: Starting from v1.9.0, `tensorboardX` has been removed as a dependency of the `lightning.pytorch` package, due to potential conflicts with other packages in the ML ecosystem. For this reason, `logger=True` will use `CSVLogger` as the default logger, unless the `tensorboard` or `tensorboardX` packages are found. Please `pip install lightning[extra]` or one of them to enable TensorBoard support by default
+SLURM auto-requeueing enabled. Setting signal handlers.
+Traceback (most recent call last):
+  File "/home/spn1560/hiec/scripts/two_channel_fit.py", line 189, in <module>
+    existing_data = yaml.safe_load(file)
+                    ^^^^^^^^^^^^^^^^^^^^
+  File "/home/spn1560/.conda/envs/hiec/lib/python3.11/site-packages/yaml/__init__.py", line 125, in safe_load
+    return load(stream, SafeLoader)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/spn1560/.conda/envs/hiec/lib/python3.11/site-packages/yaml/__init__.py", line 81, in load
+    return loader.get_single_data()
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/spn1560/.conda/envs/hiec/lib/python3.11/site-packages/yaml/constructor.py", line 51, in get_single_data
+    return self.construct_document(node)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/spn1560/.conda/envs/hiec/lib/python3.11/site-packages/yaml/constructor.py", line 60, in construct_document
+    for dummy in generator:
+  File "/home/spn1560/.conda/envs/hiec/lib/python3.11/site-packages/yaml/constructor.py", line 413, in construct_yaml_map
+    value = self.construct_mapping(node)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/spn1560/.conda/envs/hiec/lib/python3.11/site-packages/yaml/constructor.py", line 218, in construct_mapping
+    return super().construct_mapping(node, deep=deep)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/spn1560/.conda/envs/hiec/lib/python3.11/site-packages/yaml/constructor.py", line 143, in construct_mapping
+    value = self.construct_object(value_node, deep=deep)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/spn1560/.conda/envs/hiec/lib/python3.11/site-packages/yaml/constructor.py", line 100, in construct_object
+    data = constructor(self, node)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/spn1560/.conda/envs/hiec/lib/python3.11/site-packages/yaml/constructor.py", line 427, in construct_undefined
+    raise ConstructorError(None, None,
+yaml.constructor.ConstructorError: could not determine a constructor for the tag 'tag:yaml.org,2002:python/object:torch.nn.modules.linear.Linear'
+  in "/projects/p30041/spn1560/hiec/artifacts/model_evals/gnn/two_channel__sprhea_sp_folded_pt_20p_1_epochs_seed_1234_split_2_of_2/version_0/hparams.yaml", line 7, column 13
