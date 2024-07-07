@@ -7,7 +7,7 @@
 #SBATCH -t 1:00:00
 #SBATCH --job-name="test_2c_eval"
 #SBATCH --output=../logs/out/test_2c_eval
-#SBATCH --error=../logs/error/e_tmp_1
+#SBATCH --error=../logs/error/e_tmp_gpu
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=stefan.pate@northwestern.edu

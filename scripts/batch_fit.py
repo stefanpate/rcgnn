@@ -1,19 +1,19 @@
 from itertools import product
-from src.utils import construct_sparse_adj_mat, split_data, save_hps_to_scratch, write_shell_script
+from src.utils import construct_sparse_adj_mat, split_data, save_hps_to_scratch, write_shell_script, ensure_dirs
 import numpy as np
+import pandas as pd
 import subprocess
 
 # Args
 dataset_name = 'sprhea'
-toc= 'sp_folded_pt' # Name of file with protein id | features/labels | sequence
+toc = 'sp_folded_pt' # Name of file with protein id | features/labels | sequence
 n_splits = 3
-neg_multiple = 1
 seed = 1234
-gs_name = 'two_channel_mean_agg_binaryffn_pred_neg_1' # Grid search name
+gs_name = 'two_channel_gs_0' # Grid search name
 allocation = 'p30041'
 partition = 'gengpu'
 mem = '16G'
-time = '9' # Hours
+time = '18' # Hours
 sample_embed_type = 'esm'
 fit_script = 'two_channel_fit.py'
 # save_models = True # TODO mf backwards compatibility
@@ -23,11 +23,11 @@ fit_script = 'two_channel_fit.py'
 # RC GNN
 hps = {
     'n_epochs':[25],
-    'pred_head':['binary'], # 'binary' | 'dot_sig'
-    'agg':['mean'], # 'mean' | 'last'
+    'pred_head':['binary', 'dot_sig'], # 'binary' | 'dot_sig'
+    'agg':['last', 'mean'], # 'mean' | 'last'
     'd_prot':[1280],
-    'd_h_mpnn':[300],
-    'neg_multiple':[neg_multiple], # DO NOT SET HERE. Set above. One value at a time for now
+    'd_h_mpnn':[300, 50, 20],
+    'neg_multiple':[1, 2], # x pos samples to draw negatives
     'model':['mpnn_dim_red'] # 'mpnn' | 'mpnn_dim_red'
 }
 
@@ -43,19 +43,18 @@ hps = {
 #     'user_embeds':["esm_rank_20", "esm_rank_50", "esm_rank_100"]
 # }
 
-# TODO: backwards compatibility rcgnn w/ mf on handling duplicates under same gs_name
-# # Check gs_name not used before
-# old_gs_path = "../artifacts/model_evals/old_gs_names.txt"
-# with open(old_gs_path, 'r') as f:
-#     old_gs_names = [elt.rstrip() for elt in f.readlines()]
+# Check gs_name not used before
+old_gs_path = "../artifacts/model_evals/old_gs_names.txt"
+with open(old_gs_path, 'r') as f:
+    old_gs_names = [elt.rstrip() for elt in f.readlines()]
 
-# if gs_name in old_gs_names:
-#     raise ValueError(f"{gs_name} has already been used as a grid search name")
+if gs_name in old_gs_names:
+    raise ValueError(f"{gs_name} has already been used as a grid search name")
 
-# old_gs_names.append(gs_name) # Add current gs_name
+old_gs_names.append(gs_name) # Add current gs_name
 
-# with open(old_gs_path, 'w') as f:
-#     f.write('\n'.join(elt for elt in old_gs_names))
+with open(old_gs_path, 'w') as f:
+    f.write('\n'.join(elt for elt in old_gs_names))
 
 # Load data
 print("Loading data")
@@ -72,16 +71,13 @@ print("Saving hyperparams to scratch")
 for i, hp in enumerate(hp_cart_prod):
     save_hps_to_scratch(hp, gs_name, i)
     
-# Split data
-print("Splitting dataset")
-split_guide = split_data(X,
-                        y,
-                        dataset_name,
-                        toc,
-                        n_splits,
-                        seed,
-                        neg_multiple
-                        )
+# Write a hp idx csv
+eval_dir = f"/projects/p30041/spn1560/hiec/artifacts/model_evals/gnn/{dataset_name}_{toc}_{gs_name}"
+ensure_dirs(eval_dir)
+cols = hp_keys
+data = [list(elt.values()) for elt in hp_cart_prod]
+hp_df = pd.DataFrame(data=data, columns=cols)
+hp_df.to_csv(f"{eval_dir}/hp_toc.csv", sep='\t')
 
 # Submit slurm jobs to fit
 '''
@@ -93,6 +89,18 @@ RC GNN / 2channel: f"-d {dataset_name} -t {toc} -e {seed} -n {n_splits} -s {spli
 
 print("Submitting jobs")
 for hp_idx, hp in enumerate(hp_cart_prod):
+
+    # Split data
+    neg_multiple = hp['neg_multiple']
+    split_guide = split_data(X,
+                            y,
+                            dataset_name,
+                            toc,
+                            n_splits,
+                            seed,
+                            neg_multiple
+                            )
+    
     for split_idx in range(n_splits):
         
         arg_str = f"-d {dataset_name} -t {toc} -e {seed} -n {n_splits} -s {split_idx} -p {hp_idx} -g {gs_name} -m {sample_embed_type}"

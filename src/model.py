@@ -2,21 +2,35 @@ from chemprop.models import MPNN
 import torch
 from torch import Tensor
 from chemprop.data import BatchMolGraph
+from chemprop.nn import MessagePassing, Aggregation, Predictor
 
 class MPNNDimRed(MPNN):
-    def __init__(self, reduce_X_d, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(
+            self,
+            message_passing: MessagePassing,
+            agg: Aggregation,
+            predictor: Predictor,
+            reduce_X_d,
+            batch_norm: bool = True,
+            warmup_epochs: int = 2,
+            init_lr: float = 1e-4,
+            max_lr: float = 1e-3,
+            final_lr: float = 1e-4,
+            ):
 
+        super().__init__(
+            message_passing=message_passing,
+            agg=agg,
+            predictor=predictor,
+            batch_norm=batch_norm,
+            warmup_epochs=warmup_epochs,
+            init_lr=init_lr,
+            max_lr=max_lr,
+            final_lr=final_lr,
+            )
+        
         self.reduce_X_d = reduce_X_d # Linear layer to dim reduce protein embeds
-
-        # self.save_hyperparameters(ignore=["message_passing", "agg", "predictor", "reduce_X_d"])
-        # self.hparams.update(
-        #     {
-        #         "message_passing": self.message_passing.hparams,
-        #         "agg": self.agg.hparams,
-        #         "predictor": self.predictor.hparams,
-        #     }
-        # )
+        self.hparams.update({"reduce_X_d": self.reduce_X_d.hparams})
 
     def fingerprint(
         self, bmg: BatchMolGraph, V_d: Tensor | None = None, X_d: Tensor | None = None

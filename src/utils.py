@@ -7,6 +7,7 @@ import os
 from sklearn.model_selection import KFold
 from collections import namedtuple
 import re
+import yaml
 
 data_dir = "/projects/p30041/spn1560/hiec/data"
 scratch_dir = "/scratch/spn1560"
@@ -453,3 +454,15 @@ def read_last_ckpt(exp_dir):
     latest_chkpt = chkpts[-1][0]
 
     return f"{exp_dir}/{latest_version}/{latest_chkpt}"
+
+def append_hp_yaml(hps:dict, path:str):
+    # Load existing
+    with open(path, 'r') as file:
+        existing_data = yaml.safe_load(file)
+
+    # Append new data to existing data
+    existing_data.update(hps)
+
+    # Write combined data back to YAML file
+    with open(path, 'w') as file:
+        yaml.dump(existing_data, file)

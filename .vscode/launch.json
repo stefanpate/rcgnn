@@ -11,8 +11,8 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "cwd": "${fileDirname}",
-            "justMyCode": true,
-            "args": ["-d", "sprhea", "-t", "sp_folded_pt_test", "-e", "1234", "-n", "2", "-s", "0", "-p", "0", "-g", "test_foo", "-m", "esm"]
+            "justMyCode": false,
+            "args": ["-d", "sprhea", "-t", "sp_folded_pt_test", "-e", "1234", "-n", "2", "-s", "0", "-p", "0", "-g", "test_dot_sig", "-m", "esm"]
         },
         {
             "name": "Python: Current File",

@@ -3,11 +3,11 @@
 #SBATCH -p b1039
 #SBATCH -N 1
 #SBATCH -n 1
-#SBATCH --mem=8G
-#SBATCH -t 1:00:00
+#SBATCH --mem=16G
+#SBATCH -t 8:00:00
 #SBATCH --job-name="batch_fit"
 #SBATCH --output=../logs/out/batch_fit
-#SBATCH --error=../logs/out/e_tmp
+#SBATCH --error=../logs/error/e_tmp_cpu
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=stefan.pate@northwestern.edu

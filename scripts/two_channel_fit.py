@@ -5,9 +5,9 @@ Fit "two channel" (reaction gnn + esm) model
 from chemprop.data import build_dataloader
 from chemprop.models import MPNN
 from chemprop.nn import MeanAggregation, BinaryClassificationFFN, BondMessagePassing
-from src.utils import load_known_rxns, construct_sparse_adj_mat, load_data_split, load_hps_from_scratch, save_json
+from src.utils import load_known_rxns, construct_sparse_adj_mat, load_data_split, load_hps_from_scratch, save_json, append_hp_yaml, ensure_dirs
 from src.featurizer import RCVNReactionMolGraphFeaturizer, MultiHotAtomFeaturizer, MultiHotBondFeaturizer
-from src.nn import LastAggregation, DotSig
+from src.nn import LastAggregation, DotSig, LinDimRed
 from src.model import MPNNDimRed
 from src.data import RxnRCDatapoint, RxnRCDataset
 from lightning import pytorch as pl
@@ -17,14 +17,12 @@ from argparse import ArgumentParser
 import torch
 import os
 from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score
-import yaml
 
-eval_dir = "/projects/p30041/spn1560/hiec/artifacts/model_evals/gnn"
 
 # Aggregation fcns
 agg_dict = {
-    'last':LastAggregation(),
-    'mean':MeanAggregation(),
+    'last':LastAggregation,
+    'mean':MeanAggregation,
 }
 
 # Prediction heads
@@ -72,8 +70,11 @@ d_h_mpnn = hps['d_h_mpnn'] # Hidden layer of message passing
 n_epochs = hps['n_epochs']
 neg_multiple = hps['neg_multiple']
 
+# Filenames
+eval_dir = f"/projects/p30041/spn1560/hiec/artifacts/model_evals/gnn/{dataset_name}_{toc}_{gs_name}"
+exp_name_batch = f"{hp_idx}_hp_idx_split_{split_idx+1}_of_{n_splits}" # Name this experiment
+
 adj, idx_sample, idx_feature = construct_sparse_adj_mat(dataset_name, toc) # Load adj mat
-exp_name_batch = f"{gs_name}_{dataset_name}_{toc}_{n_epochs}_epochs_seed_{seed}_split_{split_idx+1}_of_{n_splits}" # Name this experiment
 
 # Load data split
 print("Loading data")
@@ -121,7 +122,7 @@ print("Building model")
 dv, de = featurizer.shape
 mp = BondMessagePassing(d_v=dv, d_e=de, d_h=d_h_mpnn)
 pred_head = pred_head_dict[hps['pred_head']](input_dim=d_h_mpnn * 2)
-agg = agg_dict[hps['agg']]
+agg = agg_dict[hps['agg']]()
 
 if hps['model'] == 'mpnn':
     model = MPNN(
@@ -131,7 +132,7 @@ if hps['model'] == 'mpnn':
     )
 elif hps['model'] == 'mpnn_dim_red':
     model = MPNNDimRed(
-        reduce_X_d=torch.nn.Linear(in_features=d_prot, out_features=d_h_mpnn),
+        reduce_X_d=LinDimRed(d_in=d_prot, d_out=d_h_mpnn),
         message_passing=mp,
         agg=agg,
         predictor=pred_head,
@@ -166,7 +167,6 @@ with torch.inference_mode():
     )
     test_preds = trainer.predict(model, data_loader_test)
 
-
 # Evaluate
 logits = np.vstack(test_preds)
 y_pred = (logits > 0.5).astype(np.int64).reshape(-1,)
@@ -182,15 +182,4 @@ versions = sorted([(fn, int(fn.split('_')[-1])) for fn in os.listdir(sup_dir)], 
 latest_version = versions[-1][0]
 save_json(scores, f"{sup_dir}/{latest_version}/test_scores.json")
 
-# Append to hyperparam yaml file
-
-# # Load existing
-# with open(f"{sup_dir}/{latest_version}/hparams.yaml", 'r') as file:
-#     existing_data = yaml.safe_load(file)
-
-# # Append new data to existing data
-# existing_data.update(hps)
-
-# # Write combined data back to YAML file
-# with open(f"{sup_dir}/{latest_version}/hparams.yaml", 'w') as file:
-#     yaml.dump(existing_data, file)
+append_hp_yaml(hps, f"{sup_dir}/{latest_version}/hparams.yaml") # Append to hyperparam yaml file w/ hps from batch_fit
