@@ -49,10 +49,14 @@ class DotSig(Predictor, HyperparametersMixin):
     def forward(self, H):
         R = H[:, :self.d_h]
         P = H[:, self.d_h:]
-        return torch.mul(R, P).sum(dim=1).reshape(-1,1)
+        logits = torch.mul(R, P).sum(dim=1).reshape(-1,1)
+        return logits.sigmoid()
     
     def train_step(self, H):
-        return self.forward(H).sigmoid()
+        R = H[:, :self.d_h]
+        P = H[:, self.d_h:]
+        logits = torch.mul(R, P).sum(dim=1).reshape(-1,1)
+        return logits
     
     def encode(self, H, i):
         return H
