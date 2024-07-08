@@ -9,11 +9,11 @@ dataset_name = 'sprhea'
 toc = 'sp_folded_pt' # Name of file with protein id | features/labels | sequence
 n_splits = 3
 seed = 1234
-gs_name = 'two_channel_gs_0' # Grid search name
+gs_name = 'fix_dot_sig_0' # Grid search name
 allocation = 'p30041'
 partition = 'gengpu'
 mem = '16G'
-time = '18' # Hours
+time = '12' # Hours
 sample_embed_type = 'esm'
 fit_script = 'two_channel_fit.py'
 # save_models = True # TODO mf backwards compatibility
@@ -23,7 +23,7 @@ fit_script = 'two_channel_fit.py'
 # RC GNN
 hps = {
     'n_epochs':[25],
-    'pred_head':['binary', 'dot_sig'], # 'binary' | 'dot_sig'
+    'pred_head':['dot_sig'], # 'binary' | 'dot_sig'
     'agg':['last', 'mean'], # 'mean' | 'last'
     'd_prot':[1280],
     'd_h_mpnn':[300, 50, 20],

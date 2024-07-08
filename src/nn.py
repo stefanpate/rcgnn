@@ -10,6 +10,7 @@ from chemprop.nn import Aggregation, Predictor
 from chemprop.nn.hparams import HasHParams
 from chemprop.nn.loss import BCELoss
 from chemprop.nn.metrics import BinaryAUROCMetric
+from chemprop.nn.message_passing.base import _MessagePassingBase
 from lightning.pytorch.core.mixins import HyperparametersMixin
 
 class LastAggregation(Aggregation):
@@ -74,3 +75,15 @@ class LinDimRed(Module, HasHParams, HyperparametersMixin):
 
     def forward(self, X):
         return self.linear_layer(X)
+    
+
+class _MessagePassingDictBase(_MessagePassingBase):
+    # TODO: change forward method
+    pass
+
+class BondMessagePassingDict(_MessagePassingDictBase):
+    pass
+
+'''
+Can I solve by customizing MPBase only and 
+'''
