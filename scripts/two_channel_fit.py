@@ -7,7 +7,7 @@ from chemprop.models import MPNN
 from chemprop.nn import MeanAggregation, BinaryClassificationFFN, BondMessagePassing
 from src.utils import load_known_rxns, construct_sparse_adj_mat, load_data_split, load_hps_from_scratch, save_json, append_hp_yaml, ensure_dirs
 from src.featurizer import RCVNReactionMolGraphFeaturizer, MultiHotAtomFeaturizer, MultiHotBondFeaturizer
-from src.nn import LastAggregation, DotSig, LinDimRed
+from src.nn import LastAggregation, DotSig, LinDimRed, AttentionAggregation, BondMessagePassingDict
 from src.model import MPNNDimRed
 from src.data import RxnRCDatapoint, RxnRCDataset
 from lightning import pytorch as pl
@@ -18,20 +18,26 @@ import torch
 import os
 from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score
 
-
 # Aggregation fcns
-agg_dict = {
+aggs = {
     'last':LastAggregation,
     'mean':MeanAggregation,
+    'attention':AttentionAggregation
 }
 
 # Prediction heads
-pred_head_dict = {
+pred_heads = {
     'binary':BinaryClassificationFFN,
     'dot_sig':DotSig
 }
 
-# For evaluation
+# Message passing
+message_passers = {
+    'bondwise':BondMessagePassing,
+    'bondwise_dict':BondMessagePassingDict
+}
+
+# Evaluation metrics
 scorers = {
     'f1': lambda y_true, y_pred: f1_score(y_true, y_pred),
     'precision': lambda y_true, y_pred: precision_score(y_true, y_pred),
@@ -120,9 +126,9 @@ data_loader_test = build_dataloader(dataset_test, shuffle=False)
 # Construct model
 print("Building model")
 dv, de = featurizer.shape
-mp = BondMessagePassing(d_v=dv, d_e=de, d_h=d_h_mpnn)
-pred_head = pred_head_dict[hps['pred_head']](input_dim=d_h_mpnn * 2)
-agg = agg_dict[hps['agg']]()
+mp = message_passers[hps['message_passing']](d_v=dv, d_e=de, d_h=d_h_mpnn)
+pred_head = pred_heads[hps['pred_head']](input_dim=d_h_mpnn * 2)
+agg = aggs[hps['agg']]()
 
 if hps['model'] == 'mpnn':
     model = MPNN(

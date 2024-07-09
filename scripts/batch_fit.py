@@ -24,7 +24,8 @@ fit_script = 'two_channel_fit.py'
 hps = {
     'n_epochs':[25],
     'pred_head':['dot_sig'], # 'binary' | 'dot_sig'
-    'agg':['last', 'mean'], # 'mean' | 'last'
+    'message_passing':['bondwise_dict'], # 'bondwise' | 'bondwise_dict'
+    'agg':['last', 'mean'], # 'mean' | 'last' | 'attention'
     'd_prot':[1280],
     'd_h_mpnn':[300, 50, 20],
     'neg_multiple':[1, 2], # x pos samples to draw negatives
