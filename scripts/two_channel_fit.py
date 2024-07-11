@@ -128,7 +128,7 @@ print("Building model")
 dv, de = featurizer.shape
 mp = message_passers[hps['message_passing']](d_v=dv, d_e=de, d_h=d_h_mpnn)
 pred_head = pred_heads[hps['pred_head']](input_dim=d_h_mpnn * 2)
-agg = aggs[hps['agg']]()
+agg = aggs[hps['agg']](input_dim=d_h_mpnn) if hps['agg'] == 'attention' else aggs[hps['agg']]()
 
 if hps['model'] == 'mpnn':
     model = MPNN(

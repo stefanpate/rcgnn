@@ -9,11 +9,11 @@ dataset_name = 'sprhea'
 toc = 'sp_folded_pt' # Name of file with protein id | features/labels | sequence
 n_splits = 3
 seed = 1234
-gs_name = 'fix_dot_sig_0' # Grid search name
+gs_name = 'attention_1' # Grid search name
 allocation = 'p30041'
 partition = 'gengpu'
 mem = '16G'
-time = '12' # Hours
+time = '13' # Hours
 sample_embed_type = 'esm'
 fit_script = 'two_channel_fit.py'
 # save_models = True # TODO mf backwards compatibility
@@ -25,9 +25,9 @@ hps = {
     'n_epochs':[25],
     'pred_head':['dot_sig'], # 'binary' | 'dot_sig'
     'message_passing':['bondwise_dict'], # 'bondwise' | 'bondwise_dict'
-    'agg':['last', 'mean'], # 'mean' | 'last' | 'attention'
+    'agg':['attention'], # 'mean' | 'last' | 'attention'
     'd_prot':[1280],
-    'd_h_mpnn':[300, 50, 20],
+    'd_h_mpnn':[10, 20, 50],
     'neg_multiple':[1, 2], # x pos samples to draw negatives
     'model':['mpnn_dim_red'] # 'mpnn' | 'mpnn_dim_red'
 }

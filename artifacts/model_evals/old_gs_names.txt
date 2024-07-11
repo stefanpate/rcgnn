@@ -9,3 +9,5 @@ mf_sp_ops_best_5fold
 mf_sp_ops_esm_pt_best_5fold
 two_channel_gs_0
 fix_dot_sig_0
+attention_0
+attention_1

@@ -67,7 +67,10 @@ class AttentionAggregation(Aggregation):
             activation
         )
 
-    def forward(self, H:Tensor) -> Tensor:
+    def forward(self, H:Tensor, batch:Tensor):
+        return self._forward(H)
+
+    def _forward(self, H:Tensor) -> Tensor:
        H = torch.transpose(H, 1, 2)
        S = self.ffn(H)
        A = torch.softmax(S, dim=1)
