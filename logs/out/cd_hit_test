@@ -1,10 +1,9 @@
 ================================================================
 Program: CD-HIT, V4.8.1 (+OpenMP), Apr 07 2021, 10:57:21
-Command: cd-hit -i ../data/new/new.fasta -o
-         ../data/new/new_80.fasta -c 0.8 -n 5 -M 16000 –d 0
-         -T 8
+Command: cd-hit -i ../data/new/new.fasta -o ../data/new/new_80
+         -c 0.8 -n 5 -M 16000 –d 0 -T 8
 
-Started: Thu Jul 11 11:51:41 2024
+Started: Thu Jul 11 13:43:58 2024
 ================================================================
                             Output                              
 ----------------------------------------------------------------

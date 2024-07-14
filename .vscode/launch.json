@@ -12,7 +12,7 @@
             "console": "integratedTerminal",
             "cwd": "${fileDirname}",
             "justMyCode": true,
-            "args": ["-d", "sprhea", "-t", "sp_folded_pt_test", "-e", "1234", "-n", "2", "-s", "0", "-p", "0", "-g", "test_foo", "-m", "esm"]
+            "args": ["-d", "sprhea", "-t", "sp_folded_pt_test", "-a", "homology", "-r", "0.8", "-e", "1234", "-n", "3", "-m", "1", "-s", "0", "-p", "0", "-g", "test_0"]
         },
         {
             "name": "Python: Current File",

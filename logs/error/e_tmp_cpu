@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "batch_fit.py", line 6, in <module>
+    from src.cross_validation import BatchGridSearch, BatchScriptParams
+ModuleNotFoundError: No module named 'src'

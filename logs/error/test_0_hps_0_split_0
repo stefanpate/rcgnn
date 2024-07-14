@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "two_channel_fit.py", line 5, in <module>
+    from chemprop.data import build_dataloader
+ModuleNotFoundError: No module named 'chemprop'

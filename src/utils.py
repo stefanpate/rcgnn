@@ -178,6 +178,8 @@ def load_design_matrix(ds_name, toc, embed_type, sample_idx, do_norm=True, scrat
 
         return X
 
+
+
 def split_data(
         X,
         y,
@@ -333,6 +335,7 @@ def load_data_split(
         
     return train_data, test_data
 
+
 def save_hps_to_scratch(hp, gs_name, hp_idx):
     with open(f"{scratch_dir}/{gs_name}_{hp_idx}_hp_idx.json", 'w') as f:
         json.dump(hp, f)
@@ -358,19 +361,33 @@ def load_known_rxns(path):
 
             enzymes.append(Enzyme(*e))
 
-
-        # enzymes = [Enzyme(*elt) for elt in v['enzymes']]
-
-        # # Convert EC number list to tuple
-        # for e in enzymes:
-        #     e.ec = tuple(e.ec)
-
         v['enzymes'] = enzymes
 
         db_entries = [DatabaseEntry(*elt) for elt in v['db_entries']]
         v['db_entries'] = db_entries
 
     return data
+
+def negative_sample_bipartite(n_samples, n_rows, n_cols, obs_pairs, seed):
+    '''
+    Samples n_samples negative pairs from an n_rows x n_cols adjacency matrix
+    given obs_pairs, positive pairs which should not be sampled
+    '''
+    rng = np.random.default_rng(seed)
+
+    if type(obs_pairs) == np.ndarray:
+        obs_pairs = [tuple(obs_pairs[i, :]) for i in range(obs_pairs.shape[0])]
+    
+    # Sample subset of unobserved pairs
+    unobs_pairs = []
+    while len(unobs_pairs) < n_samples:
+        i = rng.integers(0, n_rows)
+        j = rng.integers(0, n_cols)
+
+        if (i, j) not in obs_pairs:
+            unobs_pairs.append((i, j))
+
+    return np.array(unobs_pairs)
 
 def _negative_sample_bipartite(n_samples, n_rows, n_cols, obs_pairs, rng):
     '''
@@ -454,15 +471,3 @@ def read_last_ckpt(exp_dir):
     latest_chkpt = chkpts[-1][0]
 
     return f"{exp_dir}/{latest_version}/{latest_chkpt}"
-
-def append_hp_yaml(hps:dict, path:str):
-    # Load existing
-    with open(path, 'r') as file:
-        existing_data = yaml.safe_load(file)
-
-    # Append new data to existing data
-    existing_data.update(hps)
-
-    # Write combined data back to YAML file
-    with open(path, 'w') as file:
-        yaml.dump(existing_data, file)
