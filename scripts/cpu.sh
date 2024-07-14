@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH -A b1039
-#SBATCH -p b1039
+#SBATCH -A p30041
+#SBATCH -p normal
 #SBATCH -N 1
 #SBATCH -n 1
 #SBATCH --mem=10G

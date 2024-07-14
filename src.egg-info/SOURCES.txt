@@ -1,10 +1,16 @@
 README.md
 setup.py
 src/__init__.py
+src/atom_mapping.py
 src/collaborative_filtering.py
+src/cross_validation.py
+src/data.py
 src/evaluation.py
+src/featurizer.py
 src/loss_functions.py
+src/mf.py
 src/model.py
+src/nn.py
 src/utils.py
 src.egg-info/PKG-INFO
 src.egg-info/SOURCES.txt
