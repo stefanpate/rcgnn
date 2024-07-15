@@ -5,7 +5,7 @@ Fit "two channel" (reaction gnn + esm) model
 from chemprop.data import build_dataloader
 from chemprop.models import MPNN
 from chemprop.nn import MeanAggregation, BinaryClassificationFFN, BondMessagePassing
-from src.utils import load_known_rxns, load_data_split, load_hps_from_scratch, save_json, ensure_dirs
+from src.utils import load_known_rxns, save_json
 from src.featurizer import RCVNReactionMolGraphFeaturizer, MultiHotAtomFeaturizer, MultiHotBondFeaturizer
 from src.nn import LastAggregation, DotSig, LinDimRed, AttentionAggregation, BondMessagePassingDict
 from src.model import MPNNDimRed
@@ -18,9 +18,6 @@ import torch
 import os
 from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score
 from src.cross_validation import BatchGridSearch
-
-embed_type = 'esm'
-embed_dim = 1280
 
 # Aggregation fcns
 aggs = {
@@ -54,6 +51,7 @@ parser = ArgumentParser()
 parser.add_argument("-d", "--dataset-name", type=str)
 parser.add_argument("-t", "--toc", type=str)
 parser.add_argument("-a", "--split-strategy", type=str)
+parser.add_argument("-b", "--embed-type", type=str)
 parser.add_argument("-r", "--threshold", type=float)
 parser.add_argument("-e", "--seed", type=int)
 parser.add_argument("-n", "--n-splits", type=int)
@@ -67,6 +65,7 @@ args = parser.parse_args()
 dataset_name = args.dataset_name
 toc = args.toc
 split_strategy = args.split_strategy
+embed_type = args.embed_type
 split_sim_threshold = args.threshold
 seed = args.seed
 n_splits = args.n_splits
@@ -75,14 +74,6 @@ split_idx = args.split_idx
 hp_idx = args.hp_idx
 gs_name = args.gs_name
 
-print("Loading hyperparameters")
-hps = load_hps_from_scratch(gs_name, hp_idx) # Load hyperparams
-
-# Parse hyperparams
-d_prot = hps['d_prot'] # Protein embed dimension
-d_h_mpnn = hps['d_h_mpnn'] # Hidden layer of message passing
-n_epochs = hps['n_epochs']
-
 gs = BatchGridSearch(
     dataset_name=dataset_name,
     toc=toc,
@@ -90,9 +81,17 @@ gs = BatchGridSearch(
     gs_name=gs_name,
     n_splits=n_splits,
     split_strategy=split_strategy,
+    embed_type=embed_type,
     split_sim_threshold=split_sim_threshold,
     seed=seed,
 )
+
+print("Loading hyperparameters")
+hps = gs.load_hps_from_scratch(hp_idx) # Load hyperparams
+
+# Parse hyperparams
+d_h_mpnn = hps['d_h_mpnn'] # Hidden layer of message passing
+n_epochs = hps['n_epochs']
 
 # Results directories
 gs_dir = gs.res_dir
@@ -100,7 +99,7 @@ hp_split_dir = f"{hp_idx}_hp_idx_split_{split_idx+1}_of_{n_splits}"
 
 # Load data split
 print("Loading data")
-train_data, test_data = gs.load_data_split(split_idx=split_idx, embed_type=embed_type, embed_dim=embed_dim)
+train_data, test_data = gs.load_data_split(split_idx=split_idx)
 known_rxns = load_known_rxns(f"../data/{dataset_name}/known_rxns_{toc}.json") # Load reaction dataset
 
 # Init featurizer
@@ -132,6 +131,7 @@ data_loader_test = build_dataloader(dataset_test, shuffle=False)
 # Construct model
 print("Building model")
 dv, de = featurizer.shape
+embed_dim = gs.embed_dim
 mp = message_passers[hps['message_passing']](d_v=dv, d_e=de, d_h=d_h_mpnn)
 pred_head = pred_heads[hps['pred_head']](input_dim=d_h_mpnn * 2)
 agg = aggs[hps['agg']](input_dim=d_h_mpnn) if hps['agg'] == 'attention' else aggs[hps['agg']]()
@@ -144,7 +144,7 @@ if hps['model'] == 'mpnn':
     )
 elif hps['model'] == 'mpnn_dim_red':
     model = MPNNDimRed(
-        reduce_X_d=LinDimRed(d_in=d_prot, d_out=d_h_mpnn),
+        reduce_X_d=LinDimRed(d_in=embed_dim, d_out=d_h_mpnn),
         message_passing=mp,
         agg=agg,
         predictor=pred_head,

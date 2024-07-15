@@ -1,4 +1,0 @@
-Traceback (most recent call last):
-  File "/home/spn1560/hiec/scripts/batch_fit.py", line 6, in <module>
-    from src.cross_validation import BatchGridSearch, BatchScriptParams
-ModuleNotFoundError: No module named 'src'

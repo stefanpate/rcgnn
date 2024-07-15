@@ -6,3 +6,6 @@ __pycache__
 /artifacts/trained_models
 /data/sprhea/known_rxns_swissprot_enzymes_240310_v2.json
 /data/sprhea/known_rxns_240310_v2_folded_protein_transcript_homology.json
+data/sprhea/known_rxns_sp_folded_pth.json
+data/sprhea/sp_folded_pth.csv
+logs/

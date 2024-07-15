@@ -15,6 +15,9 @@ class BatchGridSearch:
     scratch_dir = "/scratch/spn1560"
     valid_split_strategies = ['random', 'homology']
     past_gs_names = "/home/spn1560/hiec/artifacts/past_grid_search_names.txt"
+    embed_dims = {
+        'esm': 1280
+    }
     
     def __init__(
             self,
@@ -24,12 +27,12 @@ class BatchGridSearch:
             gs_name:str,
             n_splits:int,
             split_strategy:str,
+            embed_type:str,
             seed:int,
             split_sim_threshold:float = 1.0,
             batch_script_params:BatchScriptParams | None = None,
             hps:dict | None = None,
-            res_dir:str = "/projects/p30041/spn1560/hiec/artifacts/model_evals/gnn"
-
+            res_dir:str = "/projects/p30041/spn1560/hiec/artifacts/model_evals/gnn",
             ) -> None:
         
         if split_strategy not in self.valid_split_strategies:
@@ -42,6 +45,8 @@ class BatchGridSearch:
         self.n_splits = n_splits
         self.split_strategy = split_strategy
         self.threshold = split_sim_threshold
+        self.embed_type = embed_type
+        self.embed_dim = self.embed_dims[embed_type]
         self.seed = seed
         self.hps = [{list(hps.keys())[i] : elt[i] for i in range(len(elt))} for elt in product(*hps.values())] if hps is not None else None
         self.rng = np.random.default_rng(seed)
@@ -51,24 +56,15 @@ class BatchGridSearch:
         self.split_guide_pref = f"{dataset_name}_{toc}_{split_strategy}_threshold_{int(self.threshold * 100)}_{n_splits}_splits_neg_multiple_{neg_multiple}_seed_{seed}"
         self.hp_scratch_pref  = f"{self.scratch_dir}/{gs_name}"
         self.res_dir = f"{res_dir}/{dataset_name}_{toc}_{gs_name}"
-        self.gs_params = "\n".join([f"n_splits: {self.n_splits}", f"split_strategy: {self.split_strategy}", f"neg_multiple: {self.neg_multiple}", f"seed: {self.seed}"])
+        self.gs_params = "\n".join([f"n_splits: {self.n_splits}", f"split_strategy: {self.split_strategy}", f"similarity_threshold: {self.threshold}", f"neg_multiple: {self.neg_multiple}", f"embed_type: {self.embed_type}", f"seed: {self.seed}"])
 
     def run(self):
-        self._check_gs_name()
-
-        if self.hps is None:
-            raise NameError("Cannot run grid search without provided hyperparameter dict.")
-        
-        X, y = self.sample_negatives()
-        _ = self.split_data(X, y)
-
-        self._save_hps_to_scratch()
-        self._set_up_res_dir()
+        self.setup()
 
         # Run shell scripts
         for hp_idx, _ in enumerate(self.hps):
             for split_idx in range(self.n_splits):
-                arg_str = f"-d {self.dataset_name} -t {self.toc} -a {self.split_strategy} -r {self.threshold} -e {self.seed} -n {self.n_splits} -m {self.neg_multiple} -s {split_idx} -p {hp_idx} -g {self.gs_name}"
+                arg_str = f"-d {self.dataset_name} -t {self.toc} -a {self.split_strategy} -r {self.threshold} -e {self.seed} -n {self.n_splits} -m {self.neg_multiple} -b {self.embed_type} -s {split_idx} -p {hp_idx} -g {self.gs_name}"
                 job_name = f"{self.gs_name}_hps_{hp_idx}_split_{split_idx}"
         
                 shell_script = write_shell_script(
@@ -82,11 +78,27 @@ class BatchGridSearch:
 
                 subprocess.run(["sbatch", "batch.sh"])
 
+    def setup(self):
+        self._check_gs_name()
+
+        if self.hps is None:
+            raise NameError("Cannot run grid search without provided hyperparameter dict.")
+        
+        if self._check_for_split_guide():
+            pass
+        else:
+            X, y = self.sample_negatives()
+            _ = self.split_data(X, y)
+
+        for i in range(self.n_splits):
+            self.load_data_split(i, setup=True)
+        
+        self._save_hps_to_scratch()
+        self._set_up_res_dir()
+    
     def split_data(self, X, y, do_save=True):
-        # Check if data split files already there
-        split_guide_path =f"{self.scratch_dir}/{self.split_guide_pref}.csv" 
-        if os.path.exists(split_guide_path):
-            print(f"Found existing data split guide: {self.split_guide_pref}")
+        split_guide_path =f"{self.scratch_dir}/{self.split_guide_pref}.csv"
+        if self._check_for_split_guide():      
             split_guide = pd.read_csv(split_guide_path, sep='\t')
             return split_guide
         
@@ -184,7 +196,7 @@ class BatchGridSearch:
             i = self.rng.integers(0, n_rows)
             j = self.rng.integers(0, n_cols)
 
-            if (i, j) not in self.X_pos:
+            if (i, j) not in self.X_pos and (i, j) not in X_neg:
                 X_neg.append((i, j))
 
         # Concat full dataset
@@ -193,31 +205,33 @@ class BatchGridSearch:
 
         return X, y
     
-    def load_data_split(self, split_idx, embed_type, embed_dim):
+    def load_data_split(self, split_idx, setup=False):
         '''
         Args
         ----
         embed_type:str
         split_idx:int
         embed_dim:int
+        setup:bool - Whether or not to load embeds found in scratch
 
         Returns
         -------
-
+        (train_data, test_data) | (None, None)
         '''
-        fns = [f"{self.split_guide_pref}_{split_idx}_split_idx" + suff for suff in ['_train.npy', '_test.npy']]
-        
-        if all([os.path.exists(f"{self.scratch_dir}/{fn}") for fn in fns]):
+        fns = [f"{self.split_guide_pref}_{split_idx}_split_idx_{self.embed_type}" + suff for suff in ['_train.npy', '_test.npy']]
+        found = all([os.path.exists(f"{self.scratch_dir}/{fn}") for fn in fns])
+                
+        if found and setup:
             print(f"Found existing data splits for {self.split_guide_pref}, {split_idx}")
+            return None, None
+        elif found:
             train_data, test_data = [np.load(f"{self.scratch_dir}/{fn}") for fn in fns]
-
         else:
-
             split_guide = pd.read_csv(f"{self.scratch_dir}/{self.split_guide_pref}.csv", sep='\t')
             train_split =  split_guide.loc[(split_guide['train/test'] == 'train') & (split_guide['split_idx'] == split_idx)]
             test_split =  split_guide.loc[(split_guide['train/test'] == 'test') & (split_guide['split_idx'] == split_idx)]
 
-            tp = np.dtype([('sample_embed', np.float32, (embed_dim,)), ('feature', '<U100'), ('y', int)])
+            tp = np.dtype([('sample_embed', np.float32, (self.embed_dim,)), ('feature', '<U100'), ('y', int)])
             tmp = []
             for split in [train_split, test_split]:
                 samples = []
@@ -225,7 +239,7 @@ class BatchGridSearch:
                 y = [elt for elt in split.loc[:, 'y']]
                 for sample_idx in split.loc[:, 'X1']:
                     sample_name = self.idx_sample[sample_idx]
-                    samples.append(load_embed(f"{self.data_dir}/{self.dataset_name}/{embed_type}/{sample_name}.pt", embed_key=33)[1])
+                    samples.append(load_embed(f"{self.data_dir}/{self.dataset_name}/{self.embed_type}/{sample_name}.pt", embed_key=33)[1])
 
                 for feature_idx in split.loc[:, 'X2']:
                     features.append(self.idx_feature[feature_idx])
@@ -299,3 +313,11 @@ class BatchGridSearch:
 
         with open(self.past_gs_names, 'w') as f:
             f.write('\n'.join(elt for elt in old_gs_names))
+
+    def _check_for_split_guide(self):
+        split_guide_path =f"{self.scratch_dir}/{self.split_guide_pref}.csv" 
+        if os.path.exists(split_guide_path):
+            print(f"Found existing data split guide: {self.split_guide_pref}")
+            return True
+        else:
+            return False

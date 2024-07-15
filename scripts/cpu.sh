@@ -16,3 +16,4 @@ module load python/anaconda3.6
 module load gcc/9.2.0
 source activate hiec
 python -u batch_fit.py
+

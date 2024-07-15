@@ -1,2 +1,0 @@
-/var/spool/slurmd/job9502118/slurm_script: line 18: 250033 Killed                  python -u mf_fit.py -d sp_ops -e 1234 -n 5 -s 1 -p 0 -g mf_sp_ops_cv_best_0 --save-gs-models
-slurmstepd: error: Detected 1 oom_kill event in StepId=9502118.batch. Some of the step tasks have been OOM Killed.
