@@ -11,14 +11,7 @@ two_channel_gs_0
 fix_dot_sig_0
 attention_0
 attention_1
-test
+attention_homology_80_0
 test_0
-test_1
 test_2
 test_3
-test_4
-test_5
-test_6
-test_7
-test_8
-test_9

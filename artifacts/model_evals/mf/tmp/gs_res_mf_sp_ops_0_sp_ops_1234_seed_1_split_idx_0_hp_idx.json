@@ -1,1 +1,0 @@
-{"train_loss": 1.8846969017838762, "val_loss": 1.8755803090500665, "train_loss_curve": [1.895488214093627], "val_loss_curve": [1.8783038184567764], "fit_time": 1.8343973122537136, "hp_idx": 0, "split_idx": 1, "seed": 1234, "lr": 0.005, "max_epochs": 2, "batch_size": 10, "optimizer__weight_decay": 0.0001, "module__n_factors": 20, "module__scl_embeds": false}

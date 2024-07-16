@@ -3,8 +3,8 @@
 #SBATCH -p normal
 #SBATCH -N 1
 #SBATCH -n 1
-#SBATCH --mem=10G
-#SBATCH -t 1:00:00
+#SBATCH --mem=4G
+#SBATCH -t 2:00:00
 #SBATCH --job-name="batch_fit"
 #SBATCH --output=../logs/out/batch_fit
 #SBATCH --error=../logs/error/e_tmp_cpu

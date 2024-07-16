@@ -1,2 +1,0 @@
-hp_idx	mean_train_loss	std_train_loss	mean_val_loss	std_val_loss	mean_fit_time	train_loss_curve	val_loss_curve	seed	lr	max_epochs	batch_size	optimizer__weight_decay	module__n_factors	module__scl_embeds
-0	1.9079542752571552	0.02123657398567049	1.8461190354140784	0.04872649736561676	1.85627381503582	[1.937239483996775]	[1.87548844933093]	1234	0.005	2	10	0.0001	20	False

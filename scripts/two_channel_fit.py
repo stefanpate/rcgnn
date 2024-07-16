@@ -5,19 +5,22 @@ Fit "two channel" (reaction gnn + esm) model
 from chemprop.data import build_dataloader
 from chemprop.models import MPNN
 from chemprop.nn import MeanAggregation, BinaryClassificationFFN, BondMessagePassing
+
 from src.utils import load_known_rxns, save_json
-from src.featurizer import RCVNReactionMolGraphFeaturizer, MultiHotAtomFeaturizer, MultiHotBondFeaturizer
+from src.featurizer import SimpleReactionMolGraphFeaturizer, RCVNReactionMolGraphFeaturizer, MultiHotAtomFeaturizer, MultiHotBondFeaturizer
 from src.nn import LastAggregation, DotSig, LinDimRed, AttentionAggregation, BondMessagePassingDict
 from src.model import MPNNDimRed
 from src.data import RxnRCDatapoint, RxnRCDataset
+from src.cross_validation import BatchGridSearch
+
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import CSVLogger
+
 import numpy as np
 from argparse import ArgumentParser
 import torch
 import os
 from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score
-from src.cross_validation import BatchGridSearch
 
 # Aggregation fcns
 aggs = {
@@ -44,6 +47,13 @@ scorers = {
     'precision': lambda y_true, y_pred: precision_score(y_true, y_pred),
     'recall': lambda y_true, y_pred: recall_score(y_true, y_pred),
     'accuracy': accuracy_score
+}
+
+# Featurizers +
+featurizers = {
+    'rxn_simple': (RxnRCDatapoint.from_smi, RxnRCDataset, SimpleReactionMolGraphFeaturizer),
+    'rxn_rc': (RxnRCDatapoint.from_smi, RxnRCDataset, RCVNReactionMolGraphFeaturizer),
+    'mfp':(None, None, None) # TODO: write morgan fingerprint
 }
 
 # Parse CL args
@@ -89,10 +99,6 @@ gs = BatchGridSearch(
 print("Loading hyperparameters")
 hps = gs.load_hps_from_scratch(hp_idx) # Load hyperparams
 
-# Parse hyperparams
-d_h_mpnn = hps['d_h_mpnn'] # Hidden layer of message passing
-n_epochs = hps['n_epochs']
-
 # Results directories
 gs_dir = gs.res_dir
 hp_split_dir = f"{hp_idx}_hp_idx_split_{split_idx+1}_of_{n_splits}"
@@ -103,10 +109,15 @@ train_data, test_data = gs.load_data_split(split_idx=split_idx)
 known_rxns = load_known_rxns(f"../data/{dataset_name}/known_rxns_{toc}.json") # Load reaction dataset
 
 # Init featurizer
-featurizer = RCVNReactionMolGraphFeaturizer(
-    atom_featurizer=MultiHotAtomFeaturizer.no_stereo(),
-    bond_featurizer=MultiHotBondFeaturizer()
-)
+datapoint_from_smi, dataset_base, featurizer_base = featurizers[hps['featurizer']]
+if hps['featurizer'] == 'mfp':
+    # TODO: define morgan stuff
+    pass
+else:
+    featurizer = featurizer_base(
+        atom_featurizer=MultiHotAtomFeaturizer.no_stereo(),
+        bond_featurizer=MultiHotBondFeaturizer()
+    )
 
 # Prep data
 print("Constructing datasets & dataloaders")
@@ -114,22 +125,23 @@ datapoints_train = []
 for row in train_data:
     rxn = known_rxns[row['feature']]
     y = np.array([row['y']])
-    datapoints_train.append(RxnRCDatapoint.from_smi(rxn, y=y, x_d=row['sample_embed']))
+    datapoints_train.append(datapoint_from_smi(rxn, y=y, x_d=row['sample_embed']))
 
 datapoints_test = []
 for row in test_data:
     rxn = known_rxns[row['feature']]
     y = np.array([row['y']])
-    datapoints_test.append(RxnRCDatapoint.from_smi(rxn, y=y, x_d=row['sample_embed']))
+    datapoints_test.append(datapoint_from_smi(rxn, y=y, x_d=row['sample_embed']))
 
-dataset_train = RxnRCDataset(datapoints_train, featurizer=featurizer)
-dataset_test = RxnRCDataset(datapoints_test, featurizer=featurizer)
+dataset_train = dataset_base(datapoints_train, featurizer=featurizer)
+dataset_test = dataset_base(datapoints_test, featurizer=featurizer)
 
 data_loader_train = build_dataloader(dataset_train, shuffle=False)
 data_loader_test = build_dataloader(dataset_test, shuffle=False)
 
 # Construct model
 print("Building model")
+d_h_mpnn = hps['d_h_mpnn'] # Hidden layer of message passing
 dv, de = featurizer.shape
 embed_dim = gs.embed_dim
 mp = message_passers[hps['message_passing']](d_v=dv, d_e=de, d_h=d_h_mpnn)
@@ -151,6 +163,7 @@ elif hps['model'] == 'mpnn_dim_red':
     )
 
 # Make trainer
+n_epochs = hps['n_epochs']
 logger = CSVLogger(gs_dir, name=hp_split_dir)
 trainer = pl.Trainer(
     enable_checkpointing=True,

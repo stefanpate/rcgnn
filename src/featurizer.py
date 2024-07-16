@@ -389,42 +389,48 @@ class SimpleMoleculeMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
         return MolGraph(V, E, edge_index, rev_edge_index)
     
 @dataclass
-class RCVNReactionMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[dict]):
-    """A :class:`RCVNReactionMolGraphFeaturizer` attaches reaction center atoms to virtual node
-
-    Parameters
-    ----------
-    atom_featurizer : AtomFeaturizer, default=MultiHotAtomFeaturizer()
-        the featurizer with which to calculate feature representations of the atoms in a given
-        molecule
-    bond_featurizer : BondFeaturizer, default=MultiHotBondFeaturizer()
-        the featurizer with which to calculate feature representations of the bonds in a given
-        molecule
-    extra_atom_fdim : int, default=0
-        the dimension of the additional features that will be concatenated onto the calculated
-        features of each atom
-    extra_bond_fdim : int, default=0
-        the dimension of the additional features that will be concatenated onto the calculated
-        features of each bond
-    """
-
+class SimpleReactionMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[dict]):
     def __post_init__(self):
         super().__post_init__()
 
     def __call__(
         self,
         rxn: Tuple[List[Mol], List[Mol], List[list]],
-        atom_features_extra: np.ndarray | None = None,
+        atom_features_extra: np.ndarray | None = None, # TODO: make it so dataloader doesn't assume these args and remove them
         bond_features_extra: np.ndarray | None = None,
     ) -> MolGraph:
         
-        reactants, products, rcs = rxn
+        reactants, products, _ = rxn
         n_atoms_mol = [mol.GetNumAtoms() for mol in reactants + products]
         cumsum_atoms = [sum(n_atoms_mol[:i]) for i in range(len(n_atoms_mol))]
         n_atoms = sum(n_atoms_mol)
         n_bonds = sum([mol.GetNumBonds() for mol in reactants + products])
-        n_virtual_edges = sum(len(elt) for elt in rcs)
+        E = np.empty((2 * (n_bonds), self.bond_fdim))
 
+        V, E, edge_index, _ = self._pre_molgraph(
+            reactants,
+            products,
+            E,
+            n_atoms,
+            n_atoms_mol,
+            cumsum_atoms
+        )
+
+        rev_edge_index = np.arange(len(E)).reshape(-1, 2)[:, ::-1].ravel()
+        edge_index = np.array(edge_index, int)
+
+        return MolGraph(V, E, edge_index, rev_edge_index)
+    
+    def _pre_molgraph(
+            self,
+            reactants,
+            products,
+            E,
+            n_atoms,
+            n_atoms_mol,
+            cumsum_atoms,
+            ):
+        
         if n_atoms == 0:
             V = np.zeros((1, self.atom_fdim), dtype=np.single)
         else:
@@ -436,7 +442,6 @@ class RCVNReactionMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[d
                     V.append(self.atom_featurizer(a))
             V = np.array(V, dtype=np.single)
         
-        E = np.empty((2 * (n_bonds + n_virtual_edges), self.bond_fdim))
         edge_index = [[], []]
 
         edge_i = 0
@@ -458,6 +463,66 @@ class RCVNReactionMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[d
                     edge_index[1].extend([v, u])
                     edge_i += 2
 
+        return V, E, edge_index, edge_i
+
+@dataclass
+class RCVNReactionMolGraphFeaturizer(SimpleReactionMolGraphFeaturizer):
+    def __post_init__(self):
+        super().__post_init__()
+
+    def __call__(
+        self,
+        rxn: Tuple[List[Mol], List[Mol], List[list]],
+        atom_features_extra: np.ndarray | None = None, # TODO: make it so dataloader doesn't assume these args and remove them
+        bond_features_extra: np.ndarray | None = None,
+    ) -> MolGraph:
+        
+        reactants, products, rcs = rxn
+        n_atoms_mol = [mol.GetNumAtoms() for mol in reactants + products]
+        cumsum_atoms = [sum(n_atoms_mol[:i]) for i in range(len(n_atoms_mol))]
+        n_atoms = sum(n_atoms_mol)
+        n_bonds = sum([mol.GetNumBonds() for mol in reactants + products])
+        n_virtual_edges = sum(len(elt) for elt in rcs)
+        E = np.empty((2 * (n_bonds + n_virtual_edges), self.bond_fdim))
+
+
+        V, E, edge_index, edge_i = self._pre_molgraph(
+            reactants,
+            products,
+            E,
+            n_atoms,
+            n_atoms_mol,
+            cumsum_atoms
+        )
+
+        V, E, edge_index = self._append_vn(
+            reactants,
+            products,
+            V,
+            E,
+            edge_index,
+            rcs,
+            cumsum_atoms,
+            edge_i,
+        )
+
+        rev_edge_index = np.arange(len(E)).reshape(-1, 2)[:, ::-1].ravel()
+        edge_index = np.array(edge_index, int)
+
+        return MolGraph(V, E, edge_index, rev_edge_index)
+    
+    def _append_vn(
+            self,
+            reactants,
+            products,
+            V,
+            E,
+            edge_index,
+            rcs,
+            cumsum_atoms,
+            edge_i
+            ):
+        
         # Add virtual node to node feat matrix
         V = np.vstack((V, np.zeros(shape=(1, self.atom_fdim))))
         
@@ -472,7 +537,4 @@ class RCVNReactionMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer[d
                 edge_index[1].extend([v, u])
                 edge_i += 2
 
-        rev_edge_index = np.arange(len(E)).reshape(-1, 2)[:, ::-1].ravel()
-        edge_index = np.array(edge_index, int)
-
-        return MolGraph(V, E, edge_index, rev_edge_index)
+        return V, E, edge_index

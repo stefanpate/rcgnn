@@ -2,14 +2,14 @@ from src.cross_validation import BatchGridSearch, BatchScriptParams
 
 # Args
 dataset_name = 'sprhea'
-toc = 'sp_folded_pt_test' # Name of file with protein id | features/labels | sequence
+toc = 'sp_folded_pt_20p' # Name of file with protein id | features/labels | sequence
 n_splits = 2
 seed = 1234
-gs_name = 'test_9' # Grid search name
+gs_name = 'test_3' # Grid search name
 allocation = 'p30041'
 partition = 'gengpu'
-mem = '16G' # 16G
-time = '3' # Hours 13
+mem = '8G' # 12G
+time = '1' # Hours 12
 fit_script = 'two_channel_fit.py'
 neg_multiple = 1
 split_strategy = 'homology'
@@ -21,12 +21,13 @@ embed_type = 'esm'
 
 # RC GNN
 hps = {
-    'n_epochs':[25],
+    'n_epochs':[10],
     'pred_head':['dot_sig'], # 'binary' | 'dot_sig'
-    'message_passing':['bondwise_dict'], # 'bondwise' | 'bondwise_dict'
-    'agg':['attention'], # 'mean' | 'last' | 'attention'
+    'message_passing':['bondwise'], # 'bondwise' | 'bondwise_dict'
+    'agg':['mean'], # 'mean' | 'last' | 'attention'
     'd_h_mpnn':[50],
-    'model':['mpnn_dim_red'] # 'mpnn' | 'mpnn_dim_red'
+    'model':['mpnn_dim_red'], # 'mpnn' | 'mpnn_dim_red'
+    'featurizer':['rxn_rc'] # 'rxn_simple' | 'rxn_rc' | 'mfp'
 }
 
 gs = BatchGridSearch(

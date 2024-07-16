@@ -1,2 +1,0 @@
-	hp_no	mean_train_loss	std_train_loss	mean_val_loss	std_test_loss	mean_fit_time	lr	max_epochs	batch_size	optimizer__weight_decay	module__n_factors	module__scl_embeds
-0	0	0.2641358687776551	0.00644390531317893	1.0135889757807353	0.11342030778892469	77.04770996545751	0.005	100	1	0.001	10	False
