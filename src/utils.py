@@ -228,26 +228,49 @@ def write_shell_script(
     '''
     
     # should_save = lambda x: " --save-gs-models" if x else '' # TODO backwards compat w/ MF
+
+    if partition == 'gengpu':
+        shell_script = f"""#!/bin/bash
+        #SBATCH -A {allocation}
+        #SBATCH -p {partition}
+        #SBATCH --gres=gpu:a100:1
+        #SBATCH -N 1
+        #SBATCH -n 1
+        #SBATCH --mem={mem}
+        #SBATCH -t {time}:00:00
+        #SBATCH --job-name={job_name}
+        #SBATCH --output=../logs/out/{job_name}
+        #SBATCH --error=../logs/error/{job_name}
+        #SBATCH --mail-type=END
+        #SBATCH --mail-type=FAIL
+        #SBATCH --mail-user=stefan.pate@northwestern.edu
+        ulimit -c 0
+        module load python-miniconda3/4.12.0
+        module load gcc/9.2.0
+        source activate hiec
+        python -u {file} {arg_str}
+        """
     
-    shell_script = f"""#!/bin/bash
-    #SBATCH -A {allocation}
-    #SBATCH -p {partition}
-    #SBATCH -N 1
-    #SBATCH -n 1
-    #SBATCH --mem={mem}
-    #SBATCH -t {time}:00:00
-    #SBATCH --job-name={job_name}
-    #SBATCH --output=../logs/out/{job_name}
-    #SBATCH --error=../logs/error/{job_name}
-    #SBATCH --mail-type=END
-    #SBATCH --mail-type=FAIL
-    #SBATCH --mail-user=stefan.pate@northwestern.edu
-    ulimit -c 0
-    module load python/anaconda3.6
-    module load gcc/9.2.0
-    source activate hiec
-    python -u {file} {arg_str}
-    """
+    else:
+        shell_script = f"""#!/bin/bash
+        #SBATCH -A {allocation}
+        #SBATCH -p {partition}
+        #SBATCH -N 1
+        #SBATCH -n 1
+        #SBATCH --mem={mem}
+        #SBATCH -t {time}:00:00
+        #SBATCH --job-name={job_name}
+        #SBATCH --output=../logs/out/{job_name}
+        #SBATCH --error=../logs/error/{job_name}
+        #SBATCH --mail-type=END
+        #SBATCH --mail-type=FAIL
+        #SBATCH --mail-user=stefan.pate@northwestern.edu
+        ulimit -c 0
+        module load python-miniconda3/4.12.0
+        module load gcc/9.2.0
+        source activate hiec
+        python -u {file} {arg_str}
+        """
     shell_script = shell_script.replace("    ", "") # Remove tabs
     return shell_script
 
