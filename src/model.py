@@ -1,8 +1,12 @@
 from chemprop.models import MPNN
 import torch
+from torch.optim import Adam
 from torch import Tensor
+from chemprop.schedulers import NoamLR
 from chemprop.data import BatchMolGraph
-from chemprop.nn import MessagePassing, Aggregation, Predictor
+from chemprop.nn import MessagePassing, Aggregation, Predictor, LossFunction
+from chemprop.nn.ffn import MLP
+import lightning as L
 
 class MPNNDimRed(MPNN):
     def __init__(
@@ -41,3 +45,73 @@ class MPNNDimRed(MPNN):
         H = self.bn(H)
 
         return H if X_d is None else torch.cat((H, self.reduce_X_d(X_d)), 1)
+    
+class TwoChannelFFN(L.LightningModule):
+    def __init__(
+            self,
+            d_rxn: int,
+            d_prot: int,
+            d_h: int,
+            encoder_depth: int,
+            predictor: Predictor,
+            warmup_epochs: int = 2,
+            init_lr: float = 1e-4,
+            max_lr: float = 1e-3,
+            final_lr: float = 1e-4,
+            ) -> None:
+        super().__init__()
+        self.reaction_encoder = MLP.build(
+            input_dim=d_rxn,
+            output_dim=d_h,
+            hidden_dim=d_h,
+            n_layers=encoder_depth,
+            )
+        self.protein_encoder = torch.nn.Linear(in_features=d_prot, out_features=d_h)
+        self.predictor = predictor
+        self.warmup_epochs = warmup_epochs
+        self.init_lr = init_lr
+        self.max_lr = max_lr
+        self.final_lr = final_lr
+
+    @property
+    def criterion(self) -> LossFunction:
+        return self.predictor.criterion
+
+    def training_step(self, batch, batch_idx):
+        R, Y, P, weights, gt_mask, lt_mask = batch # reaction embeds, targets, protein embeds
+        R = self.reaction_encoder(R)
+        P = self.protein_encoder(P)
+        Y_hat = self.predictor(torch.cat((R, P), dim=1))
+        mask = Y_hat.isfinite()
+        loss = self.criterion(Y_hat, Y, mask, weights, gt_mask, lt_mask)
+        self.log("train_loss", loss, prog_bar=True)
+        return loss
+    
+    def forward(self, R, P):
+        R = self.reaction_encoder(R)
+        P = self.protein_encoder(P)
+        Y_hat = self.predictor(torch.cat((R, P), dim=1))
+        return Y_hat
+    
+    def predict_step(self, batch, batch_idx: int, dataloader_idx: int = 0) -> Tensor:
+        R, _, P, *_ = batch
+        return self(R, P)
+    
+    def configure_optimizers(self):
+        opt = Adam(self.parameters(), self.init_lr)
+
+        lr_sched = NoamLR(
+            opt,
+            self.warmup_epochs,
+            self.trainer.max_epochs,
+            self.trainer.estimated_stepping_batches // self.trainer.max_epochs,
+            self.init_lr,
+            self.max_lr,
+            self.final_lr,
+        )
+        lr_sched_config = {
+            "scheduler": lr_sched,
+            "interval": "step" if isinstance(lr_sched, NoamLR) else "batch",
+        }
+
+        return {"optimizer": opt, "lr_scheduler": lr_sched_config}

@@ -15,3 +15,5 @@ attention_homology_80_0
 test_0
 test_2
 test_3
+mean_agg_w_wo_vn_0
+vn_agg_depths_homology_80_0

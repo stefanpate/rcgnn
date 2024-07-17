@@ -7,10 +7,10 @@ from chemprop.models import MPNN
 from chemprop.nn import MeanAggregation, BinaryClassificationFFN, BondMessagePassing
 
 from src.utils import load_known_rxns, save_json
-from src.featurizer import SimpleReactionMolGraphFeaturizer, RCVNReactionMolGraphFeaturizer, MultiHotAtomFeaturizer, MultiHotBondFeaturizer
+from src.featurizer import SimpleReactionMolGraphFeaturizer, RCVNReactionMolGraphFeaturizer, MultiHotAtomFeaturizer, MultiHotBondFeaturizer, ReactionMorganFeaturizer
 from src.nn import LastAggregation, DotSig, LinDimRed, AttentionAggregation, BondMessagePassingDict
-from src.model import MPNNDimRed
-from src.data import RxnRCDatapoint, RxnRCDataset
+from src.model import MPNNDimRed, TwoChannelFFN
+from src.data import RxnRCDatapoint, RxnRCDataset, MFPDataset, mfp_build_dataloader
 from src.cross_validation import BatchGridSearch
 
 from lightning import pytorch as pl
@@ -51,9 +51,9 @@ scorers = {
 
 # Featurizers +
 featurizers = {
-    'rxn_simple': (RxnRCDatapoint.from_smi, RxnRCDataset, SimpleReactionMolGraphFeaturizer),
-    'rxn_rc': (RxnRCDatapoint.from_smi, RxnRCDataset, RCVNReactionMolGraphFeaturizer),
-    'mfp':(None, None, None) # TODO: write morgan fingerprint
+    'rxn_simple': (RxnRCDataset, SimpleReactionMolGraphFeaturizer, build_dataloader),
+    'rxn_rc': (RxnRCDataset, RCVNReactionMolGraphFeaturizer, build_dataloader),
+    'mfp': (MFPDataset, ReactionMorganFeaturizer, mfp_build_dataloader)
 }
 
 # Parse CL args
@@ -109,44 +109,52 @@ train_data, test_data = gs.load_data_split(split_idx=split_idx)
 known_rxns = load_known_rxns(f"../data/{dataset_name}/known_rxns_{toc}.json") # Load reaction dataset
 
 # Init featurizer
-datapoint_from_smi, dataset_base, featurizer_base = featurizers[hps['featurizer']]
+mfp_length = 2**10
+mfp_radius = 2
+datapoint_from_smi = RxnRCDatapoint.from_smi
+dataset_base, featurizer_base, generate_dataloader = featurizers[hps['featurizer']]
 if hps['featurizer'] == 'mfp':
-    # TODO: define morgan stuff
-    pass
+    featurizer = featurizer_base(radius=mfp_radius, length=mfp_length)
 else:
     featurizer = featurizer_base(
         atom_featurizer=MultiHotAtomFeaturizer.no_stereo(),
         bond_featurizer=MultiHotBondFeaturizer()
     )
+    dv, de = featurizer.shape
 
 # Prep data
 print("Constructing datasets & dataloaders")
 datapoints_train = []
 for row in train_data:
     rxn = known_rxns[row['feature']]
-    y = np.array([row['y']])
+    y = np.array([row['y']]).astype(np.float32)
     datapoints_train.append(datapoint_from_smi(rxn, y=y, x_d=row['sample_embed']))
 
 datapoints_test = []
 for row in test_data:
     rxn = known_rxns[row['feature']]
-    y = np.array([row['y']])
+    y = np.array([row['y']]).astype(np.float32)
     datapoints_test.append(datapoint_from_smi(rxn, y=y, x_d=row['sample_embed']))
 
 dataset_train = dataset_base(datapoints_train, featurizer=featurizer)
 dataset_test = dataset_base(datapoints_test, featurizer=featurizer)
 
-data_loader_train = build_dataloader(dataset_train, shuffle=False)
-data_loader_test = build_dataloader(dataset_test, shuffle=False)
+data_loader_train = generate_dataloader(dataset_train, shuffle=False)
+data_loader_test = generate_dataloader(dataset_test, shuffle=False)
 
 # Construct model
 print("Building model")
-d_h_mpnn = hps['d_h_mpnn'] # Hidden layer of message passing
-dv, de = featurizer.shape
+d_h_encoder = hps['d_h_encoder'] # Hidden layer of message passing
 embed_dim = gs.embed_dim
-mp = message_passers[hps['message_passing']](d_v=dv, d_e=de, d_h=d_h_mpnn)
-pred_head = pred_heads[hps['pred_head']](input_dim=d_h_mpnn * 2)
-agg = aggs[hps['agg']](input_dim=d_h_mpnn) if hps['agg'] == 'attention' else aggs[hps['agg']]()
+encoder_depth = hps['encoder_depth']
+
+if hps['message_passing']:
+    mp = message_passers[hps['message_passing']](d_v=dv, d_e=de, d_h=d_h_encoder, depth=encoder_depth)
+
+if hps['agg']:
+    agg = aggs[hps['agg']](input_dim=d_h_encoder) if hps['agg'] == 'attention' else aggs[hps['agg']]()
+
+pred_head = pred_heads[hps['pred_head']](input_dim=d_h_encoder * 2)
 
 if hps['model'] == 'mpnn':
     model = MPNN(
@@ -156,9 +164,17 @@ if hps['model'] == 'mpnn':
     )
 elif hps['model'] == 'mpnn_dim_red':
     model = MPNNDimRed(
-        reduce_X_d=LinDimRed(d_in=embed_dim, d_out=d_h_mpnn),
+        reduce_X_d=LinDimRed(d_in=embed_dim, d_out=d_h_encoder),
         message_passing=mp,
         agg=agg,
+        predictor=pred_head,
+    )
+elif hps['model'] == 'ffn':
+    model = TwoChannelFFN(
+        d_rxn=mfp_length,
+        d_prot=embed_dim,
+        d_h=d_h_encoder,
+        encoder_depth=encoder_depth,
         predictor=pred_head,
     )
 
