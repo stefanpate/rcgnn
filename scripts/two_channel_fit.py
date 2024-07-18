@@ -9,7 +9,7 @@ from chemprop.nn import MeanAggregation, BinaryClassificationFFN, BondMessagePas
 from src.utils import load_known_rxns, save_json
 from src.featurizer import SimpleReactionMolGraphFeaturizer, RCVNReactionMolGraphFeaturizer, MultiHotAtomFeaturizer, MultiHotBondFeaturizer, ReactionMorganFeaturizer
 from src.nn import LastAggregation, DotSig, LinDimRed, AttentionAggregation, BondMessagePassingDict
-from src.model import MPNNDimRed, TwoChannelFFN
+from src.model import MPNNDimRed, TwoChannelFFN, TwoChannelLinear
 from src.data import RxnRCDatapoint, RxnRCDataset, MFPDataset, mfp_build_dataloader
 from src.cross_validation import BatchGridSearch
 
@@ -175,6 +175,13 @@ elif hps['model'] == 'ffn':
         d_prot=embed_dim,
         d_h=d_h_encoder,
         encoder_depth=encoder_depth,
+        predictor=pred_head,
+    )
+elif hps['model'] == 'linear':
+    model = TwoChannelLinear(
+        d_rxn=mfp_length,
+        d_prot=embed_dim,
+        d_h=d_h_encoder,
         predictor=pred_head,
     )
 

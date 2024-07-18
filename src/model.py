@@ -7,6 +7,7 @@ from chemprop.data import BatchMolGraph
 from chemprop.nn import MessagePassing, Aggregation, Predictor, LossFunction
 from chemprop.nn.ffn import MLP
 import lightning as L
+from abc import ABC, abstractmethod
 
 class MPNNDimRed(MPNN):
     def __init__(
@@ -46,26 +47,20 @@ class MPNNDimRed(MPNN):
 
         return H if X_d is None else torch.cat((H, self.reduce_X_d(X_d)), 1)
     
-class TwoChannelFFN(L.LightningModule):
+class TwoChannelLinear(L.LightningModule):
     def __init__(
             self,
             d_rxn: int,
             d_prot: int,
             d_h: int,
-            encoder_depth: int,
             predictor: Predictor,
             warmup_epochs: int = 2,
             init_lr: float = 1e-4,
             max_lr: float = 1e-3,
             final_lr: float = 1e-4,
-            ) -> None:
+            ):
         super().__init__()
-        self.reaction_encoder = MLP.build(
-            input_dim=d_rxn,
-            output_dim=d_h,
-            hidden_dim=d_h,
-            n_layers=encoder_depth,
-            )
+        self.reaction_encoder = torch.nn.Linear(in_features=d_rxn, out_features=d_h)
         self.protein_encoder = torch.nn.Linear(in_features=d_prot, out_features=d_h)
         self.predictor = predictor
         self.warmup_epochs = warmup_epochs
@@ -115,3 +110,33 @@ class TwoChannelFFN(L.LightningModule):
         }
 
         return {"optimizer": opt, "lr_scheduler": lr_sched_config}
+
+class TwoChannelFFN(TwoChannelLinear):
+    def __init__(
+            self,
+            d_rxn: int,
+            d_prot: int,
+            d_h: int,
+            encoder_depth: int,
+            predictor: Predictor,
+            warmup_epochs: int = 2,
+            init_lr: float = 1e-4,
+            max_lr: float = 1e-3,
+            final_lr: float = 1e-4,
+            ) -> None:
+        super().__init__(
+            d_rxn,
+            d_prot,
+            d_h,
+            predictor,
+            warmup_epochs,
+            init_lr,
+            max_lr,
+            final_lr,
+        )
+        self.reaction_encoder = MLP.build(
+            input_dim=d_rxn,
+            output_dim=d_h,
+            hidden_dim=d_h,
+            n_layers=encoder_depth,
+            )

@@ -9,3 +9,4 @@ __pycache__
 data/sprhea/known_rxns_sp_folded_pth.json
 data/sprhea/sp_folded_pth.csv
 logs/
+/scripts/lightning_logs/

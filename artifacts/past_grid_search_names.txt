@@ -17,3 +17,11 @@ test_2
 test_3
 mean_agg_w_wo_vn_0
 vn_agg_depths_homology_80_0
+test_4
+test_5
+test_6
+test_7
+test_8
+mfp_ffn_homology_80_0
+mfp_linear_homology_80_0
+simple_rxn_mean_agg_depths_homology_80_0
