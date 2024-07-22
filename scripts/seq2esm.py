@@ -1,4 +1,4 @@
-from src.CLEAN.utils import *
+from src.clean_utils import *
 
 dataset = 'sprhea'
 toc = "sp_folded_pth"

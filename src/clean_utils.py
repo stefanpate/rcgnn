@@ -7,7 +7,6 @@ import torch
 import numpy as np
 import subprocess
 import pickle
-from .distance_map import get_dist_map
 
 def seed_everything(seed=1234):
     random.seed(seed)
