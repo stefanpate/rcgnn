@@ -11,7 +11,7 @@ from src.featurizer import SimpleReactionMolGraphFeaturizer, RCVNReactionMolGrap
 from src.nn import LastAggregation, DotSig, LinDimRed, AttentionAggregation, BondMessagePassingDict
 from src.model import MPNNDimRed, TwoChannelFFN, TwoChannelLinear
 from src.data import RxnRCDatapoint, RxnRCDataset, MFPDataset, mfp_build_dataloader
-from src.cross_validation import BatchGridSearch
+from src.cross_validation import load_single_experiment, HyperHyperParams, BatchGridSearch
 
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import CSVLogger
@@ -21,6 +21,8 @@ from argparse import ArgumentParser
 import torch
 import os
 from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score
+
+res_dir = "/projects/p30041/spn1560/hiec/artifacts/model_evals/gnn" # TODO this shouldn't be here. Should be set by batch fit/resume
 
 # Aggregation fcns
 aggs = {
@@ -58,49 +60,28 @@ featurizers = {
 
 # Parse CL args
 parser = ArgumentParser()
-parser.add_argument("-d", "--dataset-name", type=str)
-parser.add_argument("-t", "--toc", type=str)
-parser.add_argument("-a", "--split-strategy", type=str)
-parser.add_argument("-b", "--embed-type", type=str)
-parser.add_argument("-r", "--threshold", type=float)
-parser.add_argument("-e", "--seed", type=int)
-parser.add_argument("-n", "--n-splits", type=int)
-parser.add_argument("-m", "--neg-multiple", type=int)
 parser.add_argument("-s", "--split-idx", type=int)
 parser.add_argument("-p", "--hp-idx", type=int)
-parser.add_argument("-g", "--gs-name", type=str)
+parser.add_argument("-c", "--checkpoint-idx", type=int)
 
 args = parser.parse_args()
 
-dataset_name = args.dataset_name
-toc = args.toc
-split_strategy = args.split_strategy
-embed_type = args.embed_type
-split_sim_threshold = args.threshold
-seed = args.seed
-n_splits = args.n_splits
-neg_multiple = args.neg_multiple
 split_idx = args.split_idx
 hp_idx = args.hp_idx
-gs_name = args.gs_name
+chkpt_idx = args.checkpoint_idx
 
-gs = BatchGridSearch(
-    dataset_name=dataset_name,
-    toc=toc,
-    neg_multiple=neg_multiple,
-    gs_name=gs_name,
-    n_splits=n_splits,
-    split_strategy=split_strategy,
-    embed_type=embed_type,
-    split_sim_threshold=split_sim_threshold,
-    seed=seed,
-)
-
+# Load hyperparams
 print("Loading hyperparameters")
-hps = gs.load_hps_from_scratch(hp_idx) # Load hyperparams
+hps = load_single_experiment(hp_idx)
+hhps = HyperHyperParams.from_single_experiment(hps)
+hps = {k: v for k,v in hps.items() if k not in hhps.to_dict()} # Make hps, hhps mutually exclusive
+gs = BatchGridSearch(hhps, res_dir=res_dir)
+
+n_splits = hhps.n_splits
+dataset_name = hhps.dataset_name
+toc = hhps.toc
 
 # Results directories
-gs_dir = gs.res_dir
 hp_split_dir = f"{hp_idx}_hp_idx_split_{split_idx+1}_of_{n_splits}"
 
 # Load data split
@@ -145,7 +126,7 @@ data_loader_test = generate_dataloader(dataset_test, shuffle=False)
 # Construct model
 print("Building model")
 d_h_encoder = hps['d_h_encoder'] # Hidden layer of message passing
-embed_dim = gs.embed_dim
+embed_dim = hhps.embed_dim
 encoder_depth = hps['encoder_depth']
 
 if hps['message_passing']:
@@ -185,9 +166,20 @@ elif hps['model'] == 'linear':
         predictor=pred_head,
     )
 
+if chkpt_idx:
+    chkpt_dir = f"{res_dir}/{chkpt_idx}_hp_idx_split_{split_idx+1}_of_{n_splits}/version_0/checkpoints"
+    chkpt_file = os.listdir(chkpt_dir)[0]
+    chkpt_path = f"{chkpt_dir}/{chkpt_file}"
+    chkpt = torch.load(chkpt_path)
+    model.load_state_dict(chkpt['state_dict'])
+    model.max_lr = 1e-4 # Constant lr
+    epochs_completed = chkpt['epoch'] + 1
+    n_epochs = hps['n_epochs'] - epochs_completed # To tell Trainer
+else:
+    n_epochs = hps['n_epochs']
+
 # Make trainer
-n_epochs = hps['n_epochs']
-logger = CSVLogger(gs_dir, name=hp_split_dir)
+logger = CSVLogger(res_dir, name=hp_split_dir)
 trainer = pl.Trainer(
     enable_checkpointing=True,
     enable_progress_bar=True,
@@ -225,7 +217,7 @@ for k, scorer in scorers.items():
     scores[k] = scorer(y_true, y_pred)
 
 print(scores)
-sup_dir = f"{gs_dir}/{hp_split_dir}"
+sup_dir = f"{res_dir}/{hp_split_dir}"
 versions = sorted([(fn, int(fn.split('_')[-1])) for fn in os.listdir(sup_dir)], key=lambda x : x[-1])
 latest_version = versions[-1][0]
 save_json(scores, f"{sup_dir}/{latest_version}/test_scores.json")

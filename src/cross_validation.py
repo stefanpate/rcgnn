@@ -1,88 +1,177 @@
-from src.utils import construct_sparse_adj_mat, write_shell_script, load_embed
+'''
+TODO
+Set up internal run 
+Toggle on/off when to run with option "resume" defaults to flase
+Call bgs.run(hps) for all returned objects outside of load_from_exp
+
+'''
+
+from src.utils import construct_sparse_adj_mat, load_embed
 import numpy as np
 import pandas as pd
 import os
 from sklearn.model_selection import KFold
 from itertools import product, chain
 import json
-from collections import namedtuple, defaultdict
+from collections import defaultdict
 import subprocess
+from dataclasses import dataclass, asdict, fields
 
-BatchScriptParams = namedtuple(typename="BatchScriptParams", field_names=['allocation', 'partition', 'mem', 'time', 'script'])
+DEFAULT_DATA_DIR = "/projects/p30041/spn1560/hiec/data"
+DEFAULT_SCRATCH_DIR = "/scratch/spn1560"
+
+@dataclass
+class BatchScript:
+    '''
+    allocation:str
+        p30041 | b1039
+    partition:str
+        gengpu | short | normal | long | b1039
+    mem:str
+        memory required e.g., 8G
+    time:str
+        hours of compute e.g., 4
+    file:str
+        script name, e.g., file.py
+    arg_str:
+        string of args following script name e.g,. -d 4 --example
+    '''
+    allocation:str
+    partition:str
+    mem:str
+    time:str
+    script:str
+
+    def write(self, arg_str, job_name):
+        cpu_blacklist = ["#SBATCH --gres=gpu:a100:1"]
+        lines = [
+            f"#!/bin/bash",
+            f"#SBATCH -A {self.allocation}",
+            f"#SBATCH -p {self.partition}",
+            f"#SBATCH --gres=gpu:a100:1",
+            f"#SBATCH -N 1",
+            f"#SBATCH -n 1",
+            f"#SBATCH --mem={self.mem}",
+            f"#SBATCH -t {self.time}:00:00",
+            f"#SBATCH --job-name={job_name}",
+            f"#SBATCH --output=../logs/out/{job_name}",
+            f"#SBATCH --error=../logs/error/{job_name}",
+            f"#SBATCH --mail-type=END",
+            f"#SBATCH --mail-type=FAIL",
+            f"#SBATCH --mail-user=stefan.pate@northwestern.edu",
+            f"ulimit -c 0",
+            f"module load python/anaconda3.6",
+            f"module load gcc/9.2.0",
+            f"source activate hiec",
+            f"python -u {self.script} {arg_str}",
+        ]
+
+        if self.partition == 'gengpu':
+            return '\n'.join(lines)
+        else:
+            return '\n'.join([line for line in lines if line not in cpu_blacklist])
+
+
+@dataclass
+class HyperHyperParams:
+    dataset_name:str
+    toc:str
+    neg_multiple:str
+    n_splits:int
+    split_strategy:str
+    embed_type:str
+    seed:int
+    split_sim_threshold:float = 1.0
+    embed_dim:int = None
+
+    def __post_init__(self):
+        if self.split_strategy not in ['random', 'homology']:
+            raise ValueError(f"Invalid split strategy: {self.split_strategy}. Choose one from: {', '.join(self.valid_split_strategies)}")
+        
+        embed_dims = {
+            'esm': 1280,
+        }
+        
+        if not self.embed_dim:
+            try:
+                self.embed_dim = embed_dims[self.embed_type]
+            except KeyError:
+                raise KeyError(f"Embed type {self.embed_type} unknown. Select from {list(embed_dims.keys())}")
+
+    def to_dict(self):
+        return asdict(self)
+    
+    @classmethod
+    def from_single_experiment(cls, single_experiment:dict):
+        field_names = [field.name for field in fields(cls)]
+        hhp_args = {k : v for k,v in single_experiment.items() if k in field_names}
+        return cls(**hhp_args)
+
+def load_single_experiment(hp_idx, scratch_dir=DEFAULT_SCRATCH_DIR):
+    with open(f"{scratch_dir}/{hp_idx}_hp_idx.json", 'r') as f:
+        hp = json.load(f)
+
+    return hp
 
 class BatchGridSearch:
-    data_dir = "/projects/p30041/spn1560/hiec/data"
-    scratch_dir = "/scratch/spn1560"
-    valid_split_strategies = ['random', 'homology']
-    past_gs_names = "/home/spn1560/hiec/artifacts/past_grid_search_names.txt"
-    embed_dims = {
-        'esm': 1280
-    }
-    
+
     def __init__(
             self,
-            dataset_name:str,
-            toc:str,
-            neg_multiple:int,
-            gs_name:str,
-            n_splits:int,
-            split_strategy:str,
-            embed_type:str,
-            seed:int,
-            split_sim_threshold:float = 1.0,
-            batch_script_params:BatchScriptParams | None = None,
-            hps:dict | None = None,
-            res_dir:str = "/projects/p30041/spn1560/hiec/artifacts/model_evals/gnn",
+            hhps:HyperHyperParams,
+            res_dir:str,
+            scratch_dir=DEFAULT_SCRATCH_DIR,
+            data_dir=DEFAULT_DATA_DIR,
             ) -> None:
-        
-        if split_strategy not in self.valid_split_strategies:
-            raise ValueError(f"Invalid split strategy: {split_strategy}. Choose one from: {', '.join(self.valid_split_strategies)}")
 
-        self.dataset_name = dataset_name
-        self.toc = toc
-        self.neg_multiple = neg_multiple
-        self.gs_name = gs_name
-        self.n_splits = n_splits
-        self.split_strategy = split_strategy
-        self.threshold = split_sim_threshold
-        self.embed_type = embed_type
-        self.embed_dim = self.embed_dims[embed_type]
-        self.seed = seed
-        self.hps = [{list(hps.keys())[i] : elt[i] for i in range(len(elt))} for elt in product(*hps.values())] if hps is not None else None
-        self.rng = np.random.default_rng(seed)
-        self.batch_script_params = batch_script_params
+        for k, v in hhps.to_dict().items():
+            setattr(self, k, v)
+
+        self.hhps = hhps.to_dict()
+        self.res_dir = res_dir
+        self.scratch_dir = scratch_dir
+        self.data_dir = data_dir
+        self.rng = np.random.default_rng(self.seed)
+        self.split_guide_pref = f"{self.dataset_name}_{self.toc}_{self.split_strategy}"\
+            f"_threshold_{int(self.split_sim_threshold * 100)}_{self.n_splits}_splits"\
+            f"_neg_multiple_{self.neg_multiple}_seed_{self.seed}"
+        self.experiments = pd.read_csv(f"{res_dir}/experiments.csv", sep='\t', index_col=0)
+        self.next_hp_idx = self.experiments.index.max() + 1
         self.adj, self.idx_sample, self.idx_feature = self._get_adjacency_matrix()
         self.X_pos = list(zip(*self.adj.nonzero()))
-        self.split_guide_pref = f"{dataset_name}_{toc}_{split_strategy}_threshold_{int(self.threshold * 100)}_{n_splits}_splits_neg_multiple_{neg_multiple}_seed_{seed}"
-        self.hp_scratch_pref  = f"{self.scratch_dir}/{gs_name}"
-        self.res_dir = f"{res_dir}/{dataset_name}_{toc}_{gs_name}"
-        self.gs_params = "\n".join([f"n_splits: {self.n_splits}", f"split_strategy: {self.split_strategy}", f"similarity_threshold: {self.threshold}", f"neg_multiple: {self.neg_multiple}", f"embed_type: {self.embed_type}", f"seed: {self.seed}"])
 
-    def run(self):
-        self.setup()
+    def run(self, hps, batch_script):
+        if type(hps) is dict:
+            hps = [{k : elt[i] for i, k in enumerate(hps.keys())} for elt in product(*hps.values())]
+
+        self._run(hps, batch_script)
+
+    def resume(self, hps, batch_script, chkpt_idxs):
+        self._run(hps, batch_script, chkpt_idxs)
+    
+    def _run(self, hps, batch_script, chkpt_idxs=None):
+        hps = [{**elt, **self.hhps} for elt in hps]
+
+        self._setup(hps)
 
         # Run shell scripts
-        for hp_idx, _ in enumerate(self.hps):
+        for i, _ in enumerate(hps):
+            hp_idx = self.next_hp_idx + i
             for split_idx in range(self.n_splits):
-                arg_str = f"-d {self.dataset_name} -t {self.toc} -a {self.split_strategy} -r {self.threshold} -e {self.seed} -n {self.n_splits} -m {self.neg_multiple} -b {self.embed_type} -s {split_idx} -p {hp_idx} -g {self.gs_name}"
-                job_name = f"{self.gs_name}_hps_{hp_idx}_split_{split_idx}"
-        
-                shell_script = write_shell_script(
-                    *self.batch_script_params,
-                    arg_str,
-                    job_name
-                )
+
+                if chkpt_idxs:
+                    arg_str = f"-s {split_idx} -p {hp_idx} -c {chkpt_idxs[i]}"
+                else:
+                    arg_str = f"-s {split_idx} -p {hp_idx}"
+                
+                job_name = f"cv_hp_idx_{hp_idx}_split_{split_idx}"
+                shell_script = batch_script.write(arg_str, job_name)
                 
                 with open("batch.sh", 'w') as f:
                     f.write(shell_script)
 
                 subprocess.run(["sbatch", "batch.sh"])
 
-    def setup(self):
-        self._check_gs_name()
-
-        if self.hps is None:
-            raise NameError("Cannot run grid search without provided hyperparameter dict.")
+    def _setup(self, hps):
         
         if self._check_for_split_guide():
             pass
@@ -93,16 +182,17 @@ class BatchGridSearch:
         for i in range(self.n_splits):
             self.load_data_split(i, setup=True)
         
-        self._save_hps_to_scratch()
-        self._set_up_res_dir()
+        self._save_hps_to_scratch(hps)
+        self._set_up_res_dir(hps)
     
     def split_data(self, X, y, do_save=True):
         split_guide_path =f"{self.scratch_dir}/{self.split_guide_pref}.csv"
+        
         if self._check_for_split_guide():      
             split_guide = pd.read_csv(split_guide_path, sep='\t')
             return split_guide
         
-        if self.threshold < 0.0 or self.threshold > 1.0:
+        if self.split_sim_threshold < 0.0 or self.split_sim_threshold > 1.0:
             raise ValueError("Please provide threshold from [0, 1]")
         
         # Shuffle data
@@ -124,9 +214,10 @@ class BatchGridSearch:
         return split_guide
             
     def _split_homology(self, X, y):
-        cluster_path = f"/home/spn1560/hiec/data/{self.dataset_name}/{self.toc}_{int(self.threshold * 100)}.clstr"
+        cluster_path = f"/home/spn1560/hiec/data/{self.dataset_name}/{self.toc}_{int(self.split_sim_threshold * 100)}.clstr"
+        
         if not os.path.exists(cluster_path):
-            raise ValueError(f"Cluster file does not exist for {self.dataset_name}, {self.toc}, threshold: {self.threshold}")
+            raise ValueError(f"Cluster file does not exist for {self.dataset_name}, {self.toc}, threshold: {self.split_sim_threshold}")
 
         cluster_id_2_upid = self._parse_cd_hit_clusters(cluster_path)
         upid_2_idx = {val : key for key, val in self.idx_sample.items()}
@@ -137,7 +228,6 @@ class BatchGridSearch:
         data = []
         kfold = KFold(n_splits=self.n_splits)
         for i, (_, test) in enumerate(kfold.split(clusters)):
-            #TODO: Can I do this by only touching test
             test_clstrs = clusters[test].reshape(-1)
             test_up = chain(*[cluster_id_2_upid[cid] for cid in test_clstrs])
             test_prot_idx = [upid_2_idx[upid] for upid in test_up]
@@ -172,7 +262,6 @@ class BatchGridSearch:
         data = []
         kfold = KFold(n_splits=self.n_splits)
         for i, (train_idx, test_idx) in enumerate(kfold.split(X)):
-            
             # Append to data for split_guide
             train_rows = list(zip(['train' for _ in range(train_idx.size)], [i for _ in range(train_idx.size)], X[train_idx, 0], X[train_idx, 1], y[train_idx].reshape(-1,)))
             test_rows = list(zip(['test' for _ in range(test_idx.size)], [i for _ in range(test_idx.size)], X[test_idx, 0], X[test_idx, 1], y[test_idx].reshape(-1,)))
@@ -261,31 +350,17 @@ class BatchGridSearch:
     def _get_adjacency_matrix(self):
         return construct_sparse_adj_mat(self.dataset_name, self.toc)
     
-    def _save_hps_to_scratch(self):
-        for hp_idx, hp in enumerate(self.hps):
-            with open(f"{self.hp_scratch_pref}_{hp_idx}_hp_idx.json", 'w') as f:
+    def _save_hps_to_scratch(self, hps):
+        for i, hp in enumerate(hps):
+            hp_idx = self.next_hp_idx + i
+            with open(f"{self.scratch_dir}/{hp_idx}_hp_idx.json", 'w') as f:
                 json.dump(hp, f)
     
-    def load_hps_from_scratch(self, hp_idx):
-        with open(f"{self.hp_scratch_pref}_{hp_idx}_hp_idx.json", 'r') as f:
-            hp = json.load(f)
-
-        return hp
-    
-    def _set_up_res_dir(self):
-        # Write a hp idx csv
-        if not os.path.exists(self.res_dir):
-            os.makedirs(self.res_dir)
-
-        # Save model hyperparam csv
-        cols = self.hps[0].keys()
-        data = [list(elt.values()) for elt in self.hps]
-        hp_df = pd.DataFrame(data=data, columns=cols)
-        hp_df.to_csv(f"{self.res_dir}/hp_toc.csv", sep='\t')
-
-        # Save gridsearch param
-        with open(f"{self.res_dir}/gs_params.txt", 'w') as f:
-            f.write(self.gs_params)
+    def _set_up_res_dir(self, hps):
+        df = pd.DataFrame(hps)
+        df.index += self.next_hp_idx
+        new_exp = pd.concat((self.experiments, df))
+        new_exp.to_csv(f"{self.res_dir}/experiments.csv", sep='\t')
 
     def _parse_cd_hit_clusters(self, file_path):
         clusters = defaultdict(list)
@@ -300,19 +375,6 @@ class BatchGridSearch:
                     clusters[current_cluster].append(line.split()[2][1:-3])
 
         return clusters
-    
-    def _check_gs_name(self):
-        # Check gs_name not used before
-        with open(self.past_gs_names, 'r') as f:
-            old_gs_names = [elt.rstrip() for elt in f.readlines()]
-
-        if self.gs_name in old_gs_names:
-            raise ValueError(f"{self.gs_name} has already been used as a grid search name")
-
-        old_gs_names.append(self.gs_name) # Add current gs_name
-
-        with open(self.past_gs_names, 'w') as f:
-            f.write('\n'.join(elt for elt in old_gs_names))
 
     def _check_for_split_guide(self):
         split_guide_path =f"{self.scratch_dir}/{self.split_guide_pref}.csv" 
