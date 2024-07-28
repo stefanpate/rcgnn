@@ -1,8 +1,9 @@
 import pandas as pd
 from src.cross_validation import BatchGridSearch, BatchScript, HyperHyperParams
 from dataclasses import fields
+from math import isnan
 
-def fix_ints(hp_dict):
+def fix_pd(hp_dict):
     to_fix = [
         'encoder_depth',
         'embed_dim',
@@ -11,10 +12,18 @@ def fix_ints(hp_dict):
         'd_h_encoder',
         'n_splits',
         'neg_multiple',
+        'message_passing',
+        'agg',
     ]
     
     for elt in to_fix:
-        if elt in hp_dict:
+        if elt not in hp_dict:
+            continue
+        elif type(hp_dict[elt]) is str:
+            continue
+        elif isnan(hp_dict[elt]):
+            hp_dict[elt] = None
+        else:
             hp_dict[elt]  = int(hp_dict[elt])
     
     return hp_dict
@@ -22,15 +31,21 @@ def fix_ints(hp_dict):
 # Args
 allocation = 'b1039'
 partition = 'b1039'
-mem = '8G' # 12G
-time = '1' # Hours 12
+mem = '12G' # 12G
+time = '12' # Hours 12
 fit_script = 'two_channel_fit.py'
 batch_script = BatchScript(allocation=allocation, partition=partition, mem=mem, time=time, script=fit_script)
 res_dir = "/projects/p30041/spn1560/hiec/artifacts/model_evals/gnn"
 
 # Old hp_idxs : total epochs to train up to
 hp_idx_epochs = {
-    81: 20,
+    # 29:50,
+    # 28:50,
+    # 45:50,
+    8:50,
+    # 68:50,
+    # 46:50,
+    # 47:50,
 }
 
 experiments = pd.read_csv(f"{res_dir}/experiments.csv", sep='\t', index_col=0)
@@ -58,8 +73,8 @@ for hhp_vals, group in gb:
 
 # Run bsg
 for hhp, hp, chkpt in zip(hhp_args, hps, chkpt_idxs):
-    hp = [fix_ints(elt) for elt in hp]
-    hhp = fix_ints(hhp)
+    hp = [fix_pd(elt) for elt in hp]
+    hhp = fix_pd(hhp)
     hhps = HyperHyperParams(**hhp)
     gs = BatchGridSearch(hhps, res_dir)
     gs.resume(hp, batch_script, chkpt)

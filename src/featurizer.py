@@ -380,6 +380,9 @@ class SimpleReactionMolGraphFeaturizer(_MolGraphFeaturizerMixin, GraphFeaturizer
 
 @dataclass
 class RCVNReactionMolGraphFeaturizer(SimpleReactionMolGraphFeaturizer):
+    '''
+    Reaction-center-connected virtual node
+    '''
     def __post_init__(self):
         super().__post_init__()
 

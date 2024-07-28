@@ -2,7 +2,7 @@ from src.cross_validation import BatchGridSearch, BatchScript, HyperHyperParams
 
 dataset_name = 'sprhea'
 toc = 'sp_folded_pt_20p' # Name of file with protein id | features/labels | sequence
-n_splits = 2 # 5
+n_splits = 2 # 5 2 is minimum
 seed = 1234
 allocation = 'b1039'
 partition = 'b1039'

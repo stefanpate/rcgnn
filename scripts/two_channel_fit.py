@@ -43,19 +43,20 @@ message_passers = {
     'bondwise_dict':BondMessagePassingDict
 }
 
-# Evaluation metrics
-scorers = {
-    'f1': lambda y_true, y_pred: f1_score(y_true, y_pred),
-    'precision': lambda y_true, y_pred: precision_score(y_true, y_pred),
-    'recall': lambda y_true, y_pred: recall_score(y_true, y_pred),
-    'accuracy': accuracy_score
-}
 
 # Featurizers +
 featurizers = {
     'rxn_simple': (RxnRCDataset, SimpleReactionMolGraphFeaturizer, build_dataloader),
     'rxn_rc': (RxnRCDataset, RCVNReactionMolGraphFeaturizer, build_dataloader),
     'mfp': (MFPDataset, ReactionMorganFeaturizer, mfp_build_dataloader)
+}
+
+# Evaluation metrics
+scorers = {
+    'f1': lambda y_true, y_pred: f1_score(y_true, y_pred),
+    'precision': lambda y_true, y_pred: precision_score(y_true, y_pred),
+    'recall': lambda y_true, y_pred: recall_score(y_true, y_pred),
+    'accuracy': accuracy_score
 }
 
 # Parse CL args
@@ -103,7 +104,7 @@ else:
     )
     dv, de = featurizer.shape
 
-# Prep data
+# Featurize data
 print("Constructing datasets & dataloaders")
 datapoints_train = []
 for row in train_data:
@@ -170,7 +171,8 @@ if chkpt_idx:
     chkpt_dir = f"{res_dir}/{chkpt_idx}_hp_idx_split_{split_idx+1}_of_{n_splits}/version_0/checkpoints"
     chkpt_file = os.listdir(chkpt_dir)[0]
     chkpt_path = f"{chkpt_dir}/{chkpt_file}"
-    chkpt = torch.load(chkpt_path)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    chkpt = torch.load(chkpt_path, map_location=device)
     model.load_state_dict(chkpt['state_dict'])
     model.max_lr = 1e-4 # Constant lr
     epochs_completed = chkpt['epoch'] + 1
