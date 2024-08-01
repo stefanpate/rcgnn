@@ -1,7 +1,0 @@
-download_proteins:
-  BASE_URL: https://rest.uniprot.org/uniprotkb/search?&query=ec
-  SEQUENCE_PATH: data/sequences/sequences.json
-  EC_PATH: data/ec.txt
-make_fasta:
-  JSON_PATH: data/sequences/sequences.json
-  FASTA_PATH: data/sequences/sequences.fasta

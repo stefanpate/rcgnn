@@ -39,13 +39,11 @@ res_dir = "/projects/p30041/spn1560/hiec/artifacts/model_evals/gnn"
 
 # Old hp_idxs : total epochs to train up to
 hp_idx_epochs = {
-    # 29:50,
-    # 28:50,
-    # 45:50,
-    8:50,
-    # 68:50,
-    # 46:50,
-    # 47:50,
+    88:25,
+    89:25,
+    90:25,
+    91:25,
+    92:25,
 }
 
 experiments = pd.read_csv(f"{res_dir}/experiments.csv", sep='\t', index_col=0)

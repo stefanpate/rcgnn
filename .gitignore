@@ -10,3 +10,5 @@ data/sprhea/known_rxns_sp_folded_pth.json
 data/sprhea/sp_folded_pth.csv
 logs/
 /scripts/lightning_logs/
+data/sprhea/sprhea_240310_v3_min_mapped_no_subunits.json
+data/sprhea/sprhea_240310_v3_min_mapped.json
