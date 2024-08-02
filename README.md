@@ -24,13 +24,15 @@
 7. two_channel_fit.py - Fits GNN models taking two inputs, i.e., protein-reaction pairs
 
 ## Src
-atom_mapping.py - Functions to get all-atom-mapping of reactions starting with reaction center
-cross_validation.py
+- atom_mapping.py - Functions to get all-atom-mapping of reactions starting with reaction center
+- cross_validation.py
    - Dataclasses for batch script parameters & cross validation configurations
    - BatchGridSearch class to handle batch submission of slurm jobs during cross validation and/or grid search
-data.py - Datapoint and dataset objects and some supporting functions
-featurizer.py - Reaction featurizers; customized chemprop classes
-mf.py - Matrix factorization classes
-model.py - Customized chemprop MPNN and several more models, subclassed lightning modules
-nn.py - Pytorch model components, message passing, prediction heads, aggregation
-utils.py - Basic data handling utilities
+
+
+- data.py - Datapoint and dataset objects and some supporting functions
+- featurizer.py - Reaction featurizers; customized chemprop classes
+- mf.py - Matrix factorization classes
+- model.py - Customized chemprop MPNN and several more models, subclassed lightning modules
+- nn.py - Pytorch model components, message passing, prediction heads, aggregation
+- utils.py - Basic data handling utilities
