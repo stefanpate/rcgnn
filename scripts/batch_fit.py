@@ -1,13 +1,13 @@
 from src.cross_validation import BatchGridSearch, BatchScript, HyperHyperParams
 
 dataset_name = 'sprhea'
-toc = 'sp_folded_pt' # Name of file with protein id | features/labels | sequence
+toc = 'v3_folded_pt_ns' # Name of file with protein id | features/labels | sequence
 n_splits = 5
 seed = 1234
 allocation = 'b1039'
 partition = 'b1039'
 mem = '12G' # 12G
-time = '12' # Hours 12
+time = '48' # Hours 12
 fit_script = 'two_channel_fit.py'
 neg_multiple = 1
 split_strategy = 'homology'
@@ -35,14 +35,14 @@ gs = BatchGridSearch(
 
 # Choose hyperparameters for grid search
 hps = {
-    'n_epochs':[25], # int
-    'pred_head':['dot_sig'], # 'binary' | 'dot_sig'
+    'n_epochs':[25, 35], # int
+    'pred_head':['dot_sig', 'binary'], # 'binary' | 'dot_sig'
     'message_passing':['bondwise'], # 'bondwise' | 'bondwise_dict' | None
-    'agg':['mean'], # 'mean' | 'last' | 'attention' | None
-    'd_h_encoder':[600], # int
+    'agg':['mean', 'last'], # 'mean' | 'last' | 'attention' | None
+    'd_h_encoder':[50, 300], # int
     'model':['mpnn_dim_red'], # 'mpnn' | 'mpnn_dim_red' | 'ffn' | 'linear'
-    'featurizer':['rxn_simple'], # 'rxn_simple' | 'rxn_rc' | 'mfp'
-    'encoder_depth':[3], # int | None
+    'featurizer':['rxn_rc'], # 'rxn_simple' | 'rxn_rc' | 'mfp'
+    'encoder_depth':[1, 2, 3, 4], # int | None
 }
 
 # Slurm stuff

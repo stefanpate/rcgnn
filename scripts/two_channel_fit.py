@@ -6,7 +6,7 @@ from chemprop.data import build_dataloader
 from chemprop.models import MPNN
 from chemprop.nn import MeanAggregation, BinaryClassificationFFN, BondMessagePassing
 
-from src.utils import load_known_rxns, save_json
+from src.utils import load_json, save_json
 from src.featurizer import SimpleReactionMolGraphFeaturizer, RCVNReactionMolGraphFeaturizer, MultiHotAtomFeaturizer, MultiHotBondFeaturizer, ReactionMorganFeaturizer
 from src.nn import LastAggregation, DotSig, LinDimRed, AttentionAggregation, BondMessagePassingDict
 from src.model import MPNNDimRed, TwoChannelFFN, TwoChannelLinear
@@ -88,7 +88,7 @@ hp_split_dir = f"{hp_idx}_hp_idx_split_{split_idx+1}_of_{n_splits}"
 # Load data split
 print("Loading data")
 train_data, test_data = gs.load_data_split(split_idx=split_idx)
-known_rxns = load_known_rxns(f"../data/{dataset_name}/known_rxns_{toc}.json") # Load reaction dataset
+known_rxns = load_json(f"../data/{dataset_name}/{toc}.json") # Load reaction dataset
 
 # Init featurizer
 mfp_length = 2**10

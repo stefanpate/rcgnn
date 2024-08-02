@@ -1,14 +1,15 @@
+# Misc
 .idea/
-erx_hiec_rampup.txt
-.Rhistory
-/CLEAN
-__pycache__
-/artifacts/trained_models
-/data/sprhea/known_rxns_swissprot_enzymes_240310_v2.json
-/data/sprhea/known_rxns_240310_v2_folded_protein_transcript_homology.json
+**/__pycache__
+**/lightning_logs
+**/.ipynb_checkpoints
+**/logs
+
+# Large data files
+data/sprhea/known_rxns_swissprot_enzymes_240310.json
+data/sprhea/known_rxns_swissprot_enzymes_240310_v2.json
+data/sprhea/known_rxns_240310_v2_folded_protein_transcript_homology.json
 data/sprhea/known_rxns_sp_folded_pth.json
 data/sprhea/sp_folded_pth.csv
-logs/
-/scripts/lightning_logs/
 data/sprhea/sprhea_240310_v3_min_mapped_no_subunits.json
 data/sprhea/sprhea_240310_v3_min_mapped.json

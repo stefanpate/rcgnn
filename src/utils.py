@@ -4,6 +4,7 @@ import json
 import numpy as np
 import torch
 import os
+import subprocess
 from sklearn.model_selection import KFold
 from collections import namedtuple
 import re
@@ -212,3 +213,14 @@ def read_last_ckpt(exp_dir):
     latest_chkpt = chkpts[-1][0]
 
     return f"{exp_dir}/{latest_version}/{latest_chkpt}"
+
+def ensure_dirs(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
+        
+def retrive_esm1b_embedding(fasta_path, outdir):
+    esm_script = "/home/spn1560/hiec/src/esm/scripts/extract.py"
+    esm_type = "esm1b_t33_650M_UR50S"
+    command = ["python", esm_script, esm_type, 
+              fasta_path, outdir, "--include", "mean"]
+    subprocess.run(command)
