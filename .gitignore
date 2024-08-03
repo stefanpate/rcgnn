@@ -5,6 +5,10 @@
 **/.ipynb_checkpoints
 **/logs
 
+# Pixi and packaging
+.pixi
+*.egg-info
+
 # Large data files
 data/sprhea/known_rxns_swissprot_enzymes_240310.json
 data/sprhea/known_rxns_swissprot_enzymes_240310_v2.json
