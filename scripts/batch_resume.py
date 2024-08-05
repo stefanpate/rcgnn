@@ -1,5 +1,5 @@
 import pandas as pd
-from src.cross_validation import BatchGridSearch, BatchScript, HyperHyperParams
+from catalytic_function.cross_validation import BatchGridSearch, BatchScript, HyperHyperParams
 from dataclasses import fields
 from math import isnan
 

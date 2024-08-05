@@ -1,4 +1,4 @@
-from src.cross_validation import BatchGridSearch, BatchScript, HyperHyperParams
+from catalytic_function.cross_validation import BatchGridSearch, BatchScript, HyperHyperParams
 
 dataset_name = 'sprhea'
 toc = 'v3_folded_pt_ns' # Name of file with protein id | features/labels | sequence

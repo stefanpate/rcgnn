@@ -7,10 +7,18 @@ authors = [
   {name = "Stefan Pate", email = "stefan.pate@northwestern.edu"},
 ]
 
-
 [tool.pixi.project]
 channels = ["conda-forge"]
 platforms = ["osx-arm64"]
+
+[tool.pixi.environments]
+default = { features = ["base", "dev", "lint", "test"], solve-group = "default" }
+lint = { features = ["lint"], solve-group = "default" }
+test = { features = ["test"], solve-group = "default" }
+
+#
+# base
+#
 
 [tool.pixi.feature.base.dependencies]
 python = ">=3.10,<4.0"
@@ -23,10 +31,8 @@ numpy = ">=1.26.4,<2"
 scipy = ">=1.14.0,<2"
 yaml = ">=0.2.5,<0.3"
 
-[tool.pixi.environments]
-default = { features = ["base", "dev", "lint", "test"], solve-group = "default" }
-lint = { features = ["lint"], solve-group = "pixi-kernel" }
-test = { features = ["test"], solve-group = "default" }
+[tool.pixi.feature.base.pypi-dependencies]
+skorch = ">=1.0.0,<2"
 
 #
 # developing
@@ -39,6 +45,9 @@ jupyterlab-vim = "*"
 
 [tool.pixi.feature.dev.tasks]
 lab = "jupyter lab"
+
+[tool.pixi.feature.dev.dependencies]
+pixi-pycharm = ">=0.0.6,<0.0.7"
 
 #
 # testing

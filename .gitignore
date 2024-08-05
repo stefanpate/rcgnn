@@ -4,6 +4,7 @@
 **/lightning_logs
 **/.ipynb_checkpoints
 **/logs
+.DS_Store
 
 # Pixi and packaging
 .pixi

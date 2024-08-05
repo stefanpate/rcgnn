@@ -25,8 +25,8 @@ def generate_adjacency_matrix(mode, seed, n_users=100, n_items=100, k=2, density
     return obs_pairs, n_users, n_items
         
 if __name__ == '__main__':
-    from src.mf import MatrixFactorization, PretrainedMatrixFactorization, load_pretrained_embeds
-    from src.utils import ensure_dirs, construct_sparse_adj_mat, load_data_split, load_hps_from_scratch, get_sample_feature_idxs, negative_sample_bipartite
+    from catalytic_function.mf import MatrixFactorization, PretrainedMatrixFactorization, load_pretrained_embeds
+    from catalytic_function.utils import ensure_dirs, construct_sparse_adj_mat, load_data_split, load_hps_from_scratch, get_sample_feature_idxs, negative_sample_bipartite
     from skorch import NeuralNetClassifier
     from skorch.dataset import Dataset
     from skorch.helper import predefined_split

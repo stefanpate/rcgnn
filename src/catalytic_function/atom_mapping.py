@@ -306,7 +306,7 @@ def match_template(rxn, rule_reactants_template, rule_products_template, smi2pai
     return matched_idxs
 
 if __name__ == '__main__':
-    from src.utils import load_known_rxns, load_json, save_json
+    from catalytic_function.utils import load_known_rxns, load_json, save_json
     import pandas as pd
     from tqdm import tqdm
 
