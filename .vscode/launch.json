@@ -5,14 +5,40 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: Current File with Arguments",
+            "name": "cluster",
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
             "cwd": "${fileDirname}",
             "justMyCode": false,
-            "args": ["-s", "1", "-p", "79", "-c", "78"]
+            "args": [
+                "rcmcs",
+                "sprhea",
+                "v3_folded_pt_ns",
+                "-c",
+                "0.8",
+                "0.6",
+                "0.4",
+                "--multi-process",
+            ],
+        },
+        {
+            "name": "two_channel_fit",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "cwd": "${fileDirname}",
+            "justMyCode": false,
+            "args": [
+                "-s",
+                "1",
+                "-p",
+                "79",
+                "-c",
+                "78"
+            ]
         },
         {
             "name": "Python: Current File",
