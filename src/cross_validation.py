@@ -1,11 +1,3 @@
-'''
-TODO
-Set up internal run 
-Toggle on/off when to run with option "resume" defaults to flase
-Call bgs.run(hps) for all returned objects outside of load_from_exp
-
-'''
-
 from src.utils import construct_sparse_adj_mat, load_embed
 import numpy as np
 import pandas as pd
@@ -183,7 +175,7 @@ class BatchGridSearch:
             self.load_data_split(i, setup=True)
         
         self._save_hps_to_scratch(hps)
-        self._set_up_res_dir(hps)
+        self._append_experiments(hps)
     
     def split_data(self, X, y, do_save=True):
         split_guide_path =f"{self.scratch_dir}/{self.split_guide_pref}.csv"
@@ -356,7 +348,7 @@ class BatchGridSearch:
             with open(f"{self.scratch_dir}/{hp_idx}_hp_idx.json", 'w') as f:
                 json.dump(hp, f)
     
-    def _set_up_res_dir(self, hps):
+    def _append_experiments(self, hps):
         df = pd.DataFrame(hps)
         df.index += self.next_hp_idx
         new_exp = pd.concat((self.experiments, df))

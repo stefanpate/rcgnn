@@ -37,12 +37,12 @@ gs = BatchGridSearch(
 hps = {
     'n_epochs':[25, 35], # int
     'pred_head':['dot_sig', 'binary'], # 'binary' | 'dot_sig'
-    'message_passing':['bondwise'], # 'bondwise' | 'bondwise_dict' | None
-    'agg':['mean', 'last'], # 'mean' | 'last' | 'attention' | None
+    'message_passing':[None], # 'bondwise' | 'bondwise_dict' | None
+    'agg':[None], # 'mean' | 'last' | 'attention' | None
     'd_h_encoder':[50, 300], # int
-    'model':['mpnn_dim_red'], # 'mpnn' | 'mpnn_dim_red' | 'ffn' | 'linear'
-    'featurizer':['rxn_rc'], # 'rxn_simple' | 'rxn_rc' | 'mfp'
-    'encoder_depth':[1, 2, 3, 4], # int | None
+    'model':['linear'], # 'mpnn' | 'mpnn_dim_red' | 'ffn' | 'linear'
+    'featurizer':['mfp'], # 'rxn_simple' | 'rxn_rc' | 'mfp'
+    'encoder_depth':[None], # int | None
 }
 
 # Slurm stuff
