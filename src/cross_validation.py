@@ -206,31 +206,15 @@ class BatchGridSearch:
         return split_guide
             
     def _split_homology(self, X, y):
-        cluster_path = f"/home/spn1560/hiec/data/{self.dataset_name}/{self.toc}_{int(self.split_sim_threshold * 100)}.clstr"
-        
+        cluster_path = f"/home/spn1560/hiec/artifacts/clustering/{self.dataset_name}_{self.toc}_{self.split_strategy}_{int(self.split_sim_threshold * 100)}.clstr"
+
         if not os.path.exists(cluster_path):
             raise ValueError(f"Cluster file does not exist for {self.dataset_name}, {self.toc}, strategy: {self.split_strategy} threshold: {self.split_sim_threshold}")
 
         cluster_id_2_upid = self._parse_cd_hit_clusters(cluster_path)
         upid_2_idx = {val : key for key, val in self.idx_sample.items()}
-        clusters = np.array(list(cluster_id_2_upid.keys())).reshape(-1, 1)
 
-        # Split by cluster
-        cols = ['train/test', 'split_idx', 'X1', 'X2', 'y']
-        data = []
-        kfold = KFold(n_splits=self.n_splits)
-        for i, (_, test) in enumerate(kfold.split(clusters)):
-            test_clstrs = clusters[test].reshape(-1)
-            test_up = chain(*[cluster_id_2_upid[cid] for cid in test_clstrs])
-            test_prot_idx = [upid_2_idx[upid] for upid in test_up]
-
-            for j, pair in enumerate(X):
-                if pair[0] in test_prot_idx:
-                    data.append(['test', i, pair[0], pair[1], y[j]])
-                else:
-                    data.append(['train', i, pair[0], pair[1], y[j]])
-
-        return pd.DataFrame(data=data, columns=cols)
+        return self._split_clusters(X, y, cluster_id_2_upid, upid_2_idx, check_side=0)
     
     def _split_rcmcs(self, X, y):
         '''
@@ -248,7 +232,7 @@ class BatchGridSearch:
 
         rxn_id_2_idx = {v : k for k, v in self.idx_feature.items()}
 
-        return self._split_clusters(X, y, cluster_2_rxn_id, rxn_id_2_idx, 1)
+        return self._split_clusters(X, y, cluster_2_rxn_id, rxn_id_2_idx, check_side=1)
 
     def _split_clusters(self, X, y, cluster_2_elt, elt_2_idx, check_side):
         '''
@@ -430,11 +414,11 @@ class BatchGridSearch:
 
 if __name__ == '__main__':
     dataset_name = 'sprhea'
-    toc = 'v3_folded_pt_ns' # Name of file with protein id | features/labels | sequence
+    toc = 'sp_folded_pt_test' # Name of file with protein id | features/labels | sequence
     n_splits = 3
     seed = 1234
     neg_multiple = 1
-    split_strategy = 'rcmcs'
+    split_strategy = 'homology'
     split_sim_threshold = 0.8
     embed_type = 'esm'
     res_dir = "/projects/p30041/spn1560/hiec/artifacts/model_evals/gnn"
@@ -478,5 +462,3 @@ if __name__ == '__main__':
         pos_neg.append({"train": train_pos_neg, "test": test_pos_neg})
 
     print(pos_neg)
-
-    print('hold')
