@@ -1,4 +1,4 @@
-from src.utils import construct_sparse_adj_mat, load_embed
+from src.utils import construct_sparse_adj_mat, load_embed, load_json
 import numpy as np
 import pandas as pd
 import os
@@ -77,8 +77,9 @@ class HyperHyperParams:
     embed_dim:int = None
 
     def __post_init__(self):
-        if self.split_strategy not in ['random', 'homology']:
-            raise ValueError(f"Invalid split strategy: {self.split_strategy}. Choose one from: {', '.join(self.valid_split_strategies)}")
+        valid_split_strategies = ['random', 'homology', 'rcmcs']
+        if self.split_strategy not in valid_split_strategies:
+            raise ValueError(f"Invalid split strategy: {self.split_strategy}. Choose one from: {', '.join(valid_split_strategies)}")
         
         embed_dims = {
             'esm': 1280,
@@ -196,9 +197,8 @@ class BatchGridSearch:
             split_guide = self._split_random(X, y)
         elif self.split_strategy == 'homology':
             split_guide = self._split_homology(X, y)
-        elif self.split_strategy == 'embedding':
-            # TODO: implement _split_embedding
-            pass
+        elif self.split_strategy == 'rcmcs':
+            split_guide = self._split_rcmcs(X, y)
 
         if do_save:
             split_guide.to_csv(split_guide_path, sep='\t', index=False)
@@ -209,7 +209,7 @@ class BatchGridSearch:
         cluster_path = f"/home/spn1560/hiec/data/{self.dataset_name}/{self.toc}_{int(self.split_sim_threshold * 100)}.clstr"
         
         if not os.path.exists(cluster_path):
-            raise ValueError(f"Cluster file does not exist for {self.dataset_name}, {self.toc}, threshold: {self.split_sim_threshold}")
+            raise ValueError(f"Cluster file does not exist for {self.dataset_name}, {self.toc}, strategy: {self.split_strategy} threshold: {self.split_sim_threshold}")
 
         cluster_id_2_upid = self._parse_cd_hit_clusters(cluster_path)
         upid_2_idx = {val : key for key, val in self.idx_sample.items()}
@@ -226,6 +226,58 @@ class BatchGridSearch:
 
             for j, pair in enumerate(X):
                 if pair[0] in test_prot_idx:
+                    data.append(['test', i, pair[0], pair[1], y[j]])
+                else:
+                    data.append(['train', i, pair[0], pair[1], y[j]])
+
+        return pd.DataFrame(data=data, columns=cols)
+    
+    def _split_rcmcs(self, X, y):
+        '''
+        Splits clusters based on reaction center MCS
+        '''
+        cluster_path = f"/home/spn1560/hiec/artifacts/clustering/{self.dataset_name}_{self.toc}_{self.split_strategy}_{int(self.split_sim_threshold * 100)}.json"
+
+        if not os.path.exists(cluster_path):
+            raise ValueError(f"Cluster file does not exist for {self.dataset_name}, {self.toc}, strategy: {self.split_strategy} threshold: {self.split_sim_threshold}")
+        
+        rxn_id_2_cluster = load_json(cluster_path)
+        cluster_2_rxn_id = defaultdict(list)
+        for r, c in rxn_id_2_cluster.items():
+            cluster_2_rxn_id[c].append(r)
+
+        rxn_id_2_idx = {v : k for k, v in self.idx_feature.items()}
+
+        return self._split_clusters(X, y, cluster_2_rxn_id, rxn_id_2_idx, 1)
+
+    def _split_clusters(self, X, y, cluster_2_elt, elt_2_idx, check_side):
+        '''
+        Splits clusters, returns dataframe split guide
+
+        Args
+        ----
+        X
+            Pair datapoints (n_samples x 2)
+        y
+            Datapoint labels
+        cluster_2_elt:dict
+            Cluster number -> list of element (protein or reaction) ids
+        elt_2_idx:dict
+            Element id -> adjacency matrix row / col idx
+        check_side:int
+            Which half of the pair. 0 = protein, 1 = reaction
+        '''
+        clusters = np.array(list(cluster_2_elt.keys())).reshape(-1, 1)
+        cols = ['train/test', 'split_idx', 'X1', 'X2', 'y']
+        data = []
+        kfold = KFold(n_splits=self.n_splits)
+        for i, (_, test) in enumerate(kfold.split(clusters)):
+            test_clstrs = clusters[test].reshape(-1)
+            test_elts = chain(*[cluster_2_elt[cid] for cid in test_clstrs])
+            test_elt_idxs = [elt_2_idx[elt] for elt in test_elts]
+
+            for j, pair in enumerate(X):
+                if pair[check_side] in test_elt_idxs:
                     data.append(['test', i, pair[0], pair[1], y[j]])
                 else:
                     data.append(['train', i, pair[0], pair[1], y[j]])
@@ -375,3 +427,56 @@ class BatchGridSearch:
             return True
         else:
             return False
+
+if __name__ == '__main__':
+    dataset_name = 'sprhea'
+    toc = 'v3_folded_pt_ns' # Name of file with protein id | features/labels | sequence
+    n_splits = 3
+    seed = 1234
+    neg_multiple = 1
+    split_strategy = 'rcmcs'
+    split_sim_threshold = 0.8
+    embed_type = 'esm'
+    res_dir = "/projects/p30041/spn1560/hiec/artifacts/model_evals/gnn"
+
+    # Configurtion stuff
+    hhps = HyperHyperParams(
+        dataset_name=dataset_name,
+        toc=toc,
+        neg_multiple=neg_multiple,
+        n_splits=n_splits,
+        split_strategy=split_strategy,
+        embed_type=embed_type,
+        seed=seed,
+        split_sim_threshold=split_sim_threshold,
+    )
+
+    # Create grid search object
+    gs = BatchGridSearch(
+        hhps=hhps,
+        res_dir=res_dir,
+    )
+
+    X, y = gs.sample_negatives()
+    split_guide = gs.split_data(X, y)
+
+    gb = split_guide.groupby(by='split_idx')
+    pos_neg = []
+    for name, group in gb:
+        train = group.loc[group["train/test"] == "train", ["X1", "X2"]].values.tolist()
+        train = set([tuple(elt) for elt in train])
+        test = group.loc[group["train/test"] == "test", ["X1", "X2"]].values.tolist()
+        test = set([tuple(elt) for elt in test])
+
+        assert len(train & test) == 0
+
+        train_labels = list(chain(*group.loc[group["train/test"] == "train", ["y"]].values.tolist()))
+        test_labels = list(chain(*group.loc[group["train/test"] == "test", ["y"]].values.tolist()))
+
+        train_pos_neg = (len(train_labels) - sum(train_labels)) / len(train_labels)
+        test_pos_neg = (len(test_labels) - sum(test_labels)) / len(test_labels)
+        pos_neg.append({"train": train_pos_neg, "test": test_pos_neg})
+
+    print(pos_neg)
+
+    print('hold')
