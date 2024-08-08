@@ -1,0 +1,25 @@
+@startgantt
+skinparam defaultFontName "CMU Serif"
+skinparam defaultFontSize 12
+
+project starts the 2024-08-12
+projectscale weekly with calendar date zoom 4
+'saturday are closed
+'sunday are closed
+
+'-- Phase II: Implementation and testing of local-reactivity features --
+[dev: DMPNN featurizer for local reactivity] as [dev_local_reactivity] requires 1 week, starts 2024-08-12, is 5% complete
+then [dev: extend the training / testing harness] as [dev_bench] requires 1 week, is 5% complete
+[dev: prototype complete ... improves prediction?] happens at [dev_bench]'s end, is 0% complete
+[dev_local_reactivity] is colored in Salmon/Black
+
+then [write: final report - MSDS458] as [write_msds_a2] requires 5 days, is 0% complete
+[write: final research report - MBP510] as [write_mbp_a2] requires 5 days, starts after [dev_bench]'s end, is 0% complete
+then [write: respond to feedback] as [write_feedback_a2] requires 4 days, is 0% complete
+[write: final reports complete] happens at [write_feedback_a2]'s end, is 0% complete
+
+then [dev: local reactivity in preprocessing] as [dev_preproc] requires 2 weeks, is 0% complete
+2024-08-12 to 2024-08-15 are named [remote from CT/NY]
+2024-08-12 to 2024-08-19 are colored in LightYellow
+'2024-08-13 to 2024-08-15 are closed
+@endgantt

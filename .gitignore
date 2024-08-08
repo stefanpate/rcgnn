@@ -1,10 +1,11 @@
 # Misc
 .idea/
+.DS_Store
+
 **/__pycache__
 **/lightning_logs
 **/.ipynb_checkpoints
 **/logs
-.DS_Store
 
 # Pixi and packaging
 .pixi
