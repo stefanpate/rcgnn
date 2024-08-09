@@ -5,11 +5,104 @@ import re
 from itertools import chain
 from rdkit import Chem
 from rdkit.Chem import rdFMCS
-from typing import Iterable
+from typing import Iterable, Dict
 import numpy as np
 import pandas as pd
 import multiprocessing as mp
 from tqdm import tqdm
+from Bio import Align
+
+def combo_similarity_matrix(pairs, Sseq, Srxn, idx2seq, idx2rxn):
+    seq2idx = {v: k for k, v in idx2seq.items()}
+    rxn2idx = {v: k for k, v in idx2rxn.items()}
+    sim_i_to_id = {i : id for i, id in enumerate(pairs)}
+    S = np.eye(N=len(pairs)) # Similarity matrix
+    
+    for i in range(len(sim_i_to_id) - 1):
+        seq1, rxn1 = sim_i_to_id[i]
+        seq_idx1, rxn_idx1 = seq2idx[seq1], rxn2idx[rxn1]
+        for j in range(i + 1, len(sim_i_to_id)):
+            seq2, rxn2 = sim_i_to_id[j]
+            seq_idx2, rxn_idx2 = seq2idx[seq2], rxn2idx[rxn2]
+            sim = max(Sseq[seq_idx1, seq_idx2], Srxn[rxn_idx1, rxn_idx2])
+            S[i, j] = sim
+            S[j, i] = sim
+
+    return S, sim_i_to_id
+            
+def global_sequence_identity(seq1:str, seq2:str, aligner:Align.PairwiseAligner):
+    '''
+    Aligns two sequences and calculates global sequence
+    identity = # aligned residues / min(len(seq1), len(seq2))
+
+    Args
+    ------
+    seq:str
+        Amino acid sequence
+    aligner:Bio.Align.PairwiseAligner
+        Pairwise aligner object
+    '''
+    alignment = aligner.align(seq1, seq2)[0]
+    t_segments, q_segments = alignment.aligned
+
+    talign = ''
+    qalign = ''
+    for i in range(t_segments.shape[0]):
+        talign += alignment.target[t_segments[i, 0] : t_segments[i, 1]]
+        qalign += alignment.query[q_segments[i, 0] : q_segments[i, 1]]
+
+    ct = 0
+    for t, q in zip(talign, qalign):
+        if t == q:
+            ct += 1
+    
+    return ct / min(len(alignment.target), len(alignment.query))
+
+def wrap_gsi(args):
+    return global_sequence_identity(*args)
+
+def homology_similarity_matrix(sequences:Dict[str, str], aligner:Align.PairwiseAligner):
+    '''
+    With multiprocessing, Computes reaction center MCS 
+    similarity matrix for set of reactions
+
+    Args
+    ----
+    sequences:Dict[str, str]
+        {id: amino acid sequence}
+    aligner:Bio.Align.PairwiseAligner
+        Pairwise aligner object
+    
+    Returns
+    -------
+    S:np.ndarray
+        nxn similarity matrix
+    sim_i_to_rxn_idx:dict
+        Maps sequences's similarity matrix index to its sequence id
+    '''
+    sim_i_to_id = {i : id for i, id in enumerate(sequences.keys())}
+    S = np.eye(N=len(sim_i_to_id)) # Similarity matrix
+
+    to_do = []
+    S_idxs = []
+    print("Preparing reaction pairs\n")
+    for i in range(len(sim_i_to_id) - 1):
+        seq1 = sequences[sim_i_to_id[i]]
+        print(f"Sequence # {i} : {sim_i_to_id[i]}", end='\r')
+        for j in range(i + 1, len(sim_i_to_id)):
+            seq2 = sequences[sim_i_to_id[j]]
+            S_idxs.append((i, j))
+            to_do.append((seq1, seq2, aligner))
+
+    print("\nProcessing pairs\n")    
+    with mp.Pool() as pool:
+        res = list(tqdm(pool.imap(wrap_gsi, to_do), total=len(to_do)))
+    
+    i, j = [np.array(elt) for  elt in zip(*S_idxs)]
+    S[i, j] = res
+    S[j, i] = res
+
+    return S, sim_i_to_id
 
 def calc_molecule_rcmcs(
         mol_rc1,
@@ -29,6 +122,7 @@ def calc_molecule_rcmcs(
     norm:str - Normalization to get an index out of
         prcmcs. 'min' normalizes by # atoms in smaller
         of the two substrates, 'max' by that of the larger
+    
     Returns
     -------
     rcmcs:float
@@ -212,6 +306,7 @@ def rcmcs_similarity_matrix(rxns:dict, rules:pd.DataFrame, norm='max'):
             
             rcmcs = calc_rxn_rcmcs(rxn_rci, rxn_rcj, norm=norm)
             S[i, j] = rcmcs
+            S[j, i] = rcmcs
 
     return S, sim_i_to_rxn_idx
 
@@ -272,6 +367,7 @@ def rcmcs_similarity_matrix_mp(rxns:dict, rules:pd.DataFrame, norm='max'):
     
     i, j = [np.array(elt) for  elt in zip(*S_idxs)]
     S[i, j] = res
+    S[j, i] = res
 
     return S, sim_i_to_rxn_idx
 

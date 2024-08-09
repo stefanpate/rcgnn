@@ -8,6 +8,7 @@ import json
 from collections import defaultdict
 import subprocess
 from dataclasses import dataclass, asdict, fields
+from typing import List, Tuple
 
 DEFAULT_DATA_DIR = "/projects/p30041/spn1560/hiec/data"
 DEFAULT_SCRATCH_DIR = "/scratch/spn1560"
@@ -411,6 +412,47 @@ class BatchGridSearch:
             return True
         else:
             return False
+
+def sample_negatives(X_pos:List[Tuple[int]], neg_multiple:int, seed:int):
+        '''
+        Samples n_samples negative pairs from an n_rows x n_cols adjacency matrix
+        given obs_pairs, positive pairs which should not be sampled
+
+        Args
+        ----
+        X_pos:List[Tuple[int]]
+            Adjacency matrix indices for protein-reaction pairs
+        neg_multiple:int
+            Sample neg_multiple time number positive samples
+        seed:int
+            For random number generator
+
+        Returns
+        -------
+        X, y:np.ndarray
+            The combined (positive and negative samples) dataset
+            and labels
+
+        '''
+        rng = np.random.default_rng(seed)
+        n_pos_samples = len(X_pos)
+        n_rows, n_cols = [max(elt) for elt in list(zip(*X_pos))]
+        n_neg_samples = neg_multiple * n_pos_samples
+        
+        # Sample subset of unobserved pairs
+        X_neg = []
+        while len(X_neg) < n_neg_samples:
+            i = rng.integers(0, n_rows)
+            j = rng.integers(0, n_cols)
+
+            if (i, j) not in X_pos and (i, j) not in X_neg:
+                X_neg.append((i, j))
+
+        # Concat full dataset
+        X = np.vstack(X_pos + X_neg)
+        y = np.hstack([np.ones(shape=(len(X_pos,))), np.zeros(shape=(len(X_neg,)))])
+
+        return X, y
 
 if __name__ == '__main__':
     dataset_name = 'sprhea'
