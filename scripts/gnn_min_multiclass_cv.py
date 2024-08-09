@@ -6,10 +6,10 @@ to predict minimal operator label
 
 from chemprop import models, nn
 from chemprop.data import build_dataloader
-from src.utils import load_known_rxns, construct_sparse_adj_mat, ensure_dirs
-from src.featurizer import RCVNReactionMolGraphFeaturizer, MultiHotAtomFeaturizer, MultiHotBondFeaturizer
-from src.nn import LastAggregation
-from src.data import RxnRCDatapoint, RxnRCDataset
+from catalytic_function.utils import load_known_rxns, construct_sparse_adj_mat, ensure_dirs
+from catalytic_function.featurizer import RCVNReactionMolGraphFeaturizer, MultiHotAtomFeaturizer, MultiHotBondFeaturizer
+from catalytic_function.nn import LastAggregation
+from catalytic_function.data import RxnRCDatapoint, RxnRCDataset
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import CSVLogger
 import numpy as np

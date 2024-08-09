@@ -1,7 +1,7 @@
 '''
 Matrix factorization
 '''
-from src.utils import load_design_matrix
+from catalytic_function.utils import load_design_matrix
 import numpy as np
 import torch
 

@@ -1,0 +1,16 @@
+@startgantt
+skinparam defaultFontName "CMU Serif"
+skinparam defaultFontSize 12
+
+project starts the 2024-09-14
+projectscale weekly with calendar date zoom 4
+
+'-- Phase III: Integration with CASP (Pickaxe / DORAnet) and MBP Symposium--
+[dev: integration of trained model into DORAnet] as [dev_integration] requires 5 weeks, starts 2024-09-15, is 0% complete
+[write: MBP symposium materials] as [write_mbp_symp] requires 3 weeks, starts 2024-09-15, is 2% complete
+[MBP symposium materials submitted] happens at 2024-09-30, is 0% complete
+[MBP Symposium Presentations] happens at 2024-10-07, is 0% complete
+
+2024-10-07 to 2024-10-08 are named [MBP Symposium]
+2024-10-07 to 2024-10-08 are closed
+@endgantt

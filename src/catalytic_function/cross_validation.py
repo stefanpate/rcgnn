@@ -1,4 +1,12 @@
-from src.utils import construct_sparse_adj_mat, load_embed, load_json
+'''
+TODO
+Set up internal run 
+Toggle on/off when to run with option "resume" defaults to flase
+Call bgs.run(hps) for all returned objects outside of load_from_exp
+
+'''
+
+from catalytic_function.utils import construct_sparse_adj_mat, load_embed, load_json
 import numpy as np
 import pandas as pd
 import os

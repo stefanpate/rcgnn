@@ -6,12 +6,12 @@ from chemprop.data import build_dataloader
 from chemprop.models import MPNN
 from chemprop.nn import MeanAggregation, BinaryClassificationFFN, BondMessagePassing
 
-from src.utils import load_json, save_json
-from src.featurizer import SimpleReactionMolGraphFeaturizer, RCVNReactionMolGraphFeaturizer, MultiHotAtomFeaturizer, MultiHotBondFeaturizer, ReactionMorganFeaturizer
-from src.nn import LastAggregation, DotSig, LinDimRed, AttentionAggregation, BondMessagePassingDict
-from src.model import MPNNDimRed, TwoChannelFFN, TwoChannelLinear
-from src.data import RxnRCDatapoint, RxnRCDataset, MFPDataset, mfp_build_dataloader
-from src.cross_validation import load_single_experiment, HyperHyperParams, BatchGridSearch
+from catalytic_function.utils import load_json, save_json
+from catalytic_function.featurizer import SimpleReactionMolGraphFeaturizer, RCVNReactionMolGraphFeaturizer, MultiHotAtomFeaturizer, MultiHotBondFeaturizer, ReactionMorganFeaturizer
+from catalytic_function.nn import LastAggregation, DotSig, LinDimRed, AttentionAggregation, BondMessagePassingDict
+from catalytic_function.model import MPNNDimRed, TwoChannelFFN, TwoChannelLinear
+from catalytic_function.data import RxnRCDatapoint, RxnRCDataset, MFPDataset, mfp_build_dataloader
+from catalytic_function.cross_validation import load_single_experiment, HyperHyperParams, BatchGridSearch
 
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import CSVLogger

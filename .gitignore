@@ -1,9 +1,15 @@
 # Misc
 .idea/
+.DS_Store
+
 **/__pycache__
 **/lightning_logs
 **/.ipynb_checkpoints
 **/logs
+
+# Pixi and packaging
+.pixi
+*.egg-info
 
 # Large data files
 data/sprhea/known_rxns_swissprot_enzymes_240310.json

@@ -1,0 +1,25 @@
+@startgantt
+skinparam defaultFontName "CMU Serif"
+skinparam defaultFontSize 12
+
+project starts the 2024-07-01
+projectscale weekly with calendar date zoom 4
+'saturday are closed
+'sunday are closed
+
+'-- Phase I: Environment setup and design of local-reactivity featurization for reaction fingerprinting --
+[read: Chemprop, GNN, CGR, ESM, Local Reactivity pubs] as [read] requires 6 weeks, starts D+0, is 80% complete
+
+[dev: func. group activation filtering] as [c123] requires 2 weeks, starts D+7, is 90% complete
+[dev: local environment] as [env_local] requires 3 days, starts D+21
+then [dev: remote environment on Quest] as [env_quest] requires 3 days
+[dev envs complete] happens at [env_quest]'s end
+
+then [write: midterm project report - MSDS458] as [write_msds_a1] requires 5 days
+then [write: midterm research report - MBP510] as [write_mbp_a1] requires 3 days
+then [write: research proposal for Quest alloc] as [write_quest_alloc] requires 2 days
+then [write: respond to feedback] as [write_feedback] requires 4 days, is 70% complete
+[write_msds_a1] -> [write_feedback]
+[write_mbp_a1] -> [write_feedback]
+[midterm reports \n and proposals complete] happens at [write_feedback]'s end, is 90% complete
+@endgantt
