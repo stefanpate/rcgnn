@@ -4,7 +4,7 @@
 #SBATCH -N 1
 #SBATCH -n 50
 #SBATCH --mem=0
-#SBATCH -t 3:00:00
+#SBATCH -t 48:00:00
 #SBATCH --job-name="comboclstr"
 #SBATCH --output=../logs/out/comboclstr
 #SBATCH --error=../logs/error/e_tmp_cpu
@@ -16,4 +16,4 @@ module purge
 module load python/anaconda3.6
 module load gcc/9.2.0
 source activate hiec
-python -u cluster.py 
+python -u cluster.py combo sprhea v3_folded_pt_ns -c 0.8
