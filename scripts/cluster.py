@@ -1,8 +1,8 @@
 from argparse import ArgumentParser
 from sklearn.cluster import AgglomerativeClustering
-from src.similarity import rcmcs_similarity_matrix, rcmcs_similarity_matrix_mp, homology_similarity_matrix, combo_similarity_matrix
+from src.similarity import rcmcs_similarity_matrix, rcmcs_similarity_matrix_mp, homology_similarity_matrix, merge_cd_hit_clusters
 from src.utils import load_json, construct_sparse_adj_mat, save_json
-from src.cross_validation import sample_negatives
+from src.cross_validation import sample_negatives, parse_cd_hit_clusters
 import pandas as pd
 from Bio import Align
 
@@ -18,15 +18,15 @@ if __name__ == '__main__':
 
     needs_rules = ['rcmcs', 'combo']
     needs_reactions = ['rcmcs', 'combo']
-    needs_seq_aligment = ['homology', 'combo']
+    needs_seq_aligment = ['homology']
 
     if args.similarity_score == 'combo':
         neg_multiple = 1
         seed = 1234
         adj, adj_i_prot_id, adj_i_rxn_id = construct_sparse_adj_mat(args.dataset, args.toc)
-        X = list(zip(*adj.nonzero()))
-        X, _ = sample_negatives(X, neg_multiple, seed)
-        X = [(adj_i_prot_id[i], int(adj_i_rxn_id[j])) for i, j in X]
+        X = list(zip(*adj.nonzero())) # Positive protein-reaction pairs
+        X, _ = sample_negatives(X, neg_multiple, seed) # Sample negatives
+        X = [(adj_i_prot_id[i], int(adj_i_rxn_id[j])) for i, j in X] # Translate back to upid, rxnid
 
     if args.similarity_score in needs_rules:
         rules = pd.read_csv(
@@ -50,7 +50,6 @@ if __name__ == '__main__':
         )
         sequences = {id: row["Sequence"] for id, row in toc.iterrows()}
 
-
     # Calculate similarity matrix
     if args.similarity_score == 'rcmcs' and args.multi_process:
         S, sim_i_to_id = rcmcs_similarity_matrix_mp(rxns, rules, norm='max')
@@ -59,33 +58,28 @@ if __name__ == '__main__':
     elif args.similarity_score == 'homology':
         S, sim_i_to_id = homology_similarity_matrix(sequences, aligner)
     elif args.similarity_score == 'combo':
-        Srxn, sim_i_to_rxn_id = rcmcs_similarity_matrix_mp(rxns, rules, norm='max')
-        Sseq, sim_i_to_seq_id = homology_similarity_matrix(sequences, aligner)
-        S, sim_i_to_id = combo_similarity_matrix(X, Sseq, Srxn, sim_i_to_seq_id, sim_i_to_rxn_id)
+        S, sim_i_to_id = rcmcs_similarity_matrix_mp(rxns, rules, norm='max')
 
     D = 1 - S # Distance matrix
     
     for cutoff in args.cutoff:
+        cd_hit_clusters = parse_cd_hit_clusters(f"../artifacts/clustering/{args.dataset}_{args.toc}_homology_{int(cutoff * 100)}.clstr")
         d_cutoff = 1 - cutoff
 
-        # Cluster
-        ac = AgglomerativeClustering(
-            n_clusters=None,
-            metric='precomputed',
-            distance_threshold=d_cutoff,
-            linkage='single'
-        )
-
-        ac.fit(D)
-
-        if len(sim_i_to_id) != len(ac.labels_):
-            raise Exception("Cluster label array length not equal to similarity matrix dimension")
-
-        # Save clusters
         if args.similarity_score == 'combo':
-            id2cluster = {";".join([str(elt) for elt in sim_i_to_id[i]]) : int(ac.labels_[i]) for i in sim_i_to_id}
+            id2cluster = merge_cd_hit_clusters(X, D, sim_i_to_id, cd_hit_clusters, d_cutoff)
+            id2cluster = {";".join([str(elt) for elt in k]) : int(v) for k, v in id2cluster.items()}
         else:
-            id2cluster = {sim_i_to_id[i] : int(ac.labels_[i]) for i in sim_i_to_id}
-
-
+            # Cluster
+            ac = AgglomerativeClustering(
+                n_clusters=None,
+                metric='precomputed',
+                distance_threshold=d_cutoff,
+                linkage='single'
+            )
+            ac.fit(D)            
+            labels = ac.labels_
+            id2cluster = {sim_i_to_id[i] : int(labels[i]) for i in sim_i_to_id}
+        
+        # Save clusters
         save_json(id2cluster, f"../artifacts/clustering/{args.dataset}_{args.toc}_{args.similarity_score}_{int(cutoff * 100)}.json")

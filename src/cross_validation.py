@@ -107,6 +107,22 @@ def load_single_experiment(hp_idx, scratch_dir=DEFAULT_SCRATCH_DIR):
 
     return hp
 
+def parse_cd_hit_clusters(file_path:str):
+        '''Returns dict of clustered proteins given
+        a filepath to a .clstr output file of cd-hit'''
+        clusters = defaultdict(list)
+        current_cluster = None
+
+        with open(file_path, 'r') as file:
+            for line in file:
+                line = line.strip()
+                if line.startswith(">Cluster"):
+                    current_cluster = int(line.split()[1])
+                else:
+                    clusters[current_cluster].append(line.split()[2][1:-3])
+
+        return clusters
+
 class BatchGridSearch:
 
     def __init__(
@@ -212,7 +228,7 @@ class BatchGridSearch:
         if not os.path.exists(cluster_path):
             raise ValueError(f"Cluster file does not exist for {self.dataset_name}, {self.toc}, strategy: {self.split_strategy} threshold: {self.split_sim_threshold}")
 
-        cluster_id_2_upid = self._parse_cd_hit_clusters(cluster_path)
+        cluster_id_2_upid = parse_cd_hit_clusters(cluster_path)
         upid_2_idx = {val : key for key, val in self.idx_sample.items()}
 
         return self._split_clusters(X, y, cluster_id_2_upid, upid_2_idx, check_side=0)
@@ -390,20 +406,6 @@ class BatchGridSearch:
         df.index += self.next_hp_idx
         new_exp = pd.concat((self.experiments, df))
         new_exp.to_csv(f"{self.res_dir}/experiments.csv", sep='\t')
-
-    def _parse_cd_hit_clusters(self, file_path):
-        clusters = defaultdict(list)
-        current_cluster = None
-
-        with open(file_path, 'r') as file:
-            for line in file:
-                line = line.strip()
-                if line.startswith(">Cluster"):
-                    current_cluster = int(line.split()[1])
-                else:
-                    clusters[current_cluster].append(line.split()[2][1:-3])
-
-        return clusters
 
     def _check_for_split_guide(self):
         split_guide_path =f"{self.scratch_dir}/{self.split_guide_pref}.csv" 

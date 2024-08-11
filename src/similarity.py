@@ -12,6 +12,48 @@ import multiprocessing as mp
 from tqdm import tqdm
 from Bio import Align
 
+def merge_cd_hit_clusters(
+        pairs:Iterable[tuple],
+        Drxn,
+        sim_i_to_rxn_id:Dict,
+        cd_hit_clusters:Dict,
+        distance_cutoff
+    ):
+    rxn2i = {v: k for k, v in sim_i_to_rxn_id.items()}
+    upid2cluster = {}
+    for cluster, upids in cd_hit_clusters.items():
+        for upid in upids:
+            upid2cluster[upid] = cluster
+    
+    for i in range(len(pairs) - 1):
+        rxn_idx_1 = rxn2i[pairs[i][1]]
+
+        if pairs[i][0] not in upid2cluster:
+            continue
+
+        cluster1 = upid2cluster[pairs[i][0]]
+        
+        for j in range(i + 1, len(pairs)):
+            rxn_idx_2 = rxn2i[pairs[j][1]]
+
+            if pairs[j][0] not in upid2cluster:
+                continue
+
+            cluster2 = upid2cluster[pairs[j][0]]
+
+            if Drxn[rxn_idx_1, rxn_idx_2] < distance_cutoff and cluster1 != cluster2:
+                cd_hit_clusters[cluster1] = cd_hit_clusters[cluster1] + cd_hit_clusters[cluster2]
+                for upid in cd_hit_clusters[cluster2]:
+                    upid2cluster[upid] = cluster1
+                cd_hit_clusters.pop(cluster2)
+    
+    id2cluster = {}
+    for upid, rxnid in pairs:
+        if upid in upid2cluster:
+            id2cluster[(upid, rxnid)] = upid2cluster[upid]
+
+    return id2cluster
+  
 def combo_similarity_matrix(pairs, Sseq, Srxn, idx2seq, idx2rxn):
     seq2idx = {v: k for k, v in idx2seq.items()}
     rxn2idx = {v: k for k, v in idx2rxn.items()}
