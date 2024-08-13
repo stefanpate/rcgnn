@@ -5,8 +5,8 @@
 #SBATCH -n 50
 #SBATCH --mem=0
 #SBATCH -t 2:00:00
-#SBATCH --job-name="comboclstr"
-#SBATCH --output=../logs/out/cc1
+#SBATCH --job-name="v3sim"
+#SBATCH --output=../logs/out/v3sim
 #SBATCH --error=../logs/error/e_tmp_cpu
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
@@ -16,4 +16,4 @@ module purge
 module load python/anaconda3.6
 module load gcc/9.2.0
 source activate hiec
-python -u cluster.py combo sprhea v3_folded_pt_ns -c 0.95
+python -u calc_sim_mat.py rcmcs sprhea v3_folded_pt_ns
