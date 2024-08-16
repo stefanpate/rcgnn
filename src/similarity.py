@@ -465,3 +465,64 @@ def check_ring_infor(mol_rc1, mol_rc2):
 
 def wrap_rcmcs(args):
         return calc_rxn_rcmcs(*args)
+
+def get_rcmcs_smarts_patt(
+        mol_rc1,
+        mol_rc2,
+        patt,
+    ):
+    '''
+    Args
+    ----
+    mol_rc1:Tuple[Mol, Tuple[int]]
+        1st molecule and tuple of its reaction center atom indices
+    mol_rc2:Tuple[Mol, Tuple[int]]
+        2nd molecule and tuple of its reaction center atom indices
+    patt:str
+        Reaction center substructure pattern in SMARTS
+    
+    Returns
+    -------
+    rcmcs:float
+        Reaction center max common substructure smarts string
+    '''
+    rc_scalar = 100
+
+    def _replace(match):
+        atomic_number = int(match.group(1))
+        return f"[{atomic_number * rc_scalar}#{atomic_number}"
+    
+    atomic_sub_patt = r'\[#(\d+)'
+    pairs = (mol_rc1, mol_rc2)
+
+    patt = re.sub(atomic_sub_patt, _replace, patt) # Mark reaction center patt w/ isotope number
+
+    # Mark reaction center vs other atoms in substrates w/ isotope number
+    for pair in pairs:
+        for atom in pair[0].GetAtoms():
+            if atom.GetIdx() in pair[1]:
+                atom.SetIsotope(atom.GetAtomicNum() * rc_scalar) # Rxn ctr atom
+            else:
+                atom.SetIsotope(atom.GetAtomicNum()) # Non rxn ctr atom
+
+    cleared, patt = mcs_precheck(mol_rc1, mol_rc2, patt) # Prevents FindMCS default behavior of non-rc-mcs
+
+    if not cleared:
+        return 0.0
+
+    # Get the mcs that contains the reaction center pattern
+    molecules = [elt[0] for elt in pairs]
+
+    res = rdFMCS.FindMCS(
+        molecules,
+        seedSmarts=patt,
+        atomCompare=rdFMCS.AtomCompare.CompareIsotopes,
+        bondCompare=rdFMCS.BondCompare.CompareOrderExact,
+        matchChiralTag=False,
+        ringMatchesRingOnly=True,
+        completeRingsOnly=False,
+        matchValences=True,
+        timeout=10
+    )
+
+    return res.smartsString
