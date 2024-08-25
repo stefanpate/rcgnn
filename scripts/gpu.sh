@@ -11,7 +11,7 @@
 #SBATCH --error=../logs/error/e_tmp_gpu
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
-#SBATCH --mail-user=stefan.pate@northwestern.edu
+#SBATCH --mail-user=pasha@u.northwestern.edu
 ulimit -c 0
 module load python/anaconda3.6
 module load gcc/9.2.0

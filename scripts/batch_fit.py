@@ -13,7 +13,7 @@ neg_multiple = 1
 split_strategy = 'homology'
 split_sim_threshold = 0.8
 embed_type = 'esm'
-res_dir = "/projects/p30041/spn1560/hiec/artifacts/model_evals/gnn"
+res_dir = "/projects/b1039/trw7841/hiec/artifacts/model_evals/gnn"
 
 # Configurtion stuff
 hhps = HyperHyperParams(
@@ -35,14 +35,14 @@ gs = BatchGridSearch(
 
 # Choose hyperparameters for grid search
 hps = {
-    'n_epochs':[25, 35], # int
+    'n_epochs':[25], # int
     'pred_head':['dot_sig', 'binary'], # 'binary' | 'dot_sig'
-    'message_passing':[None], # 'bondwise' | 'bondwise_dict' | None
-    'agg':[None], # 'mean' | 'last' | 'attention' | None
-    'd_h_encoder':[50, 300], # int
-    'model':['linear'], # 'mpnn' | 'mpnn_dim_red' | 'ffn' | 'linear'
-    'featurizer':['mfp'], # 'rxn_simple' | 'rxn_rc' | 'mfp'
-    'encoder_depth':[None], # int | None
+    'message_passing':['bondwise'], # 'bondwise' | 'bondwise_dict' | None
+    'agg':['last'], # 'mean' | 'last' | 'attention' | None
+    'd_h_encoder':[50], # int
+    'model':['mpnn_dim_red'], # 'mpnn' | 'mpnn_dim_red' | 'ffn' | 'linear'
+    'featurizer':['rxn_rc'], # 'rxn_simple' | 'rxn_rc' | 'mfp'
+    'encoder_depth':[3], # int | None
 }
 
 # Slurm stuff

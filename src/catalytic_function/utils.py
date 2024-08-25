@@ -10,8 +10,8 @@ from collections import namedtuple
 import re
 import yaml
 
-data_dir = "/projects/p30041/spn1560/hiec/data"
-scratch_dir = "/scratch/spn1560"
+data_dir = "/projects/b1039/trw7841/hiec/data"
+scratch_dir = "/scratch/trw7841"
 
 DatabaseEntry = namedtuple("DatabaseEntry", "db, id", defaults=[None, None])
 Enzyme = namedtuple("Enzyme", "uniprot_id, sequence, ec, validation_score, existence, reviewed, organism", defaults=[None, None, None, None, None, None, None])

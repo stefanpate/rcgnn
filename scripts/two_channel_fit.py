@@ -22,7 +22,7 @@ import torch
 import os
 from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score
 
-res_dir = "/projects/p30041/spn1560/hiec/artifacts/model_evals/gnn" # TODO this shouldn't be here. Should be set by batch fit/resume
+res_dir = "/projects/b1039/trw7841/hiec/artifacts/model_evals/gnn"
 
 # Aggregation fcns
 aggs = {
