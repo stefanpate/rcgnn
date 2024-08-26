@@ -1,28 +1,41 @@
 '''
-Fit "two channel" (reaction gnn + esm) model
+Fit "two channel" (reaction gnn + esm) model on all data
 '''
 
 from chemprop.data import build_dataloader
 from chemprop.models import MPNN
 from chemprop.nn import MeanAggregation, BinaryClassificationFFN, BondMessagePassing
 
-from src.utils import load_json, save_json
+from src.utils import load_json, load_embed_matrix, construct_sparse_adj_mat
 from src.featurizer import SimpleReactionMolGraphFeaturizer, RCVNReactionMolGraphFeaturizer, MultiHotAtomFeaturizer, MultiHotBondFeaturizer, ReactionMorganFeaturizer
 from src.nn import LastAggregation, DotSig, LinDimRed, AttentionAggregation, BondMessagePassingDict
 from src.model import MPNNDimRed, TwoChannelFFN, TwoChannelLinear
 from src.data import RxnRCDatapoint, RxnRCDataset, MFPDataset, mfp_build_dataloader
-from src.cross_validation import load_single_experiment, HyperHyperParams, BatchGridSearch
+from src.cross_validation import sample_negatives
 
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import CSVLogger
 
 import numpy as np
-from argparse import ArgumentParser
-import torch
-import os
-from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score
 
-res_dir = "/projects/p30041/spn1560/hiec/artifacts/model_evals/gnn" # TODO this shouldn't be here. Should be set by batch fit/resume
+res_dir = "/projects/p30041/spn1560/hiec/artifacts/trained_models/gnn"
+model_name = "bag_of_molecules"
+dataset_name = 'sprhea'
+toc = 'v3_folded_pt_ns'
+neg_multiple = 1
+seed = 1234
+embed_type = 'esm'
+
+hps = {
+    'n_epochs': 25, # int
+    'pred_head': 'dot_sig', # 'binary' | 'dot_sig'
+    'message_passing': 'bondwise', # 'bondwise' | 'bondwise_dict' | None
+    'agg': 'mean', # 'mean' | 'last' | 'attention' | None
+    'd_h_encoder': 300, # int
+    'model': 'mpnn_dim_red', # 'mpnn' | 'mpnn_dim_red' | 'ffn' | 'linear'
+    'featurizer': 'rxn_simple', # 'rxn_simple' | 'rxn_rc' | 'mfp'
+    'encoder_depth': 5, # int | None
+}
 
 # Aggregation fcns
 aggs = {
@@ -43,7 +56,6 @@ message_passers = {
     'bondwise_dict':BondMessagePassingDict
 }
 
-
 # Featurizers +
 featurizers = {
     'rxn_simple': (RxnRCDataset, SimpleReactionMolGraphFeaturizer, build_dataloader),
@@ -51,43 +63,16 @@ featurizers = {
     'mfp': (MFPDataset, ReactionMorganFeaturizer, mfp_build_dataloader)
 }
 
-# Evaluation metrics
-scorers = {
-    'f1': lambda y_true, y_pred: f1_score(y_true, y_pred),
-    'precision': lambda y_true, y_pred: precision_score(y_true, y_pred),
-    'recall': lambda y_true, y_pred: recall_score(y_true, y_pred),
-    'accuracy': accuracy_score
-}
-
-# Parse CL args
-parser = ArgumentParser()
-parser.add_argument("-s", "--split-idx", type=int)
-parser.add_argument("-p", "--hp-idx", type=int)
-parser.add_argument("-c", "--checkpoint-idx", type=int)
-
-args = parser.parse_args()
-
-split_idx = args.split_idx
-hp_idx = args.hp_idx
-chkpt_idx = args.checkpoint_idx
-
-# Load hyperparams
-print("Loading hyperparameters")
-hps = load_single_experiment(hp_idx)
-hhps = HyperHyperParams.from_single_experiment(hps)
-hps = {k: v for k,v in hps.items() if k not in hhps.to_dict()} # Make hps, hhps mutually exclusive
-gs = BatchGridSearch(hhps, res_dir=res_dir)
-
-n_splits = hhps.n_splits
-dataset_name = hhps.dataset_name
-toc = hhps.toc
-
 # Results directories
-hp_split_dir = f"{hp_idx}_hp_idx_split_{split_idx+1}_of_{n_splits}"
 
-# Load data split
+# Load data
 print("Loading data")
-train_data, test_data = gs.load_data_split(split_idx=split_idx)
+adj, idx_sample, idx_feature = construct_sparse_adj_mat(dataset_name, toc)
+sample_idx = {v: k for k, v in idx_sample.items()}
+positive_pairs = list(zip(*adj.nonzero()))
+X, y = sample_negatives(positive_pairs, neg_multiple, seed)
+embeds = load_embed_matrix(dataset_name, toc, embed_type, sample_idx, do_norm=False)
+embed_dim = embeds.shape[1]
 known_rxns = load_json(f"../data/{dataset_name}/{toc}.json") # Load reaction dataset
 
 # Init featurizer
@@ -107,27 +92,18 @@ else:
 # Featurize data
 print("Constructing datasets & dataloaders")
 datapoints_train = []
-for row in train_data:
-    rxn = known_rxns[row['feature']]
-    y = np.array([row['y']]).astype(np.float32)
-    datapoints_train.append(datapoint_from_smi(rxn, y=y, x_d=row['sample_embed']))
-
-datapoints_test = []
-for row in test_data:
-    rxn = known_rxns[row['feature']]
-    y = np.array([row['y']]).astype(np.float32)
-    datapoints_test.append(datapoint_from_smi(rxn, y=y, x_d=row['sample_embed']))
+for (i, j), label in zip(X, y):
+    rxn = known_rxns[idx_feature[j]]
+    label = np.array([label], dtype=np.float32)
+    prot_embed = embeds[i, :]
+    datapoints_train.append(datapoint_from_smi(rxn, y=label, x_d=prot_embed))
 
 dataset_train = dataset_base(datapoints_train, featurizer=featurizer)
-dataset_test = dataset_base(datapoints_test, featurizer=featurizer)
-
 data_loader_train = generate_dataloader(dataset_train, shuffle=False)
-data_loader_test = generate_dataloader(dataset_test, shuffle=False)
 
 # Construct model
 print("Building model")
 d_h_encoder = hps['d_h_encoder'] # Hidden layer of message passing
-embed_dim = hhps.embed_dim
 encoder_depth = hps['encoder_depth']
 
 if hps['message_passing']:
@@ -167,21 +143,10 @@ elif hps['model'] == 'linear':
         predictor=pred_head,
     )
 
-if chkpt_idx:
-    chkpt_dir = f"{res_dir}/{chkpt_idx}_hp_idx_split_{split_idx+1}_of_{n_splits}/version_0/checkpoints"
-    chkpt_file = os.listdir(chkpt_dir)[0]
-    chkpt_path = f"{chkpt_dir}/{chkpt_file}"
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    chkpt = torch.load(chkpt_path, map_location=device)
-    model.load_state_dict(chkpt['state_dict'])
-    model.max_lr = 1e-4 # Constant lr
-    epochs_completed = chkpt['epoch'] + 1
-    n_epochs = hps['n_epochs'] - epochs_completed # To tell Trainer
-else:
-    n_epochs = hps['n_epochs']
+n_epochs = hps['n_epochs']
 
 # Make trainer
-logger = CSVLogger(res_dir, name=hp_split_dir)
+logger = CSVLogger(res_dir, name=model_name)
 trainer = pl.Trainer(
     enable_checkpointing=True,
     enable_progress_bar=True,
@@ -197,29 +162,3 @@ trainer.fit(
     model=model,
     train_dataloaders=data_loader_train,
 )
-
-# Predict
-print("Testing")
-with torch.inference_mode():
-    trainer = pl.Trainer(
-        logger=None,
-        enable_progress_bar=True,
-        accelerator="auto",
-        devices=1
-    )
-    test_preds = trainer.predict(model, data_loader_test)
-
-# Evaluate
-logits = np.vstack(test_preds)
-y_pred = (logits > 0.5).astype(np.int64).reshape(-1,)
-y_true = test_data['y']
-
-scores = {}
-for k, scorer in scorers.items():
-    scores[k] = scorer(y_true, y_pred)
-
-print(scores)
-sup_dir = f"{res_dir}/{hp_split_dir}"
-versions = sorted([(fn, int(fn.split('_')[-1])) for fn in os.listdir(sup_dir)], key=lambda x : x[-1])
-latest_version = versions[-1][0]
-save_json(scores, f"{sup_dir}/{latest_version}/test_scores.json")

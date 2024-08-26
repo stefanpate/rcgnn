@@ -139,7 +139,7 @@ def get_sample_feature_idxs(ds_name, toc):
             
         return idx_sample, idx_feature
 
-def load_design_matrix(ds_name, toc, embed_type, sample_idx, do_norm=True, scratch_dir=scratch_dir, data_dir=data_dir):
+def load_embed_matrix(ds_name, toc, embed_type, sample_idx, do_norm=True, scratch_dir=scratch_dir, data_dir=data_dir):
         '''
         Args
             - ds_name: Str name of dataset
@@ -159,10 +159,10 @@ def load_design_matrix(ds_name, toc, embed_type, sample_idx, do_norm=True, scrat
             try:
                 print(f"Loading {embed_type} embeddings for {ds_name}:{toc} dataset")
                 magic_key = 33
-                data_path = f"{data_dir}/{ds_name}/"
-                X = []
-                for i, elt in enumerate(sample_idx):
-                    X.append(load_embed(data_path + f"{embed_type}/{elt}.pt", embed_key=magic_key)[1])
+                data_path = f"{data_dir}/{ds_name}"
+                X = [None for _ in range(len(sample_idx))]
+                for i, (sample_id, idx) in enumerate(sample_idx.items()):
+                    X[idx] = load_embed(f"{data_path}/{embed_type}/{sample_id}.pt", embed_key=magic_key)[1]
 
                     if i % 5000 == 0:
                         print(f"Embedding #{i} / {len(sample_idx)}")
@@ -175,7 +175,7 @@ def load_design_matrix(ds_name, toc, embed_type, sample_idx, do_norm=True, scrat
                 # Save to scratch
                 np.save(path, X)
             except:
-                print("Data not found in projects dir")
+                raise ValueError("Data not found in projects dir")
 
         return X
 
