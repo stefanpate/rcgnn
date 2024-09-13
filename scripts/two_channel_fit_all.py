@@ -17,25 +17,16 @@ from lightning import pytorch as pl
 from lightning.pytorch.loggers import CSVLogger
 
 import numpy as np
+from argparse import ArgumentParser
 
+# Parse CL args
+parser = ArgumentParser()
+parser.add_argument("model_name", type=str)
+args = parser.parse_args()
+model_name = args.model_name
+
+hps = load_json(f"../artifacts/named_model_hps/{model_name}.json")
 res_dir = "/projects/p30041/spn1560/hiec/artifacts/trained_models/gnn"
-model_name = "bag_of_molecules"
-dataset_name = 'sprhea'
-toc = 'v3_folded_pt_ns'
-neg_multiple = 1
-seed = 1234
-embed_type = 'esm'
-
-hps = {
-    'n_epochs': 25, # int
-    'pred_head': 'dot_sig', # 'binary' | 'dot_sig'
-    'message_passing': 'bondwise', # 'bondwise' | 'bondwise_dict' | None
-    'agg': 'mean', # 'mean' | 'last' | 'attention' | None
-    'd_h_encoder': 300, # int
-    'model': 'mpnn_dim_red', # 'mpnn' | 'mpnn_dim_red' | 'ffn' | 'linear'
-    'featurizer': 'rxn_simple', # 'rxn_simple' | 'rxn_rc' | 'mfp'
-    'encoder_depth': 5, # int | None
-}
 
 # Aggregation fcns
 aggs = {
@@ -63,17 +54,15 @@ featurizers = {
     'mfp': (MFPDataset, ReactionMorganFeaturizer, mfp_build_dataloader)
 }
 
-# Results directories
-
 # Load data
 print("Loading data")
-adj, idx_sample, idx_feature = construct_sparse_adj_mat(dataset_name, toc)
+adj, idx_sample, idx_feature = construct_sparse_adj_mat(hps['dataset_name'], hps['toc'])
 sample_idx = {v: k for k, v in idx_sample.items()}
 positive_pairs = list(zip(*adj.nonzero()))
-X, y = sample_negatives(positive_pairs, neg_multiple, seed)
-embeds = load_embed_matrix(dataset_name, toc, embed_type, sample_idx, do_norm=False)
+X, y = sample_negatives(positive_pairs, hps['neg_multiple'], hps['seed'])
+embeds = load_embed_matrix(hps['dataset_name'], hps['toc'], hps['embed_type'], sample_idx, do_norm=False)
 embed_dim = embeds.shape[1]
-known_rxns = load_json(f"../data/{dataset_name}/{toc}.json") # Load reaction dataset
+known_rxns = load_json(f"../data/{hps['dataset_name']}/{hps['toc']}.json") # Load reaction dataset
 
 # Init featurizer
 mfp_length = 2**10

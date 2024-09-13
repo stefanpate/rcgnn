@@ -1,0 +1,15 @@
+{
+    "n_epochs": 25,
+    "pred_head": "dot_sig",
+    "message_passing": "bondwise",
+    "agg": "last",
+    "d_h_encoder": 300,
+    "model": "mpnn_dim_red",
+    "featurizer": "rxn_rc",
+    "encoder_depth": 4,
+    "dataset_name": "sprhea",
+    "toc": "v3_folded_pt_ns",
+    "embed_type": "esm",
+    "seed": 1234,
+    "neg_multiple": 1
+}
