@@ -1,8 +1,8 @@
 from argparse import ArgumentParser
 from sklearn.cluster import AgglomerativeClustering
-from src.similarity import rcmcs_similarity_matrix, rcmcs_similarity_matrix_mp, homology_similarity_matrix, merge_cd_hit_clusters
+from src.similarity import rcmcs_similarity_matrix, homology_similarity_matrix
 from src.utils import load_json, construct_sparse_adj_mat, save_json
-from src.cross_validation import sample_negatives, parse_cd_hit_clusters
+from src.cross_validation import sample_negatives
 import pandas as pd
 from Bio import Align
 
@@ -12,7 +12,6 @@ if __name__ == '__main__':
     parser.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
     parser.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
     parser.add_argument("-c", "--cutoff", nargs='+', help="Upper limit on cross-cluster similarity", type=float, required=True)
-    parser.add_argument("-m", "--multi-process", action='store_true')
 
     args = parser.parse_args()
 
@@ -51,35 +50,26 @@ if __name__ == '__main__':
         sequences = {id: row["Sequence"] for id, row in toc.iterrows()}
 
     # Calculate similarity matrix
-    if args.similarity_score == 'rcmcs' and args.multi_process:
-        S, sim_i_to_id = rcmcs_similarity_matrix_mp(rxns, rules, norm='max')
-    elif args.similarity_score == 'rcmcs':
+    if args.similarity_score == 'rcmcs':
         S, sim_i_to_id = rcmcs_similarity_matrix(rxns, rules, norm='max')
     elif args.similarity_score == 'homology':
         S, sim_i_to_id = homology_similarity_matrix(sequences, aligner)
-    elif args.similarity_score == 'combo':
-        S, sim_i_to_id = rcmcs_similarity_matrix_mp(rxns, rules, norm='max')
 
     D = 1 - S # Distance matrix
     
     for cutoff in args.cutoff:
-        cd_hit_clusters = parse_cd_hit_clusters(f"../artifacts/clustering/{args.dataset}_{args.toc}_homology_{int(cutoff * 100)}.clstr")
         d_cutoff = 1 - cutoff
 
-        if args.similarity_score == 'combo':
-            id2cluster = merge_cd_hit_clusters(X, D, sim_i_to_id, cd_hit_clusters, d_cutoff)
-            id2cluster = {";".join([str(elt) for elt in k]) : int(v) for k, v in id2cluster.items()}
-        else:
-            # Cluster
-            ac = AgglomerativeClustering(
-                n_clusters=None,
-                metric='precomputed',
-                distance_threshold=d_cutoff,
-                linkage='single'
-            )
-            ac.fit(D)            
-            labels = ac.labels_
-            id2cluster = {sim_i_to_id[i] : int(labels[i]) for i in sim_i_to_id}
+        # Cluster
+        ac = AgglomerativeClustering(
+            n_clusters=None,
+            metric='precomputed',
+            distance_threshold=d_cutoff,
+            linkage='single'
+        )
+        ac.fit(D)            
+        labels = ac.labels_
+        id2cluster = {sim_i_to_id[i] : int(labels[i]) for i in sim_i_to_id}
         
         # Save clusters
         save_json(id2cluster, f"../artifacts/clustering/{args.dataset}_{args.toc}_{args.similarity_score}_{int(cutoff * 100)}.json")

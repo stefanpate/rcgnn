@@ -304,57 +304,7 @@ def fractionate(rxn_smarts):
 
 def rcmcs_similarity_matrix(rxns:dict, rules:pd.DataFrame, norm='max'):
     '''
-    Computes reaction center MCS similarity matrix for set of reactions
-
-    Args
-    ----
-    rxns:dict
-        Reactions dict. Must contains 'smarts', 'rcs', 'min_rules' keys
-        in each reaction_idx indexed sub-dict
-    rules:pd.DataFrame
-        Minimal rules indexed by rule name, e.g., 'rule0123', w/ 'SMARTS' col
-    
-    Returns
-    -------
-    S:np.ndarray
-        nxn similarity matrix
-    sim_i_to_rxn_idx:dict
-        Maps reaction's similarity matrix index to its reaction index from rxns
-    '''
-    sim_i_to_rxn_idx = {i : idx for i, idx in enumerate(rxns.keys())}
-    fields = ['smarts', 'rcs', 'min_rules']
-    S = np.eye(N=len(sim_i_to_rxn_idx)) # Similarity matrix
-
-    for i in range(len(sim_i_to_rxn_idx) - 1):
-        print(f"Processing {i} : {sim_i_to_rxn_idx[i]}")
-        rowi = [rxns[sim_i_to_rxn_idx[i]][f] for f in fields]
-        for j in range(i + 1, len(sim_i_to_rxn_idx)):
-            rowj = [rxns[sim_i_to_rxn_idx[j]][f] for f in fields]
-            
-            if tuple(rowi[2]) != tuple(rowj[2]): # Distinct minimal rules:
-                rev_rules = rowj[2][::-1]
-
-                if tuple(rowi[2]) != tuple(rev_rules): # Rules are still distinct
-                    continue
-                else: # Directions now match
-                    rowj[2] = rev_rules
-                    rowj[1] = rowj[1][::-1]
-                    rowj[0] = ">>".join(rowj[0].split('>>')[::-1])
-
-            # Convert rules to patts
-            patts = [extract_operator_patts(rules.loc[rowi[2][k], 'SMARTS'], 0) for k in range(2)]
-            rxn_rci = rowi[:2] + [patts]
-            rxn_rcj = rowj[:2] + [patts]
-            
-            rcmcs = calc_rxn_rcmcs(rxn_rci, rxn_rcj, norm=norm)
-            S[i, j] = rcmcs
-            S[j, i] = rcmcs
-
-    return S, sim_i_to_rxn_idx
-
-def rcmcs_similarity_matrix_mp(rxns:dict, rules:pd.DataFrame, norm='max'):
-    '''
-    With multiprocessing, Computes reaction center MCS 
+    Computes reaction center MCS 
     similarity matrix for set of reactions
 
     Args

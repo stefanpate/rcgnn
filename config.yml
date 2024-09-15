@@ -1,0 +1,17 @@
+dirs:
+  artifacts: "/projects/p30041/spn1560/hiec/artifacts"
+  data: "/projects/p30041/spn1560/hiec/data"
+  scratch: "/scratch/spn1560"
+
+subdirs:
+  artifacts:
+    - "embeddings"
+    - "model_evals"
+    - "sim_mats"
+    - "trained_models"
+  data:
+    - "erxprot"
+    - "halogenase"
+    - "new"
+    - "price"
+    - "sprhea"

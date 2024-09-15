@@ -1,5 +1,11 @@
+'''
+Calculate similarity matrices with traditional similarity measures
+like RCMCS, sequence homology
+'''
+
+
 from argparse import ArgumentParser
-from src.similarity import rcmcs_similarity_matrix_mp
+from src.similarity import rcmcs_similarity_matrix
 from src.utils import load_json, save_json
 import pandas as pd
 import numpy as np
@@ -23,7 +29,7 @@ if __name__ == '__main__':
 
 
     # Calculate similarity matrix
-    S, sim_i_to_id = rcmcs_similarity_matrix_mp(rxns, rules, norm='max')
+    S, sim_i_to_id = rcmcs_similarity_matrix(rxns, rules, norm='max')
     S = S.astype(np.float32)
         
     # Save clusters
