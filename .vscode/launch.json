@@ -5,14 +5,18 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: Current File with Arguments",
+            "name": "similarity_matrix",
             "type": "debugpy",
             "request": "launch",
-            "program": "${file}",
+            "program": "calc_embed_sim_mat.py",
             "console": "integratedTerminal",
             "cwd": "${fileDirname}",
             "args": [
-                "${command:pickArgs}"
+                "embed",
+                "sprhea",
+                "v3_folded_pt_ns",
+                "artifacts/embeddings/test/reactions",
+                "artifacts/sim_mats/sprhea_v3_folded_pt_ns_test_similarity_reactions"
             ]
         },
         {

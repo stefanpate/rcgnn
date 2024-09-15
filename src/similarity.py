@@ -11,6 +11,19 @@ import pandas as pd
 import multiprocessing as mp
 from tqdm import tqdm
 from Bio import Align
+from pathlib import Path
+
+def embedding_similarity(X: np.ndarray, save_to: Path, dt: np.dtype = np.float32):
+    '''
+    Multiplies X X.T and saves result
+    '''
+    X /= np.linalg.norm(X, axis=1).reshape(-1, 1)
+    S = np.matmul(X, X.T).astype(dt)
+
+    if not save_to.parent.exists():
+        save_to.parent.mkdir(parents=True)
+
+    np.save(save_to, S)
 
 def merge_cd_hit_clusters(
         pairs:Iterable[tuple],

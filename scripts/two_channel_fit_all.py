@@ -6,7 +6,7 @@ from chemprop.data import build_dataloader
 from chemprop.models import MPNN
 from chemprop.nn import MeanAggregation, BinaryClassificationFFN, BondMessagePassing
 
-from src.utils import load_json, load_embed_matrix, construct_sparse_adj_mat
+from src.utils import load_json, load_precomputed_embeds, construct_sparse_adj_mat
 from src.featurizer import SimpleReactionMolGraphFeaturizer, RCVNReactionMolGraphFeaturizer, MultiHotAtomFeaturizer, MultiHotBondFeaturizer, ReactionMorganFeaturizer
 from src.nn import LastAggregation, DotSig, LinDimRed, AttentionAggregation, BondMessagePassingDict
 from src.model import MPNNDimRed, TwoChannelFFN, TwoChannelLinear
@@ -60,7 +60,7 @@ adj, idx_sample, idx_feature = construct_sparse_adj_mat(hps['dataset_name'], hps
 sample_idx = {v: k for k, v in idx_sample.items()}
 positive_pairs = list(zip(*adj.nonzero()))
 X, y = sample_negatives(positive_pairs, hps['neg_multiple'], hps['seed'])
-embeds = load_embed_matrix(hps['dataset_name'], hps['toc'], hps['embed_type'], sample_idx, do_norm=False)
+embeds = load_precomputed_embeds(hps['dataset_name'], hps['toc'], hps['embed_type'], sample_idx, do_norm=False)
 embed_dim = embeds.shape[1]
 known_rxns = load_json(f"../data/{hps['dataset_name']}/{hps['toc']}.json") # Load reaction dataset
 

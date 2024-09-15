@@ -3,7 +3,7 @@ from pathlib import Path
 
 project_dir = Path(__file__).parent.parent
 
-with open(project_dir / "config.yaml", 'r') as f:
+with open(project_dir / "config.yml", 'r') as f:
     configs = yaml.safe_load(f)
 
 filepaths = {}

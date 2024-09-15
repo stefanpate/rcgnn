@@ -8,10 +8,11 @@ import subprocess
 from sklearn.model_selection import KFold
 from collections import namedtuple
 import re
-import yaml
+from pathlib import Path
+from src.config import filepaths
 
-data_dir = "/projects/p30041/spn1560/hiec/data"
-scratch_dir = "/scratch/spn1560"
+data_dir = filepaths['data']
+scratch_dir = filepaths['scratch']
 
 DatabaseEntry = namedtuple("DatabaseEntry", "db, id", defaults=[None, None])
 Enzyme = namedtuple("Enzyme", "uniprot_id, sequence, ec, validation_score, existence, reviewed, organism", defaults=[None, None, None, None, None, None, None])
@@ -26,7 +27,8 @@ def load_json(path):
     return data
 
 def load_embed(path, embed_key):
-    id = path.split('/')[-1].removesuffix('.pt')
+    # TODO fix when older functions call this w/o a proper path object
+    id = path.stem
     f = torch.load(path)
     if type(f) == dict:
         embed = f['mean_representations'][embed_key]
@@ -99,8 +101,6 @@ def construct_sparse_adj_mat(ds_name, toc):
                 row.append(i)
                 col.append(j)
                 data.append(1)
-                
-            print(f"{i}", end='\r')
 
         adj = sp.sparse.csr_matrix((data, (row, col)), shape=(len(sample_idx), len(feature_idx)))
         idx_sample = {v:k for k,v in sample_idx.items()}
@@ -139,7 +139,7 @@ def get_sample_feature_idxs(ds_name, toc):
             
         return idx_sample, idx_feature
 
-def load_embed_matrix(ds_name, toc, embed_type, sample_idx, do_norm=True, scratch_dir=scratch_dir, data_dir=data_dir):
+def load_precomputed_embeds(ds_name, toc, embed_type, sample_idx, do_norm=True, scratch_dir=scratch_dir, data_dir=data_dir):
         '''
         Args
             - ds_name: Str name of dataset
@@ -178,6 +178,48 @@ def load_embed_matrix(ds_name, toc, embed_type, sample_idx, do_norm=True, scratc
                 raise ValueError("Data not found in projects dir")
 
         return X
+
+def load_embed_matrix(filepath: Path, idx_sample: dict) -> np.ndarray:
+    '''
+    Given a filepath to embedding-containing dir on projects,
+    checks if there is a numpy file containing an embedding
+    matrix on scratch, if not creates it, finally loads it
+
+    Args
+    ----
+    filepath:Path
+        Filepath to directory containing individual embedding
+        files as .pt
+
+    idx_sample:dict
+        Maps index of sample in embedding matrix / adjacency matrix
+        to sample id
+
+    Returns
+    -------
+    X:np.ndarray
+        Embedding matrix (n_samples x d_embedding)
+    '''
+    rel_path = filepath.relative_to(filepaths["projects"])
+    scratch_path = filepaths["scratch"] / rel_path / "X.npy"
+    if scratch_path.exists():
+        X = np.load(scratch_path)
+    else:
+        scratch_path.parent.mkdir(parents=True, exist_ok=True)
+        print(f"Loading embeddings from {str(filepath)}")
+        magic_key = 33
+        X = [None for _ in range(len(idx_sample))]
+        for i, (idx, sample_id) in enumerate(idx_sample.items()):
+            X[idx] = load_embed(filepath / f"{sample_id}.pt", embed_key=magic_key)[1]
+
+            if i % 5000 == 0:
+                print(f"Embedding #{i} / {len(idx_sample)}")
+
+        X = np.vstack(X)
+        np.save(scratch_path, X)
+
+    return X
+
 
 def load_known_rxns(path):
     with open(path, 'r') as f:

@@ -1,7 +1,8 @@
 dirs:
   artifacts: "/projects/p30041/spn1560/hiec/artifacts"
   data: "/projects/p30041/spn1560/hiec/data"
-  scratch: "/scratch/spn1560"
+  scratch: "/scratch/spn1560/hiec"
+  projects: "/projects/p30041/spn1560/hiec"
 
 subdirs:
   artifacts:
