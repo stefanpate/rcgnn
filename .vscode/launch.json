@@ -8,15 +8,13 @@
             "name": "similarity_matrix",
             "type": "debugpy",
             "request": "launch",
-            "program": "calc_embed_sim_mat.py",
+            "program": "similarity_matrix.py",
             "console": "integratedTerminal",
             "cwd": "${fileDirname}",
             "args": [
-                "embed",
+                "rcmcs",
                 "sprhea",
-                "v3_folded_pt_ns",
-                "artifacts/embeddings/test/reactions",
-                "artifacts/sim_mats/sprhea_v3_folded_pt_ns_test_similarity_reactions"
+                "v3_folded_test",
             ]
         },
         {

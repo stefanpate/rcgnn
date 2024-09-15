@@ -13,17 +13,14 @@ from tqdm import tqdm
 from Bio import Align
 from pathlib import Path
 
-def embedding_similarity(X: np.ndarray, save_to: Path, dt: np.dtype = np.float32):
+def embedding_similarity(X: np.ndarray, dt: np.dtype = np.float32):
     '''
     Multiplies X X.T and saves result
     '''
     X /= np.linalg.norm(X, axis=1).reshape(-1, 1)
     S = np.matmul(X, X.T).astype(dt)
-
-    if not save_to.parent.exists():
-        save_to.parent.mkdir(parents=True)
-
-    np.save(save_to, S)
+    
+    return S
 
 def merge_cd_hit_clusters(
         pairs:Iterable[tuple],
@@ -315,7 +312,7 @@ def fractionate(rxn_smarts):
     sides = rxn_smarts.split('>>')
     return tuple(chain(*[side.split('.') for side in sides]))
 
-def rcmcs_similarity_matrix(rxns:dict, rules:pd.DataFrame, norm='max'):
+def rcmcs_similarity(rxns:dict[str, dict], rules:pd.DataFrame, matrix_idx_to_rxn_id: dict[int, str], dt: np.dtype = np.float32, norm='max'):
     '''
     Computes reaction center MCS 
     similarity matrix for set of reactions
@@ -327,26 +324,26 @@ def rcmcs_similarity_matrix(rxns:dict, rules:pd.DataFrame, norm='max'):
         in each reaction_idx indexed sub-dict
     rules:pd.DataFrame
         Minimal rules indexed by rule name, e.g., 'rule0123', w/ 'SMARTS' col
+    matrix_idx_to_rxn_id:dict
+        Maps reaction's similarity matrix / embed matrix index to its reaction index from rxns
     
     Returns
     -------
     S:np.ndarray
         nxn similarity matrix
-    sim_i_to_rxn_idx:dict
-        Maps reaction's similarity matrix index to its reaction index from rxns
     '''
-    sim_i_to_rxn_idx = {i : idx for i, idx in enumerate(rxns.keys())}
+    # sim_i_to_rxn_idx = {i : idx for i, idx in enumerate(rxns.keys())}
     fields = ['smarts', 'rcs', 'min_rules']
-    S = np.eye(N=len(sim_i_to_rxn_idx)) # Similarity matrix
+    S = np.eye(N=len(matrix_idx_to_rxn_id)) # Similarity matrix
 
     to_do = []
     S_idxs = []
     print("Preparing reaction pairs\n")
-    for i in range(len(sim_i_to_rxn_idx) - 1):
-        print(f"Rxn # {i} : {sim_i_to_rxn_idx[i]}", end='\r')
-        rowi = [rxns[sim_i_to_rxn_idx[i]][f] for f in fields]
-        for j in range(i + 1, len(sim_i_to_rxn_idx)):
-            rowj = [rxns[sim_i_to_rxn_idx[j]][f] for f in fields]
+    for i in range(len(matrix_idx_to_rxn_id) - 1):
+        print(f"Rxn # {i} : {matrix_idx_to_rxn_id[i]}", end='\r')
+        rowi = [rxns[matrix_idx_to_rxn_id[i]][f] for f in fields]
+        for j in range(i + 1, len(matrix_idx_to_rxn_id)):
+            rowj = [rxns[matrix_idx_to_rxn_id[j]][f] for f in fields]
             
             if tuple(rowi[2]) != tuple(rowj[2]): # Distinct minimal rules:
                 rev_rules = rowj[2][::-1]
@@ -373,8 +370,7 @@ def rcmcs_similarity_matrix(rxns:dict, rules:pd.DataFrame, norm='max'):
     i, j = [np.array(elt) for  elt in zip(*S_idxs)]
     S[i, j] = res
     S[j, i] = res
-
-    return S, sim_i_to_rxn_idx
+    return S.astype(dt)
 
 def mcs_precheck(mol_rc1, mol_rc2, patt):
     '''

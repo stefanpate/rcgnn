@@ -76,10 +76,7 @@ def construct_sparse_adj_mat(ds_name, toc):
             - idx_sample: Index to label dict for samples
             - idx_feature: Index to label dict for features / classes
         '''
-        try:
-            df = pd.read_csv(f"../data/{ds_name}/{toc}.csv", delimiter='\t')
-        except FileNotFoundError:
-            df = pd.read_csv(f"./data/{ds_name}/{toc}.csv", delimiter='\t')
+        df = pd.read_csv(data_dir / f"{ds_name}/{toc}.csv", delimiter='\t')
 
         # Load from dataset "table of contents csv"
         df.set_index('Entry', inplace=True)
