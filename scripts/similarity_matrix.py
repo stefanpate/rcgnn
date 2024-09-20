@@ -1,7 +1,3 @@
-'''
-Calculate similarity matrix
-'''
-
 from src.utils import load_embed_matrix, construct_sparse_adj_mat, load_json
 from src.similarity import embedding_similarity, rcmcs_similarity
 from src.config import filepaths
@@ -28,7 +24,7 @@ def calc_rxn_embed_sim(args, embeddings_superdir: Path = embeddings_superdir, si
     _, _, idx_feature = construct_sparse_adj_mat(args.dataset, args.toc)
     X = load_embed_matrix(embed_path, idx_feature)
     tic = perf_counter()
-    S = embedding_similarity(X, save_to)
+    S = embedding_similarity(X)
     toc = perf_counter()
     print(f"Matrix multiplication took: {toc - tic} seconds")
     save_sim_mat(S, save_to)  

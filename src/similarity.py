@@ -17,10 +17,9 @@ def embedding_similarity(X: np.ndarray, dt: np.dtype = np.float32):
     '''
     Multiplies X X.T and saves result
     '''
-    X /= np.linalg.norm(X, axis=1).reshape(-1, 1)
-    S = np.matmul(X, X.T).astype(dt)
-    
-    return S
+    S = np.matmul(X, X.T)
+    S = 1 / (1 + np.exp(-S))  
+    return S.astype(dt)
 
 def merge_cd_hit_clusters(
         pairs:Iterable[tuple],
@@ -381,7 +380,7 @@ def mcs_precheck(mol_rc1, mol_rc2, patt):
     if patt.count('#') == 1:
         patt = handle_single_atom_patt(mol_rc1, mol_rc2, patt)
     
-    cleared = check_ring_infor(mol_rc1, mol_rc2)
+    cleared = check_ring_info(mol_rc1, mol_rc2)
 
     return cleared, patt
 
@@ -407,7 +406,7 @@ def handle_single_atom_patt(mol_rc1, mol_rc2, patt):
     
     return patt
 
-def check_ring_infor(mol_rc1, mol_rc2):
+def check_ring_info(mol_rc1, mol_rc2):
     ''''
     Rejects any mol pair where corresponding
     reaction center atoms have distinct ring membership
