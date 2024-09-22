@@ -1,5 +1,5 @@
 from src.utils import load_embed_matrix, construct_sparse_adj_mat, load_json
-from src.similarity import embedding_similarity_matrix, rcmcs_similarity_matrix
+from src.similarity import embedding_similarity_matrix, rcmcs_similarity_matrix, mcs_similarity_matrix, tanimoto_similarity_matrix
 from src.config import filepaths
 from pathlib import Path
 from argparse import ArgumentParser
@@ -43,6 +43,24 @@ def calc_rcmcs_sim(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim
     S = rcmcs_similarity_matrix(rxns, rules, idx_feature)
     save_sim_mat(S, save_to)
 
+def calc_mcs_sim(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_mats_dir):
+    save_to = sim_mats_dir / f"{args.dataset}_{args.toc}_mcs"
+
+    rxns = load_json(data_filepath / args.dataset / f"{args.toc}.json")
+    _, _, idx_feature = construct_sparse_adj_mat(args.dataset, args.toc)
+
+    S = mcs_similarity_matrix(rxns, idx_feature)
+    save_sim_mat(S, save_to)
+
+def calc_tani_sim(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_mats_dir):
+    save_to = sim_mats_dir / f"{args.dataset}_{args.toc}_tanimoto"
+
+    rxns = load_json(data_filepath / args.dataset / f"{args.toc}.json")
+    _, _, idx_feature = construct_sparse_adj_mat(args.dataset, args.toc)
+
+    S = tanimoto_similarity_matrix(rxns, idx_feature)
+    save_sim_mat(S, save_to)
+
 parser = ArgumentParser(description="Simlarity matrix calculator")
 subparsers = parser.add_subparsers(title="Commands", description="Available comands")
 
@@ -58,6 +76,18 @@ parser_rcmcs = subparsers.add_parser("rcmcs", help="Calculate RCMCS similarity")
 parser_rcmcs.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
 parser_rcmcs.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
 parser_rcmcs.set_defaults(func=calc_rcmcs_sim)
+
+# MCS similarity
+parser_rcmcs = subparsers.add_parser("mcs", help="Calculate MCS similarity")
+parser_rcmcs.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
+parser_rcmcs.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
+parser_rcmcs.set_defaults(func=calc_mcs_sim)
+
+# Tanimoto similarity
+parser_rcmcs = subparsers.add_parser("tanimoto", help="Calculate Tanimoto similarity")
+parser_rcmcs.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
+parser_rcmcs.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
+parser_rcmcs.set_defaults(func=calc_tani_sim)
 
 def main():
     args = parser.parse_args()

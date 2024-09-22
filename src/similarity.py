@@ -4,14 +4,13 @@ Libary of similarity functions, clustering support functions etc.
 import re
 from itertools import chain
 from rdkit import Chem
-from rdkit.Chem import rdFMCS, Mol
+from rdkit.Chem import rdFMCS, Mol, AllChem
 from typing import Iterable, Dict
 import numpy as np
 import pandas as pd
 import multiprocessing as mp
 from tqdm import tqdm
 from Bio import Align
-from functools import partial
 
 def embedding_similarity_matrix(X: np.ndarray, dt: np.dtype = np.float32):
     '''
@@ -21,7 +20,116 @@ def embedding_similarity_matrix(X: np.ndarray, dt: np.dtype = np.float32):
     S = 1 / (1 + np.exp(-S))  
     return S.astype(dt)
 
-def rcmcs_similarity_matrix(rxns:dict[str, dict], rules:pd.DataFrame, matrix_idx_to_rxn_id: dict[int, str], dt: np.dtype = np.float32, norm='max'):
+def tanimoto_similarity_matrix(rxns:dict[str, dict], matrix_idx_to_rxn_id: dict[int, str], dt: np.dtype = np.float32):
+    '''
+    Computes reaction center MCS 
+    similarity matrix for set of reactions
+
+    Args
+    ----
+    rxns:dict
+        Reactions dict. Must contains 'smarts', 'rcs', 'min_rules' keys
+        in each reaction_idx indexed sub-dict
+    matrix_idx_to_rxn_id:dict
+        Maps reaction's similarity matrix / embed matrix index to its reaction index from rxns
+    
+    Returns
+    -------
+    S:np.ndarray
+        nxn similarity matrix
+    '''
+    fields = ['smarts', 'min_rules']
+    S = np.eye(N=len(matrix_idx_to_rxn_id)) # Similarity matrix
+
+    to_do = []
+    S_idxs = []
+    print("Preparing reaction pairs\n")
+    for i in range(len(matrix_idx_to_rxn_id) - 1):
+        id_i = matrix_idx_to_rxn_id[i]
+        smarts_i, rules_i = [rxns[id_i][f] for f in fields]
+        print(f"Rxn # {i} : {matrix_idx_to_rxn_id[i]}", end='\r')
+        for j in range(i + 1, len(matrix_idx_to_rxn_id)):
+            id_j = matrix_idx_to_rxn_id[j]
+            smarts_j, rules_j = [rxns[id_j][f] for f in fields]
+
+            if tuple(rules_i) != tuple(rules_j):
+                rules_j = rules_j[::-1]
+            
+                if tuple(rules_i) != tuple(rules_j):
+                    continue
+                else:
+                    smarts_j = ">>".join(smarts_j.split(">>")[::-1])
+
+            S_idxs.append((i, j))
+            to_do.append(([smarts_i, smarts_j],))
+
+    print("\nProcessing pairs\n")    
+    with mp.Pool() as pool:
+        res = list(tqdm(pool.imap(_wrap_rxn_mcs, to_do), total=len(to_do)))
+    
+    if S_idxs:
+        i, j = [np.array(elt) for elt in zip(*S_idxs)]
+        S[i, j] = res
+        S[j, i] = res
+
+    return S.astype(dt)
+
+def mcs_similarity_matrix(rxns:dict[str, dict], matrix_idx_to_rxn_id: dict[int, str], dt: np.dtype = np.float32):
+    '''
+    Computes reaction center MCS 
+    similarity matrix for set of reactions
+
+    Args
+    ----
+    rxns:dict
+        Reactions dict. Must contains 'smarts', 'rcs', 'min_rules' keys
+        in each reaction_idx indexed sub-dict
+    matrix_idx_to_rxn_id:dict
+        Maps reaction's similarity matrix / embed matrix index to its reaction index from rxns
+    
+    Returns
+    -------
+    S:np.ndarray
+        nxn similarity matrix
+    '''
+
+    fields = ['smarts', 'min_rules']
+    S = np.eye(N=len(matrix_idx_to_rxn_id)) # Similarity matrix
+
+    to_do = []
+    S_idxs = []
+    print("Preparing reaction pairs\n")
+    for i in range(len(matrix_idx_to_rxn_id) - 1):
+        id_i = matrix_idx_to_rxn_id[i]
+        smarts_i, rules_i = [rxns[id_i][f] for f in fields]
+        print(f"Rxn # {i} : {matrix_idx_to_rxn_id[i]}", end='\r')
+        for j in range(i + 1, len(matrix_idx_to_rxn_id)):
+            id_j = matrix_idx_to_rxn_id[j]
+            smarts_j, rules_j = [rxns[id_j][f] for f in fields]
+
+            if tuple(rules_i) != tuple(rules_j):
+                rules_j = rules_j[::-1]
+            
+                if tuple(rules_i) != tuple(rules_j):
+                    continue
+                else:
+                    smarts_j = ">>".join(smarts_j.split(">>")[::-1])
+
+            S_idxs.append((i, j))
+            to_do.append(([smarts_i, smarts_j],))
+
+    print("\nProcessing pairs\n")    
+    with mp.Pool() as pool:
+        res = list(tqdm(pool.imap(_wrap_rxn_tani, to_do), total=len(to_do)))
+    
+    if S_idxs:
+        i, j = [np.array(elt) for elt in zip(*S_idxs)]
+        S[i, j] = res
+        S[j, i] = res
+
+    return S.astype(dt)
+
+def rcmcs_similarity_matrix(rxns:dict[str, dict], rules:pd.DataFrame, matrix_idx_to_rxn_id: dict[int, str], dt: np.dtype = np.float32):
     '''
     Computes reaction center MCS 
     similarity matrix for set of reactions
@@ -59,22 +167,24 @@ def rcmcs_similarity_matrix(rxns:dict[str, dict], rules:pd.DataFrame, matrix_idx
             if tuple(rules_i) != tuple(rules_j):
                 rules_j = rules_j[::-1]
             
-            if tuple(rules_i) != tuple(rules_j):
-                continue
-            else:
-                rcs_j = rcs_j[::-1]
-                smarts_j = ">>".join(smarts_j.split(">>")[::-1])
+                if tuple(rules_i) != tuple(rules_j):
+                    continue
+                else:
+                    rcs_j = rcs_j[::-1]
+                    smarts_j = ">>".join(smarts_j.split(">>")[::-1])
 
             S_idxs.append((i, j))
-            to_do.append(([smarts_i, smarts_j], (rcs_i, rcs_j), patts, norm))
+            to_do.append(([smarts_i, smarts_j], (rcs_i, rcs_j), patts))
 
     print("\nProcessing pairs\n")    
     with mp.Pool() as pool:
         res = list(tqdm(pool.imap(_wrap_rxn_mcs, to_do), total=len(to_do)))
     
-    i, j = [np.array(elt) for  elt in zip(*S_idxs)]
-    S[i, j] = res
-    S[j, i] = res
+    if S_idxs:
+        i, j = [np.array(elt) for elt in zip(*S_idxs)]
+        S[i, j] = res
+        S[j, i] = res
+
     return S.astype(dt)
 
 def merge_cd_hit_clusters(
@@ -237,12 +347,12 @@ def mcs_similarity(molecules: Iterable[Mol], reaction_centers: Iterable[tuple[in
     elif reaction_centers is not None and patt is not None:
         mode = 'rcmcs'
     else:
-        raise ValueError("Either provide both reaction_centers and patt for score or provide neither for MCS")
+        raise ValueError("Either provide both reaction_centers and patt for RCMCS or provide neither for MCS")
 
     if mode == 'rcmcs' and len(molecules) != len(reaction_centers):
         raise ValueError("Mismatch in number of molecules and reaction centers provided")
 
-    if mode == 'mcs':
+    if mode == 'rcmcs':
         rc_scalar = 100
 
         def replace(match):
@@ -267,7 +377,7 @@ def mcs_similarity(molecules: Iterable[Mol], reaction_centers: Iterable[tuple[in
         elif not cleared:
             return 0.0
 
-    # Find RCMCS
+    # Find MCS
     res = rdFMCS.FindMCS(
         molecules,
         seedSmarts=patt if mode == 'rcmcs' else '',
@@ -327,7 +437,7 @@ def reaction_mcs_similarity(
     elif reaction_centers is None and patts is None:
         mode = 'mcs'
     else:
-        raise ValueError("Either provide both reaction_centers and patts for score or provide neither for MCS")
+        raise ValueError("Either provide both reaction_centers and patts for RCMCS or provide neither for MCS")
 
     if analyze_sides == 'left':
         molecules = [[Chem.MolFromSmiles(smi) for smi in rxn.split('>>')[0].split('.')] for rxn in reactions]
@@ -358,6 +468,40 @@ def reaction_mcs_similarity(
             n_atoms = max([m.GetNumAtoms() for m in args[0]])
         elif norm == 'min':
             n_atoms = min([m.GetNumAtoms() for m in args[0]])
+        
+        cum_score += score * n_atoms
+        cum_atoms += n_atoms
+
+    return cum_score / cum_atoms
+
+def reaction_tanimoto_similarity(reactions: Iterable[str], norm: str = 'max', analyze_sides: str = 'both'):
+    '''
+    Calculates atom-weighted tanimoto similarity score for a pair of reactions with aligned substrates.
+    
+    Args
+    -------
+    reactions: Iterable[str]
+        Reaction smarts 'rsmi1.rsmi2>psmi1.psmi2'
+    analyze_sides: str
+        'left' or 'both'
+    '''
+    if analyze_sides == 'left':
+        molecules = [[Chem.MolFromSmiles(smi) for smi in rxn.split('>>')[0].split('.')] for rxn in reactions]
+    elif analyze_sides == 'both':
+        molecules = [[Chem.MolFromSmiles(smi) for smi in fractionate(rxn)] for rxn in reactions] # List of mols for each rxn
+    
+    molecules = zip(*molecules) # Transpose to list of molecule pairs
+
+    cum_atoms = 0
+    cum_score = 0
+    for mols in molecules:
+        mfps = [morgan_fingerprint(mol) for mol in mols]
+        score = tanimoto_similarity(*mfps)
+
+        if norm == 'max':
+            n_atoms = max([m.GetNumAtoms() for m in mols])
+        elif norm == 'min':
+            n_atoms = min([m.GetNumAtoms() for m in mols])
         
         cum_score += score * n_atoms
         cum_atoms += n_atoms
@@ -405,6 +549,20 @@ def fractionate(rxn_smarts: str) -> tuple[str]:
     '''
     sides = rxn_smarts.split('>>')
     return tuple(chain(*[side.split('.') for side in sides]))
+
+def tanimoto_similarity(bit_vec_1: np.ndarray, bit_vec_2: np.ndarray, dtype=np.float32):
+    dot = np.dot(bit_vec_1, bit_vec_2)
+    return dtype(dot / (bit_vec_1.sum() + bit_vec_2.sum() - dot))
+
+def morgan_fingerprint(mol: Mol, radius: int = 2, length: int = 2**10, use_features: bool = False, use_chirality: bool = False):
+    vec = AllChem.GetMorganFingerprintAsBitVect(
+        mol,
+        radius=radius,
+        nBits=length,
+        useFeatures=use_features,
+        useChirality=use_chirality,
+    )
+    return np.array(vec, dtype=np.float32)
 
 def _mcs_precheck(molecules: Iterable[Mol], reaction_centers: Iterable[tuple[int]], patt:str):
     '''
@@ -467,8 +625,11 @@ def _check_ring_info(molecules: Iterable[Mol], reaction_centers: Iterable[tuple[
         
     return True
 
+def wrap_gsi(args):
+    return global_sequence_identity(*args)
+
 def _wrap_rxn_mcs(args):
     return reaction_mcs_similarity(*args)
 
-def wrap_gsi(args):
-    return global_sequence_identity(*args)
+def _wrap_rxn_tani(args):
+    return reaction_tanimoto_similarity(*args)
