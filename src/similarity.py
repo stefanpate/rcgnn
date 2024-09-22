@@ -4,21 +4,77 @@ Libary of similarity functions, clustering support functions etc.
 import re
 from itertools import chain
 from rdkit import Chem
-from rdkit.Chem import rdFMCS
+from rdkit.Chem import rdFMCS, Mol
 from typing import Iterable, Dict
 import numpy as np
 import pandas as pd
 import multiprocessing as mp
 from tqdm import tqdm
 from Bio import Align
-from pathlib import Path
+from functools import partial
 
-def embedding_similarity(X: np.ndarray, dt: np.dtype = np.float32):
+def embedding_similarity_matrix(X: np.ndarray, dt: np.dtype = np.float32):
     '''
     Multiplies X X.T and saves result
     '''
     S = np.matmul(X, X.T)
     S = 1 / (1 + np.exp(-S))  
+    return S.astype(dt)
+
+def rcmcs_similarity_matrix(rxns:dict[str, dict], rules:pd.DataFrame, matrix_idx_to_rxn_id: dict[int, str], dt: np.dtype = np.float32, norm='max'):
+    '''
+    Computes reaction center MCS 
+    similarity matrix for set of reactions
+
+    Args
+    ----
+    rxns:dict
+        Reactions dict. Must contains 'smarts', 'rcs', 'min_rules' keys
+        in each reaction_idx indexed sub-dict
+    rules:pd.DataFrame
+        Minimal rules indexed by rule name, e.g., 'rule0123', w/ 'SMARTS' col
+    matrix_idx_to_rxn_id:dict
+        Maps reaction's similarity matrix / embed matrix index to its reaction index from rxns
+    
+    Returns
+    -------
+    S:np.ndarray
+        nxn similarity matrix
+    '''
+    fields = ['smarts', 'rcs', 'min_rules']
+    S = np.eye(N=len(matrix_idx_to_rxn_id)) # Similarity matrix
+
+    to_do = []
+    S_idxs = []
+    print("Preparing reaction pairs\n")
+    for i in range(len(matrix_idx_to_rxn_id) - 1):
+        id_i = matrix_idx_to_rxn_id[i]
+        smarts_i, rcs_i, rules_i = [rxns[id_i][f] for f in fields]
+        patts = [extract_operator_patts(rules.loc[rule, 'SMARTS'], side=0) for rule in rules_i]
+        print(f"Rxn # {i} : {matrix_idx_to_rxn_id[i]}", end='\r')
+        for j in range(i + 1, len(matrix_idx_to_rxn_id)):
+            id_j = matrix_idx_to_rxn_id[j]
+            smarts_j, rcs_j, rules_j = [rxns[id_j][f] for f in fields]
+
+            if tuple(rules_i) != tuple(rules_j):
+                rules_j = rules_j[::-1]
+            
+            if tuple(rules_i) != tuple(rules_j):
+                continue
+            else:
+                rcs_j = rcs_j[::-1]
+                smarts_j = ">>".join(smarts_j.split(">>")[::-1])
+
+            S_idxs.append((i, j))
+            to_do.append(([smarts_i, smarts_j], (rcs_i, rcs_j), patts, norm))
+
+    print("\nProcessing pairs\n")    
+    with mp.Pool() as pool:
+        res = list(tqdm(pool.imap(_wrap_rxn_mcs, to_do), total=len(to_do)))
+    
+    i, j = [np.array(elt) for  elt in zip(*S_idxs)]
+    S[i, j] = res
+    S[j, i] = res
     return S.astype(dt)
 
 def merge_cd_hit_clusters(
@@ -109,9 +165,6 @@ def global_sequence_identity(seq1:str, seq2:str, aligner:Align.PairwiseAligner):
     
     return ct / min(len(alignment.target), len(alignment.query))
 
-def wrap_gsi(args):
-    return global_sequence_identity(*args)
-
 def homology_similarity_matrix(sequences:Dict[str, str], aligner:Align.PairwiseAligner):
     '''
     With multiprocessing, Computes reaction center MCS 
@@ -155,61 +208,70 @@ def homology_similarity_matrix(sequences:Dict[str, str], aligner:Align.PairwiseA
 
     return S, sim_i_to_id
 
-def calc_molecule_rcmcs(
-        mol_rc1,
-        mol_rc2,
-        patt,
-        norm='max'
-    ):
+def mcs_similarity(molecules: Iterable[Mol], reaction_centers: Iterable[tuple[int]] = None, patt:str = None, norm: str='max', return_match_patt: bool = False):
     '''
+    Calculates MCS similarity score for a pair of molecules. If reaction_centers and patt
+    are provided, reaction center MCS score will be provided, otherwise a straight MCS score is provided.
+
     Args
     ----
-    mol_rc1:Tuple[Mol, Tuple[int]]
-        1st molecule and tuple of its reaction center atom indices
-    mol_rc2:Tuple[Mol, Tuple[int]]
-        2nd molecule and tuple of its reaction center atom indices
+    molecules: Iterable[Mol]
+        Molecules to compare
+    reaction_centers: Iterable[tuple[int]]
+        Molecules' reaction centers in same order as molecules
     patt:str
         Reaction center substructure pattern in SMARTS
-    norm:str - Normalization to get an index out of
-        prcmcs. 'min' normalizes by # atoms in smaller
-        of the two substrates, 'max' by that of the larger
+    norm:str
+        'min' normalizes by # atoms in smallest molecule, 'max' the largest
+    return_match_patt: bool
     
     Returns
     -------
-    rcmcs:float
+    score:float
         Reaction center max common substructure score [0, 1]
+    mcs_patt:str
+        SMARTS match pattern if return_match_patt == True
     '''
-    rc_scalar = 100
+    if reaction_centers is None and patt is None:
+        mode = 'mcs'
+    elif reaction_centers is not None and patt is not None:
+        mode = 'rcmcs'
+    else:
+        raise ValueError("Either provide both reaction_centers and patt for score or provide neither for MCS")
 
-    def _replace(match):
-        atomic_number = int(match.group(1))
-        return f"[{atomic_number * rc_scalar}#{atomic_number}"
-    
-    atomic_sub_patt = r'\[#(\d+)'
-    pairs = (mol_rc1, mol_rc2)
+    if mode == 'rcmcs' and len(molecules) != len(reaction_centers):
+        raise ValueError("Mismatch in number of molecules and reaction centers provided")
 
-    patt = re.sub(atomic_sub_patt, _replace, patt) # Mark reaction center patt w/ isotope number
+    if mode == 'mcs':
+        rc_scalar = 100
 
-    # Mark reaction center vs other atoms in substrates w/ isotope number
-    for pair in pairs:
-        for atom in pair[0].GetAtoms():
-            if atom.GetIdx() in pair[1]:
-                atom.SetIsotope(atom.GetAtomicNum() * rc_scalar) # Rxn ctr atom
-            else:
-                atom.SetIsotope(atom.GetAtomicNum()) # Non rxn ctr atom
+        def replace(match):
+            atomic_number = int(match.group(1))
+            return f"[{atomic_number * rc_scalar}#{atomic_number}"
+        
+        atomic_sub_patt = r'\[#(\d+)'
+        patt = re.sub(atomic_sub_patt, replace, patt) # Mark reaction center patt w/ isotope number
 
-    cleared, patt = mcs_precheck(mol_rc1, mol_rc2, patt) # Prevents FindMCS default behavior of non-rc-mcs
+        # Mark reaction center vs other atoms in substrates w/ isotope number
+        for mol, rc in zip(molecules, reaction_centers):
+            for atom in mol.GetAtoms():
+                if atom.GetIdx() in rc:
+                    atom.SetIsotope(atom.GetAtomicNum() * rc_scalar) # Rxn ctr atom
+                else:
+                    atom.SetIsotope(atom.GetAtomicNum()) # Non rxn ctr atom
 
-    if not cleared:
-        return 0.0
+        cleared, patt = _mcs_precheck(molecules, reaction_centers, patt) # Prevents FindMCS default behavior of non-rc-mcs
 
-    # Get the mcs that contains the reaction center pattern
-    molecules = [elt[0] for elt in pairs]
+        if not cleared and return_match_patt:
+            return 0.0, ''
+        elif not cleared:
+            return 0.0
 
+    # Find RCMCS
     res = rdFMCS.FindMCS(
         molecules,
-        seedSmarts=patt,
-        atomCompare=rdFMCS.AtomCompare.CompareIsotopes,
+        seedSmarts=patt if mode == 'rcmcs' else '',
+        atomCompare=rdFMCS.AtomCompare.CompareIsotopes if mode == 'rcmcs' else rdFMCS.AtomCompare.CompareElements,
         bondCompare=rdFMCS.BondCompare.CompareOrderExact,
         matchChiralTag=False,
         ringMatchesRingOnly=True,
@@ -218,56 +280,89 @@ def calc_molecule_rcmcs(
         timeout=10
     )
 
-    # Compute prc mcs index
-    if res.canceled:
-        return 0
+    # Compute score
+    if res.canceled and return_match_patt:
+        return 0.0, ''
+    elif res.canceled:
+        return 0.0
     elif norm == 'min':
-        return res.numAtoms / min(m.GetNumAtoms() for m in molecules)
+        score = res.numAtoms / min(m.GetNumAtoms() for m in molecules)
     elif norm == 'max':
-        return res.numAtoms / max(m.GetNumAtoms() for m in molecules)
+        score = res.numAtoms / max(m.GetNumAtoms() for m in molecules)
 
-def calc_rxn_rcmcs(
-        rxn_rc1:Iterable,
-        rxn_rc2:Iterable,
-        norm:str='max'
+    if return_match_patt:
+        match_patt = res.smartsString
+        return score, match_patt
+    else:
+        return score
+
+def reaction_mcs_similarity(
+        reactions: Iterable[str], reaction_centers: tuple[Iterable[Iterable[tuple[int]]]] = None, patts: Iterable[Iterable[str]] = None,
+        norm: str = 'max', analyze_sides: str = 'both'
     ):
     '''
-    Calculates atom-weighted reaction rcmcs score of aligned reactions
-
+    Calculates atom-weighted MCS similarity score for a pair of reactions with aligned substrates. If reaction_centers and patts
+    are provided, reaction center MCS score will be provided, otherwise a straight atom-weighted MCS score is provided
+    
     Args
     -------
-    rxn_rc:Iterable of len = 3
-        rxn_rc[0]:str - reaction smarts 'rsmi1.rsmi2>psmi1.psmi2'
-        rxn_rc[1]:Iterable[Iterable[Iterable[int]]] - innermost iterables have reaction
-            center atom indices for a reactant / product. Each side of reaction has separate
-            iterable of aidx iterables
-        rxn_rc[2]:Iterable[Iterable[str]] - SMARTS patterns of reaction center fragments organized
-            the same way as rxn_rc[1] except here, one SMARTS string per reactant / product
+    reactions: Iterable[str]
+        Reaction smarts 'rsmi1.rsmi2>psmi1.psmi2'
+    reaction_centers: tuple[Iterable[Iterable[tuple[int]]]]
+        Innermost tuples have reaction center atom indices for a reactant / product.
+        Next level up is a side of a reaction, followed by a reaction, and a top-level
+        tuple containing the two reactions' iterables.
+        ( [[ (0,1), (2, 3) ], [ (0,1), (2, 3) ]], # For rxn 1
+            [[ (0,1), (2, 3) ], [ (0,1), (2, 3) ]]) # For rxn 2
+    patts: Iterable[Iterable[str]]
+        SMARTS patterns of reaction center fragments organized
+            as one Iterable per side, one SMARTS string per reactant / product
+    norm: str
+        Normalize by 'max' or 'min' number of atoms of compare molecules
+    analyze_sides: str
+        'left' or 'both'
     '''
-    patts1 = tuple(chain(*rxn_rc1[2]))
-    patts2 = tuple(chain(*rxn_rc2[2]))
-    if patts1 != patts2: # Reaction centers are distinct
-        return 0.0
+    if reaction_centers is not None and patts is not None:
+        mode = 'rcmcs'
+    elif reaction_centers is None and patts is None:
+        mode = 'mcs'
+    else:
+        raise ValueError("Either provide both reaction_centers and patts for score or provide neither for MCS")
 
-    smiles = [fractionate(rxn_rc1[0]), fractionate(rxn_rc2[0])]
-    rc_idxs = [chain(*rxn_rc1[1]), chain(*rxn_rc2[1])]
-    molecules= [[Chem.MolFromSmiles(smi) for smi in elt] for elt in smiles]
-    mol_rcs1, mol_rcs2 = [list(zip(molecules[i], rc_idxs[i])) for i in range(2)]
+    if analyze_sides == 'left':
+        molecules = [[Chem.MolFromSmiles(smi) for smi in rxn.split('>>')[0].split('.')] for rxn in reactions]
+        if mode == 'rcmcs':
+            reaction_centers = [(elt for elt in rc[0]) for rc in reaction_centers] # Collapse rxn centers from each side of reaction
+            patts = (elt for elt in patts[0])
+    elif analyze_sides == 'both':
+        molecules = [[Chem.MolFromSmiles(smi) for smi in fractionate(rxn)] for rxn in reactions] # List of mols for each rxn
+        if mode == 'rcmcs':
+            reaction_centers = [chain(*rc) for rc in reaction_centers] # Collapse rxn centers from each side of reaction
+            patts = chain(*patts) # Collapse patts from each side of reaction
     
-    n_atoms = 0
-    rcmcs = 0
-    for mol_rc1, mol_rc2, patt in zip(mol_rcs1, mol_rcs2, patts1):
-        rcmcs_i = calc_molecule_rcmcs(mol_rc1, mol_rc2, patt, norm=norm)
+    molecules = zip(*molecules) # Transpose to list of molecule pairs
+
+    if mode == 'rcmcs':
+        reaction_centers = zip(*reaction_centers) # Transpose to list of rc pairs
+
+    cum_atoms = 0
+    cum_score = 0
+    if mode == 'rcmcs':
+        iterargs = zip(molecules, reaction_centers, patts)
+    elif mode == 'mcs':
+        iterargs = ((elt, ) for elt in molecules)
+    for args in iterargs:
+        score = mcs_similarity(*args, norm=norm)
 
         if norm == 'max':
-            atoms_i = max(mol_rc1[0].GetNumAtoms(), mol_rc2[0].GetNumAtoms())
+            n_atoms = max([m.GetNumAtoms() for m in args[0]])
         elif norm == 'min':
-            atoms_i = min(mol_rc1[0].GetNumAtoms(), mol_rc2[0].GetNumAtoms())
+            n_atoms = min([m.GetNumAtoms() for m in args[0]])
         
-        rcmcs += rcmcs_i * atoms_i
-        n_atoms += atoms_i
+        cum_score += score * n_atoms
+        cum_atoms += n_atoms
 
-    return rcmcs / n_atoms
+    return cum_score / cum_atoms
 
 def extract_operator_patts(rxn_smarts:str, side:int):
     '''
@@ -303,184 +398,77 @@ def extract_operator_patts(rxn_smarts:str, side:int):
 
     return smarts_list
 
-def fractionate(rxn_smarts):
+def fractionate(rxn_smarts: str) -> tuple[str]:
     '''
-    Returns molecule smiles in list of two
-    lists, one sublist per each side of rxn
+    Returns one tuple of SMILES strings from left to right
+    given a SMARTS reaction
     '''
     sides = rxn_smarts.split('>>')
     return tuple(chain(*[side.split('.') for side in sides]))
 
-def rcmcs_similarity(rxns:dict[str, dict], rules:pd.DataFrame, matrix_idx_to_rxn_id: dict[int, str], dt: np.dtype = np.float32, norm='max'):
-    '''
-    Computes reaction center MCS 
-    similarity matrix for set of reactions
-
-    Args
-    ----
-    rxns:dict
-        Reactions dict. Must contains 'smarts', 'rcs', 'min_rules' keys
-        in each reaction_idx indexed sub-dict
-    rules:pd.DataFrame
-        Minimal rules indexed by rule name, e.g., 'rule0123', w/ 'SMARTS' col
-    matrix_idx_to_rxn_id:dict
-        Maps reaction's similarity matrix / embed matrix index to its reaction index from rxns
-    
-    Returns
-    -------
-    S:np.ndarray
-        nxn similarity matrix
-    '''
-    # sim_i_to_rxn_idx = {i : idx for i, idx in enumerate(rxns.keys())}
-    fields = ['smarts', 'rcs', 'min_rules']
-    S = np.eye(N=len(matrix_idx_to_rxn_id)) # Similarity matrix
-
-    to_do = []
-    S_idxs = []
-    print("Preparing reaction pairs\n")
-    for i in range(len(matrix_idx_to_rxn_id) - 1):
-        print(f"Rxn # {i} : {matrix_idx_to_rxn_id[i]}", end='\r')
-        rowi = [rxns[matrix_idx_to_rxn_id[i]][f] for f in fields]
-        for j in range(i + 1, len(matrix_idx_to_rxn_id)):
-            rowj = [rxns[matrix_idx_to_rxn_id[j]][f] for f in fields]
-            
-            if tuple(rowi[2]) != tuple(rowj[2]): # Distinct minimal rules:
-                rev_rules = rowj[2][::-1]
-
-                if tuple(rowi[2]) != tuple(rev_rules):
-                    continue
-                else: # Directions now match
-                    rowj[2] = rev_rules
-                    rowj[1] = rowj[1][::-1]
-                    rowj[0] = ">>".join(rowj[0].split('>>')[::-1])
-
-            # Convert rule name -> patts
-            patts = [extract_operator_patts(rules.loc[rowi[2][k], 'SMARTS'], 0) for k in range(2)]
-            rxn_rci = rowi[:2] + [patts]
-            rxn_rcj = rowj[:2] + [patts]
-
-            S_idxs.append((i, j))
-            to_do.append((rxn_rci, rxn_rcj, norm))
-
-    print("\nProcessing pairs\n")    
-    with mp.Pool() as pool:
-        res = list(tqdm(pool.imap(wrap_rcmcs, to_do), total=len(to_do)))
-    
-    i, j = [np.array(elt) for  elt in zip(*S_idxs)]
-    S[i, j] = res
-    S[j, i] = res
-    return S.astype(dt)
-
-def mcs_precheck(mol_rc1, mol_rc2, patt):
+def _mcs_precheck(molecules: Iterable[Mol], reaction_centers: Iterable[tuple[int]], patt:str):
     '''
     Modifies single-atom patts and pre-checks ring info
     to avoid giving FindMCS a non-common-substructure which
     results in non-reaction-center-inclusive MCSes
     '''
     if patt.count('#') == 1:
-        patt = handle_single_atom_patt(mol_rc1, mol_rc2, patt)
+        patt = _handle_single_atom_patt(molecules, reaction_centers, patt)
     
-    cleared = check_ring_info(mol_rc1, mol_rc2)
+    cleared = _check_ring_info(molecules, reaction_centers)
 
     return cleared, patt
 
-def handle_single_atom_patt(mol_rc1, mol_rc2, patt):
-    '''
+def _handle_single_atom_patt(molecules: Iterable[Mol], reaction_centers: Iterable[tuple[int]], patt:str):
+    '''    
     Pre-pends wildcard atom and bond to single-atom
     patt if mols share a neighbor w/ common isotope,
     ring membership, & bond type between
     '''
-    couples = [set(), set()]
-    for i, mol_rc in enumerate([mol_rc1, mol_rc2]):
-        mol = mol_rc[0]
-        rc_idx = mol_rc[1][0]
-        for neighbor in mol.GetAtomWithIdx(rc_idx).GetNeighbors():
+    for rc in reaction_centers:
+        if len(rc) > 1:
+            raise ValueError("Reaction centers must be single atoms")
+
+    setlist = []
+    for mol, rc in zip(molecules, reaction_centers):
+        aidx = rc[0] # Get single atom idx
+        neighbor_set = set()
+        for neighbor in mol.GetAtomWithIdx(aidx).GetNeighbors():
             nidx = neighbor.GetIdx()
             nisotope = neighbor.GetIsotope()
             in_ring = neighbor.IsInRing()
-            bond_type = mol.GetBondBetweenAtoms(rc_idx, nidx).GetBondType()
-            couples[i].add((nisotope, in_ring, bond_type))
-
-    if len(couples[0] & couples[1]) > 0:
+            bond_type = mol.GetBondBetweenAtoms(aidx, nidx).GetBondType()
+            neighbor_set.add((nisotope, in_ring, bond_type))
+        setlist.append(neighbor_set)
+    
+    if len(set.intersection(*setlist)) > 0:
         patt = '*~' + patt
     
     return patt
 
-def check_ring_info(mol_rc1, mol_rc2):
+def _check_ring_info(molecules: Iterable[Mol], reaction_centers: Iterable[tuple[int]]):
     ''''
     Rejects any mol pair where corresponding
     reaction center atoms have distinct ring membership
     '''
-    mol1, mol2 = mol_rc1[0], mol_rc2[0]
-    for aidx1, aidx2 in zip(mol_rc1[1], mol_rc2[1]):
-        a1_in_ring = mol1.GetAtomWithIdx(aidx1).IsInRing()
-        a2_in_ring = mol2.GetAtomWithIdx(aidx2).IsInRing()
+    rc_lens = [len(rc) for rc in reaction_centers]
+    if len(set(rc_lens)) > 1:
+        raise ValueError("Reaction centers must have same number of atoms")
+    else:
+        rc_len = rc_lens[0]
+
+    for i in range(rc_len):
+        ring_status = set()
+        for mol, rc in zip(molecules, reaction_centers):
+            ring_status.add(mol.GetAtomWithIdx(rc[i]).IsInRing())
         
-        if a1_in_ring ^ a2_in_ring:
+        if len(ring_status) != 1:
             return False
         
     return True
 
-def wrap_rcmcs(args):
-        return calc_rxn_rcmcs(*args)
+def _wrap_rxn_mcs(args):
+    return reaction_mcs_similarity(*args)
 
-def get_rcmcs_smarts_patt(
-        mol_rc1,
-        mol_rc2,
-        patt,
-    ):
-    '''
-    Args
-    ----
-    mol_rc1:Tuple[Mol, Tuple[int]]
-        1st molecule and tuple of its reaction center atom indices
-    mol_rc2:Tuple[Mol, Tuple[int]]
-        2nd molecule and tuple of its reaction center atom indices
-    patt:str
-        Reaction center substructure pattern in SMARTS
-    
-    Returns
-    -------
-    rcmcs:float
-        Reaction center max common substructure smarts string
-    '''
-    rc_scalar = 100
-
-    def _replace(match):
-        atomic_number = int(match.group(1))
-        return f"[{atomic_number * rc_scalar}#{atomic_number}"
-    
-    atomic_sub_patt = r'\[#(\d+)'
-    pairs = (mol_rc1, mol_rc2)
-
-    patt = re.sub(atomic_sub_patt, _replace, patt) # Mark reaction center patt w/ isotope number
-
-    # Mark reaction center vs other atoms in substrates w/ isotope number
-    for pair in pairs:
-        for atom in pair[0].GetAtoms():
-            if atom.GetIdx() in pair[1]:
-                atom.SetIsotope(atom.GetAtomicNum() * rc_scalar) # Rxn ctr atom
-            else:
-                atom.SetIsotope(atom.GetAtomicNum()) # Non rxn ctr atom
-
-    cleared, patt = mcs_precheck(mol_rc1, mol_rc2, patt) # Prevents FindMCS default behavior of non-rc-mcs
-
-    if not cleared:
-        return 0.0
-
-    # Get the mcs that contains the reaction center pattern
-    molecules = [elt[0] for elt in pairs]
-
-    res = rdFMCS.FindMCS(
-        molecules,
-        seedSmarts=patt,
-        atomCompare=rdFMCS.AtomCompare.CompareIsotopes,
-        bondCompare=rdFMCS.BondCompare.CompareOrderExact,
-        matchChiralTag=False,
-        ringMatchesRingOnly=True,
-        completeRingsOnly=False,
-        matchValences=True,
-        timeout=10
-    )
-
-    return res.smartsString
+def wrap_gsi(args):
+    return global_sequence_identity(*args)

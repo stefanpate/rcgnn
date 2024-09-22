@@ -1,5 +1,5 @@
 from src.utils import load_embed_matrix, construct_sparse_adj_mat, load_json
-from src.similarity import embedding_similarity, rcmcs_similarity
+from src.similarity import embedding_similarity_matrix, rcmcs_similarity_matrix
 from src.config import filepaths
 from pathlib import Path
 from argparse import ArgumentParser
@@ -24,7 +24,7 @@ def calc_rxn_embed_sim(args, embeddings_superdir: Path = embeddings_superdir, si
     _, _, idx_feature = construct_sparse_adj_mat(args.dataset, args.toc)
     X = load_embed_matrix(embed_path, idx_feature)
     tic = perf_counter()
-    S = embedding_similarity(X)
+    S = embedding_similarity_matrix(X)
     toc = perf_counter()
     print(f"Matrix multiplication took: {toc - tic} seconds")
     save_sim_mat(S, save_to)  
@@ -40,7 +40,7 @@ def calc_rcmcs_sim(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim
     rxns = load_json(data_filepath / args.dataset / f"{args.toc}.json")
     _, _, idx_feature = construct_sparse_adj_mat(args.dataset, args.toc)
 
-    S = rcmcs_similarity(rxns, rules, idx_feature)
+    S = rcmcs_similarity_matrix(rxns, rules, idx_feature)
     save_sim_mat(S, save_to)
 
 parser = ArgumentParser(description="Simlarity matrix calculator")
