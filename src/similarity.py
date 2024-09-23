@@ -12,11 +12,15 @@ import multiprocessing as mp
 from tqdm import tqdm
 from Bio import Align
 
-def embedding_similarity_matrix(X: np.ndarray, dt: np.dtype = np.float32):
+def embedding_similarity_matrix(X: np.ndarray, X2: np.ndarray = None, dt: np.dtype = np.float32):
     '''
-    Multiplies X X.T and saves result
+    Multiplies X X.T or X X2.T and saves result
     '''
-    S = np.matmul(X, X.T)
+    if X2 is not None:
+        S = np.matmul(X, X2.T)
+    else:
+        S = np.matmul(X, X.T)
+
     S = 1 / (1 + np.exp(-S))  
     return S.astype(dt)
 

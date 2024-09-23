@@ -22,12 +22,42 @@ def calc_rxn_embed_sim(args, embeddings_superdir: Path = embeddings_superdir, si
     embed_path = embeddings_superdir / args.embed_path
     save_to = sim_mats_dir / f"{args.dataset}_{args.toc}_{'_'.join(args.embed_path.split('/'))}"
     _, _, idx_feature = construct_sparse_adj_mat(args.dataset, args.toc)
-    X = load_embed_matrix(embed_path, idx_feature)
+    X = load_embed_matrix(embed_path, idx_feature, args.dataset, args.toc)
     tic = perf_counter()
     S = embedding_similarity_matrix(X)
     toc = perf_counter()
     print(f"Matrix multiplication took: {toc - tic} seconds")
-    save_sim_mat(S, save_to)  
+    save_sim_mat(S, save_to)
+
+def calc_prot_embed_sim(args, embeddings_superdir: Path = embeddings_superdir, sim_mats_dir: Path = sim_mats_dir):
+    embed_path = embeddings_superdir / args.embed_path
+    save_to = sim_mats_dir / f"{args.dataset}_{args.toc}_{'_'.join(args.embed_path.split('/'))}"
+    _, idx_sample, _ = construct_sparse_adj_mat(args.dataset, args.toc)
+    X = load_embed_matrix(embed_path, idx_sample, args.dataset, args.toc)
+    tic = perf_counter()
+    S = embedding_similarity_matrix(X)
+    toc = perf_counter()
+    print(f"Matrix multiplication took: {toc - tic} seconds")
+    save_sim_mat(S, save_to)
+
+def calc_prot_by_rxn_sim(args, embeddings_superdir: Path = embeddings_superdir, sim_mats_dir: Path = sim_mats_dir):
+    prot_embed_path = embeddings_superdir / args.prot_embed_path
+    rxn_embed_path = embeddings_superdir / args.rxn_embed_path
+    prot_parent = prot_embed_path.parent.name
+    rxn_parent = rxn_embed_path.parent.name
+
+    if prot_parent != rxn_parent:
+        raise ValueError("Embedding type for proteins and reactions must be the same")
+
+    save_to = sim_mats_dir / f"{args.dataset}_{args.toc}_{prot_parent}_proteins_x_reactions"
+    _, idx_sample, idx_feature = construct_sparse_adj_mat(args.dataset, args.toc)
+    X = load_embed_matrix(prot_embed_path, idx_sample, args.dataset, args.toc)
+    X2 = load_embed_matrix(rxn_embed_path, idx_feature, args.dataset, args.toc)
+    tic = perf_counter()
+    S = embedding_similarity_matrix(X, X2=X2)
+    toc = perf_counter()
+    print(f"Matrix multiplication took: {toc - tic} seconds")
+    save_sim_mat(S, save_to) 
 
 def calc_rcmcs_sim(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_mats_dir):
     save_to = sim_mats_dir / f"{args.dataset}_{args.toc}_rcmcs"
@@ -70,6 +100,21 @@ parser_rxn_embed.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
 parser_rxn_embed.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
 parser_rxn_embed.add_argument("embed_path", help="Embedding path relative to embeddings super dir")
 parser_rxn_embed.set_defaults(func=calc_rxn_embed_sim)
+
+# Protein embedding similarity
+parser_rxn_embed = subparsers.add_parser("prot-embed", help="Calculate protein embedding similarity")
+parser_rxn_embed.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
+parser_rxn_embed.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
+parser_rxn_embed.add_argument("embed_path", help="Embedding path relative to embeddings super dir")
+parser_rxn_embed.set_defaults(func=calc_prot_embed_sim)
+
+# Protein by reaction embedding similarity
+parser_rxn_embed = subparsers.add_parser("prot-rxn", help="Calculate protein by reaction embedding similarity")
+parser_rxn_embed.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
+parser_rxn_embed.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
+parser_rxn_embed.add_argument("prot_embed_path", help="Protein embedding path relative to embeddings super dir")
+parser_rxn_embed.add_argument("rxn_embed_path", help="Reaction embedding path relative to embeddings super dir")
+parser_rxn_embed.set_defaults(func=calc_prot_by_rxn_sim)
 
 # RCMCS similarity
 parser_rcmcs = subparsers.add_parser("rcmcs", help="Calculate RCMCS similarity")

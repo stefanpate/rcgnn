@@ -12,9 +12,11 @@
             "console": "integratedTerminal",
             "cwd": "${fileDirname}",
             "args": [
-                "mcs",
+                "prot-rxn",
                 "sprhea",
                 "v3_folded_test",
+                "bag_of_molecules/enzymes",
+                "bag_of_molecules/reactions"
             ]
         },
         {

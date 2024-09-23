@@ -174,4 +174,4 @@ for rid, embed in rxn_embeds.items():
     torch.save(embed, os.path.join(save_dir, "reactions", f"{rid}.pt"))
 
 for pid, embed in prot_embeds.items():
-    torch.save(embed, os.path.join(save_dir, "enzymes", f"{pid}.pt"))
+    torch.save(embed, os.path.join(save_dir, "proteins", f"{pid}.pt"))

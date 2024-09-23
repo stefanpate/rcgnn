@@ -176,7 +176,7 @@ def load_precomputed_embeds(ds_name, toc, embed_type, sample_idx, do_norm=True, 
 
         return X
 
-def load_embed_matrix(filepath: Path, idx_sample: dict) -> np.ndarray:
+def load_embed_matrix(filepath: Path, idx_sample: dict, dataset: str, toc: str) -> np.ndarray:
     '''
     Given a filepath to embedding-containing dir on projects,
     checks if there is a numpy file containing an embedding
@@ -187,10 +187,14 @@ def load_embed_matrix(filepath: Path, idx_sample: dict) -> np.ndarray:
     filepath:Path
         Filepath to directory containing individual embedding
         files as .pt
-
     idx_sample:dict
         Maps index of sample in embedding matrix / adjacency matrix
         to sample id
+    dataset:str
+        Name of dataset
+    toc: str
+        Name of table of contents
+    
 
     Returns
     -------
@@ -198,7 +202,7 @@ def load_embed_matrix(filepath: Path, idx_sample: dict) -> np.ndarray:
         Embedding matrix (n_samples x d_embedding)
     '''
     rel_path = filepath.relative_to(filepaths["projects"])
-    scratch_path = filepaths["scratch"] / rel_path / "X.npy"
+    scratch_path = filepaths["scratch"] / rel_path / f"{dataset}_{toc}_X.npy"
     if scratch_path.exists():
         X = np.load(scratch_path)
     else:
