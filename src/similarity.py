@@ -26,7 +26,7 @@ def embedding_similarity_matrix(X: np.ndarray, X2: np.ndarray = None, dt: np.dty
 
 def tanimoto_similarity_matrix(rxns:dict[str, dict], matrix_idx_to_rxn_id: dict[int, str], dt: np.dtype = np.float32):
     '''
-    Computes reaction center MCS 
+    Computes aligned-substrates-tanimoto-similarity 
     similarity matrix for set of reactions
 
     Args
@@ -42,61 +42,6 @@ def tanimoto_similarity_matrix(rxns:dict[str, dict], matrix_idx_to_rxn_id: dict[
     S:np.ndarray
         nxn similarity matrix
     '''
-    fields = ['smarts', 'min_rules']
-    S = np.eye(N=len(matrix_idx_to_rxn_id)) # Similarity matrix
-
-    to_do = []
-    S_idxs = []
-    print("Preparing reaction pairs\n")
-    for i in range(len(matrix_idx_to_rxn_id) - 1):
-        id_i = matrix_idx_to_rxn_id[i]
-        smarts_i, rules_i = [rxns[id_i][f] for f in fields]
-        print(f"Rxn # {i} : {matrix_idx_to_rxn_id[i]}", end='\r')
-        for j in range(i + 1, len(matrix_idx_to_rxn_id)):
-            id_j = matrix_idx_to_rxn_id[j]
-            smarts_j, rules_j = [rxns[id_j][f] for f in fields]
-
-            if tuple(rules_i) != tuple(rules_j):
-                rules_j = rules_j[::-1]
-            
-                if tuple(rules_i) != tuple(rules_j):
-                    continue
-                else:
-                    smarts_j = ">>".join(smarts_j.split(">>")[::-1])
-
-            S_idxs.append((i, j))
-            to_do.append(([smarts_i, smarts_j],))
-
-    print("\nProcessing pairs\n")    
-    with mp.Pool() as pool:
-        res = list(tqdm(pool.imap(_wrap_rxn_mcs, to_do), total=len(to_do)))
-    
-    if S_idxs:
-        i, j = [np.array(elt) for elt in zip(*S_idxs)]
-        S[i, j] = res
-        S[j, i] = res
-
-    return S.astype(dt)
-
-def mcs_similarity_matrix(rxns:dict[str, dict], matrix_idx_to_rxn_id: dict[int, str], dt: np.dtype = np.float32):
-    '''
-    Computes reaction center MCS 
-    similarity matrix for set of reactions
-
-    Args
-    ----
-    rxns:dict
-        Reactions dict. Must contains 'smarts', 'rcs', 'min_rules' keys
-        in each reaction_idx indexed sub-dict
-    matrix_idx_to_rxn_id:dict
-        Maps reaction's similarity matrix / embed matrix index to its reaction index from rxns
-    
-    Returns
-    -------
-    S:np.ndarray
-        nxn similarity matrix
-    '''
-
     fields = ['smarts', 'min_rules']
     S = np.eye(N=len(matrix_idx_to_rxn_id)) # Similarity matrix
 
@@ -125,6 +70,106 @@ def mcs_similarity_matrix(rxns:dict[str, dict], matrix_idx_to_rxn_id: dict[int, 
     print("\nProcessing pairs\n")    
     with mp.Pool() as pool:
         res = list(tqdm(pool.imap(_wrap_rxn_tani, to_do), total=len(to_do)))
+    
+    if S_idxs:
+        i, j = [np.array(elt) for elt in zip(*S_idxs)]
+        S[i, j] = res
+        S[j, i] = res
+
+    return S.astype(dt)
+
+def bag_of_tanimoto_similarity_matrix(rxns:dict[str, dict], matrix_idx_to_rxn_id: dict[int, str], dt: np.dtype = np.float32):
+    '''
+    Computes similarity matrix using bag of tanimoto similarity: tanimoto similarity on vectors gotten
+    by taking the abs diff of sum of mfps on each side of reaction.
+
+    Args
+    ----
+    rxns:dict
+        Reactions dict. Must contains 'smarts', 'rcs', 'min_rules' keys
+        in each reaction_idx indexed sub-dict
+    matrix_idx_to_rxn_id:dict
+        Maps reaction's similarity matrix / embed matrix index to its reaction index from rxns
+    
+    Returns
+    -------
+    S:np.ndarray
+        nxn similarity matrix
+    '''
+    S = np.eye(N=len(matrix_idx_to_rxn_id)) # Similarity matrix
+
+    to_do = []
+    S_idxs = []
+    print("Preparing reaction pairs\n")
+    for i in range(len(matrix_idx_to_rxn_id) - 1):
+        id_i = matrix_idx_to_rxn_id[i]
+        smarts_i = rxns[id_i]['smarts']
+        print(f"Rxn # {i} : {matrix_idx_to_rxn_id[i]}", end='\r')
+        for j in range(i + 1, len(matrix_idx_to_rxn_id)):
+            id_j = matrix_idx_to_rxn_id[j]
+            smarts_j = rxns[id_j]['smarts']
+
+            S_idxs.append((i, j))
+            to_do.append(([smarts_i, smarts_j],))
+
+    print("\nProcessing pairs\n")    
+    with mp.Pool() as pool:
+        res = list(tqdm(pool.imap(_wrap_bag_of_tani, to_do), total=len(to_do)))
+    
+    if S_idxs:
+        i, j = [np.array(elt) for elt in zip(*S_idxs)]
+        S[i, j] = res
+        S[j, i] = res
+
+    return S.astype(dt)
+
+def mcs_similarity_matrix(rxns:dict[str, dict], matrix_idx_to_rxn_id: dict[int, str], dt: np.dtype = np.float32):
+    '''
+    Computes regular MCS 
+    similarity matrix for set of reactions
+
+    Args
+    ----
+    rxns:dict
+        Reactions dict. Must contains 'smarts', 'rcs', 'min_rules' keys
+        in each reaction_idx indexed sub-dict
+    matrix_idx_to_rxn_id:dict
+        Maps reaction's similarity matrix / embed matrix index to its reaction index from rxns
+    
+    Returns
+    -------
+    S:np.ndarray
+        nxn similarity matrix
+    '''
+
+    fields = ['smarts', 'min_rules']
+    S = np.eye(N=len(matrix_idx_to_rxn_id)) # Similarity matrix
+
+    to_do = []
+    S_idxs = []
+    print("Preparing reaction pairs\n")
+    for i in range(len(matrix_idx_to_rxn_id) - 1):
+        id_i = matrix_idx_to_rxn_id[i]
+        smarts_i, rules_i = [rxns[id_i][f] for f in fields]
+        print(f"Rxn # {i} : {matrix_idx_to_rxn_id[i]}", end='\r')
+        for j in range(i + 1, len(matrix_idx_to_rxn_id)):
+            id_j = matrix_idx_to_rxn_id[j]
+            smarts_j, rules_j = [rxns[id_j][f] for f in fields]
+
+            if tuple(rules_i) != tuple(rules_j):
+                rules_j = rules_j[::-1]
+            
+                if tuple(rules_i) != tuple(rules_j):
+                    continue
+                else:
+                    smarts_j = ">>".join(smarts_j.split(">>")[::-1])
+
+            S_idxs.append((i, j))
+            to_do.append(([smarts_i, smarts_j],))
+
+    print("\nProcessing pairs\n")    
+    with mp.Pool() as pool:
+        res = list(tqdm(pool.imap(_wrap_rxn_mcs, to_do), total=len(to_do)))
     
     if S_idxs:
         i, j = [np.array(elt) for elt in zip(*S_idxs)]
@@ -322,7 +367,7 @@ def homology_similarity_matrix(sequences:Dict[str, str], aligner:Align.PairwiseA
 
     return S, sim_i_to_id
 
-def mcs_similarity(molecules: Iterable[Mol], reaction_centers: Iterable[tuple[int]] = None, patt:str = None, norm: str='max', return_match_patt: bool = False):
+def molecule_mcs_similarity(molecules: Iterable[Mol], reaction_centers: Iterable[tuple[int]] = None, patt:str = None, norm: str='max', return_match_patt: bool = False):
     '''
     Calculates MCS similarity score for a pair of molecules. If reaction_centers and patt
     are provided, reaction center MCS score will be provided, otherwise a straight MCS score is provided.
@@ -466,7 +511,7 @@ def reaction_mcs_similarity(
     elif mode == 'mcs':
         iterargs = ((elt, ) for elt in molecules)
     for args in iterargs:
-        score = mcs_similarity(*args, norm=norm)
+        score = molecule_mcs_similarity(*args, norm=norm)
 
         if norm == 'max':
             n_atoms = max([m.GetNumAtoms() for m in args[0]])
@@ -511,6 +556,19 @@ def reaction_tanimoto_similarity(reactions: Iterable[str], norm: str = 'max', an
         cum_atoms += n_atoms
 
     return cum_score / cum_atoms
+
+def bag_of_tanimoto_similarity(reactions: Iterable[str]) -> float:
+    '''
+    Computes tanimoto similarity between abs(rct_mfp_sum - pdt_mfp_sum)
+    '''
+    rxn_vecs = []
+    for rxn in reactions:
+        mols = [[Chem.MolFromSmiles(smi) for smi in side.split(".")] for side in rxn.split(">>")]
+        mfps = [[morgan_fingerprint(mol) for mol in side] for side in mols]
+        rxn_vecs.append(abs(sum(mfps[0]) - sum(mfps[1])))
+
+    return tanimoto_similarity(*rxn_vecs)
+
 
 def extract_operator_patts(rxn_smarts:str, side:int):
     '''
@@ -637,3 +695,11 @@ def _wrap_rxn_mcs(args):
 
 def _wrap_rxn_tani(args):
     return reaction_tanimoto_similarity(*args)
+
+def _wrap_bag_of_tani(args):
+    return bag_of_tanimoto_similarity(*args)
+
+if __name__ == '__main__':
+    reaction1 = "CC=O.O>>CC.O.O"
+    reaction2 = "CC=O.O>>CC.O.O"
+    print(bag_of_tanimoto_similarity([reaction1, reaction2]))

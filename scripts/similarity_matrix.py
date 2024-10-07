@@ -1,5 +1,5 @@
 from src.utils import load_embed_matrix, construct_sparse_adj_mat, load_json
-from src.similarity import embedding_similarity_matrix, rcmcs_similarity_matrix, mcs_similarity_matrix, tanimoto_similarity_matrix
+from src.similarity import embedding_similarity_matrix, rcmcs_similarity_matrix, mcs_similarity_matrix, tanimoto_similarity_matrix, bag_of_tanimoto_similarity_matrix
 from src.config import filepaths
 from pathlib import Path
 from argparse import ArgumentParser
@@ -91,6 +91,15 @@ def calc_tani_sim(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_
     S = tanimoto_similarity_matrix(rxns, idx_feature)
     save_sim_mat(S, save_to)
 
+def calc_bag_of_tani_sim(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_mats_dir):
+    save_to = sim_mats_dir / f"{args.dataset}_{args.toc}_bag_of_molecules_tanimoto"
+
+    rxns = load_json(data_filepath / args.dataset / f"{args.toc}.json")
+    _, _, idx_feature = construct_sparse_adj_mat(args.dataset, args.toc)
+
+    S = bag_of_tanimoto_similarity_matrix(rxns, idx_feature)
+    save_sim_mat(S, save_to)
+
 parser = ArgumentParser(description="Simlarity matrix calculator")
 subparsers = parser.add_subparsers(title="Commands", description="Available comands")
 
@@ -102,19 +111,19 @@ parser_rxn_embed.add_argument("embed_path", help="Embedding path relative to emb
 parser_rxn_embed.set_defaults(func=calc_rxn_embed_sim)
 
 # Protein embedding similarity
-parser_rxn_embed = subparsers.add_parser("prot-embed", help="Calculate protein embedding similarity")
-parser_rxn_embed.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
-parser_rxn_embed.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
-parser_rxn_embed.add_argument("embed_path", help="Embedding path relative to embeddings super dir")
-parser_rxn_embed.set_defaults(func=calc_prot_embed_sim)
+parser_prot_embed = subparsers.add_parser("prot-embed", help="Calculate protein embedding similarity")
+parser_prot_embed.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
+parser_prot_embed.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
+parser_prot_embed.add_argument("embed_path", help="Embedding path relative to embeddings super dir")
+parser_prot_embed.set_defaults(func=calc_prot_embed_sim)
 
 # Protein by reaction embedding similarity
-parser_rxn_embed = subparsers.add_parser("prot-rxn", help="Calculate protein by reaction embedding similarity")
-parser_rxn_embed.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
-parser_rxn_embed.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
-parser_rxn_embed.add_argument("prot_embed_path", help="Protein embedding path relative to embeddings super dir")
-parser_rxn_embed.add_argument("rxn_embed_path", help="Reaction embedding path relative to embeddings super dir")
-parser_rxn_embed.set_defaults(func=calc_prot_by_rxn_sim)
+parser_prot_rxn_embed = subparsers.add_parser("prot-rxn", help="Calculate protein by reaction embedding similarity")
+parser_prot_rxn_embed.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
+parser_prot_rxn_embed.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
+parser_prot_rxn_embed.add_argument("prot_embed_path", help="Protein embedding path relative to embeddings super dir")
+parser_prot_rxn_embed.add_argument("rxn_embed_path", help="Reaction embedding path relative to embeddings super dir")
+parser_prot_rxn_embed.set_defaults(func=calc_prot_by_rxn_sim)
 
 # RCMCS similarity
 parser_rcmcs = subparsers.add_parser("rcmcs", help="Calculate RCMCS similarity")
@@ -123,16 +132,22 @@ parser_rcmcs.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
 parser_rcmcs.set_defaults(func=calc_rcmcs_sim)
 
 # MCS similarity
-parser_rcmcs = subparsers.add_parser("mcs", help="Calculate MCS similarity")
-parser_rcmcs.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
-parser_rcmcs.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
-parser_rcmcs.set_defaults(func=calc_mcs_sim)
+parser_mcs = subparsers.add_parser("mcs", help="Calculate MCS similarity")
+parser_mcs.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
+parser_mcs.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
+parser_mcs.set_defaults(func=calc_mcs_sim)
 
 # Tanimoto similarity
-parser_rcmcs = subparsers.add_parser("tanimoto", help="Calculate Tanimoto similarity")
-parser_rcmcs.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
-parser_rcmcs.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
-parser_rcmcs.set_defaults(func=calc_tani_sim)
+parser_tanimoto = subparsers.add_parser("tanimoto", help="Calculate substrate-aligned Tanimoto similarity")
+parser_tanimoto.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
+parser_tanimoto.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
+parser_tanimoto.set_defaults(func=calc_tani_sim)
+
+# Tanimoto similarity
+parser_bag_of_tanimoto = subparsers.add_parser("bag-tanimoto", help="Calculate bag of molecules Tanimoto similarity")
+parser_bag_of_tanimoto.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
+parser_bag_of_tanimoto.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
+parser_bag_of_tanimoto.set_defaults(func=calc_bag_of_tani_sim)
 
 def main():
     args = parser.parse_args()

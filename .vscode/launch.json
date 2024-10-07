@@ -12,11 +12,9 @@
             "console": "integratedTerminal",
             "cwd": "${fileDirname}",
             "args": [
-                "prot-rxn",
+                "bag-tanimoto",
                 "sprhea",
                 "v3_folded_test",
-                "bag_of_molecules/enzymes",
-                "bag_of_molecules/reactions"
             ]
         },
         {
