@@ -16,4 +16,4 @@ module purge
 module load python/anaconda3.6
 module load gcc/9.2.0
 source activate hiec
-python -u calc_sim_mat.py rcmcs sprhea v3_folded_pt_ns
+python -u similarity_matrix.py bag-tanimoto sprhea v3_folded_pt_ns

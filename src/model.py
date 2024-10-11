@@ -1,13 +1,14 @@
-from chemprop.models import MPNN
+
 import torch
 from torch.optim import Adam
 from torch import Tensor
+import lightning as L
 from chemprop.schedulers import NoamLR
+from chemprop.models import MPNN
 from chemprop.data import BatchMolGraph
 from chemprop.nn import MessagePassing, Aggregation, Predictor, LossFunction
 from chemprop.nn.ffn import MLP
-import lightning as L
-from abc import ABC, abstractmethod
+
 
 class MPNNDimRed(MPNN):
     def __init__(
@@ -140,3 +141,4 @@ class TwoChannelFFN(TwoChannelLinear):
             hidden_dim=d_h,
             n_layers=encoder_depth,
             )
+        
