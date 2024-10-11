@@ -1,4 +1,5 @@
 from pathlib import Path
+import numpy as np
 from src.nn import LastAggregation, DotSig, LinDimRed, AttentionAggregation, BondMessagePassingDict
 from chemprop.nn import MeanAggregation, BinaryClassificationFFN, BondMessagePassing
 import torch
@@ -7,7 +8,7 @@ from chemprop.data import build_dataloader
 from chemprop.nn import MeanAggregation, BinaryClassificationFFN, BondMessagePassing
 from src.model import MPNNDimRed, TwoChannelFFN, TwoChannelLinear
 from src.featurizer import SimpleReactionMolGraphFeaturizer, RCVNReactionMolGraphFeaturizer, MultiHotAtomFeaturizer, MultiHotBondFeaturizer, ReactionMorganFeaturizer
-from src.data import RxnRCDataset, MFPDataset, mfp_build_dataloader
+from src.data import RxnRCDataset, MFPDataset, mfp_build_dataloader, RxnRCDatapoint
 
 
 def construct_model(hps: dict, featurizer, embed_dim: int, chkpt: Path = None):
@@ -106,3 +107,14 @@ def construct_featurizer(hps: dict):
         )
 
     return dataset_base, generate_dataloader, featurizer
+
+def featurize_data(data:np.ndarray, rxns:dict, featurizer, dataset_base, generate_dataloader, shuffle=False):
+    datapoints = []
+    for row in data:
+        rxn = rxns[row['feature']]
+        y = np.array([row['y']]).astype(np.float32)
+        datapoints.append(RxnRCDatapoint.from_smi(rxn, y=y, x_d=row['sample_embed']))
+
+    dataset = dataset_base(datapoints, featurizer=featurizer)
+    
+    return generate_dataloader(dataset, shuffle=shuffle)
