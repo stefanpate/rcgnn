@@ -7,8 +7,8 @@ from time import perf_counter
 import pandas as pd
 import numpy as np
 
-embeddings_superdir = filepaths['artifacts_embeddings']
-sim_mats_dir = filepaths['artifacts_sim_mats']
+embeddings_superdir = filepaths['embeddings']
+sim_mats_dir = filepaths['sim_mats']
 data_fp = filepaths['data']
 
 def save_sim_mat(S: np.ndarray, save_to: Path):

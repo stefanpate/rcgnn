@@ -5,7 +5,6 @@ import numpy as np
 import torch
 import os
 import subprocess
-from sklearn.model_selection import KFold
 from collections import namedtuple
 import re
 from pathlib import Path
