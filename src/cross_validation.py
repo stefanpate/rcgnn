@@ -9,9 +9,7 @@ from collections import defaultdict
 import subprocess
 from dataclasses import dataclass, asdict, fields
 from typing import List, Tuple
-
-DEFAULT_DATA_DIR = "/projects/p30041/spn1560/hiec/data"
-DEFAULT_SCRATCH_DIR = "/scratch/spn1560"
+from src.config import filepaths
 
 @dataclass
 class BatchScript:
@@ -101,8 +99,8 @@ class HyperHyperParams:
         hhp_args = {k : v for k,v in single_experiment.items() if k in field_names}
         return cls(**hhp_args)
 
-def load_single_experiment(hp_idx, scratch_dir=DEFAULT_SCRATCH_DIR):
-    with open(f"{scratch_dir}/{hp_idx}_hp_idx.json", 'r') as f:
+def load_single_experiment(hp_idx, scratch_dir=filepaths['scratch']):
+    with open(scratch_dir / f"{hp_idx}_hp_idx.json", 'r') as f:
         hp = json.load(f)
 
     return hp
@@ -129,8 +127,8 @@ class BatchGridSearch:
             self,
             hhps:HyperHyperParams,
             res_dir:str,
-            scratch_dir=DEFAULT_SCRATCH_DIR,
-            data_dir=DEFAULT_DATA_DIR,
+            scratch_dir=filepaths['scratch'],
+            data_dir=filepaths['data'],
             ) -> None:
 
         for k, v in hhps.to_dict().items():
@@ -144,7 +142,7 @@ class BatchGridSearch:
         self.split_guide_pref = f"{self.dataset_name}_{self.toc}_{self.split_strategy}"\
             f"_threshold_{int(self.split_sim_threshold * 100)}_{self.n_splits}_splits"\
             f"_neg_multiple_{self.neg_multiple}_seed_{self.seed}"
-        self.experiments = pd.read_csv(f"{res_dir}/experiments.csv", sep='\t', index_col=0)
+        self.experiments = pd.read_csv(res_dir / f"experiments.csv", sep='\t', index_col=0)
         self.next_hp_idx = self.experiments.index.max() + 1
         self.adj, self.idx_sample, self.idx_feature = self._get_adjacency_matrix()
         self.X_pos = list(zip(*self.adj.nonzero()))
@@ -196,7 +194,7 @@ class BatchGridSearch:
         self._append_experiments(hps)
     
     def split_data(self, X, y, do_save=True):
-        split_guide_path =f"{self.scratch_dir}/{self.split_guide_pref}.csv"
+        split_guide_path = self.scratch_dir / f"{self.split_guide_pref}.csv"
         
         if self._check_for_split_guide():      
             split_guide = pd.read_csv(split_guide_path, sep='\t')
@@ -223,7 +221,7 @@ class BatchGridSearch:
         return split_guide
             
     def _split_homology(self, X, y):
-        cluster_path = f"/home/spn1560/hiec/artifacts/clustering/{self.dataset_name}_{self.toc}_{self.split_strategy}_{int(self.split_sim_threshold * 100)}.clstr"
+        cluster_path = filepaths["clustering"] / f"{self.dataset_name}_{self.toc}_{self.split_strategy}_{int(self.split_sim_threshold * 100)}.clstr"
 
         if not os.path.exists(cluster_path):
             raise ValueError(f"Cluster file does not exist for {self.dataset_name}, {self.toc}, strategy: {self.split_strategy} threshold: {self.split_sim_threshold}")
@@ -237,7 +235,7 @@ class BatchGridSearch:
         '''
         Splits clusters based on reaction center MCS
         '''
-        cluster_path = f"/home/spn1560/hiec/artifacts/clustering/{self.dataset_name}_{self.toc}_{self.split_strategy}_{int(self.split_sim_threshold * 100)}.json"
+        cluster_path = filepaths["clustering"] / f"{self.dataset_name}_{self.toc}_{self.split_strategy}_{int(self.split_sim_threshold * 100)}.json"
 
         if not os.path.exists(cluster_path):
             raise ValueError(f"Cluster file does not exist for {self.dataset_name}, {self.toc}, strategy: {self.split_strategy} threshold: {self.split_sim_threshold}")
@@ -353,15 +351,15 @@ class BatchGridSearch:
         (train_data, test_data) | (None, None)
         '''
         fns = [f"{self.split_guide_pref}_{split_idx}_split_idx_{self.embed_type}" + suff for suff in ['_train.npy', '_test.npy']]
-        found = all([os.path.exists(f"{self.scratch_dir}/{fn}") for fn in fns])
+        found = all([(self.scratch_dir / f"{fn}").exists() for fn in fns])
                 
         if found and setup:
             print(f"Found existing data splits for {self.split_guide_pref}, {split_idx}")
             return None, None
         elif found:
-            train_data, test_data = [np.load(f"{self.scratch_dir}/{fn}") for fn in fns]
+            train_data, test_data = [np.load(self.scratch_dir / f"{fn}") for fn in fns]
         else:
-            split_guide = pd.read_csv(f"{self.scratch_dir}/{self.split_guide_pref}.csv", sep='\t')
+            split_guide = pd.read_csv(self.scratch_dir / f"{self.split_guide_pref}.csv", sep='\t')
             train_split =  split_guide.loc[(split_guide['train/test'] == 'train') & (split_guide['split_idx'] == split_idx)]
             test_split =  split_guide.loc[(split_guide['train/test'] == 'test') & (split_guide['split_idx'] == split_idx)]
 
@@ -373,7 +371,7 @@ class BatchGridSearch:
                 y = [elt for elt in split.loc[:, 'y']]
                 for sample_idx in split.loc[:, 'X1']:
                     sample_name = self.idx_sample[sample_idx]
-                    samples.append(load_embed(f"{self.data_dir}/{self.dataset_name}/{self.embed_type}/{sample_name}.pt", embed_key=33)[1])
+                    samples.append(load_embed(self.data_dir / f"{self.dataset_name}/{self.embed_type}/{sample_name}.pt", embed_key=33)[1])
 
                 for feature_idx in split.loc[:, 'X2']:
                     features.append(self.idx_feature[feature_idx])
@@ -388,7 +386,7 @@ class BatchGridSearch:
             
             # Save for next time
             for (fn, data) in zip(fns, tmp):
-                np.save(f"{self.scratch_dir}/{fn}", data)
+                np.save(self.scratch_dir/ f"{fn}", data)
 
         return train_data, test_data
     
@@ -398,17 +396,17 @@ class BatchGridSearch:
     def _save_hps_to_scratch(self, hps):
         for i, hp in enumerate(hps):
             hp_idx = self.next_hp_idx + i
-            with open(f"{self.scratch_dir}/{hp_idx}_hp_idx.json", 'w') as f:
+            with open(self.scratch_dir / f"{hp_idx}_hp_idx.json", 'w') as f:
                 json.dump(hp, f)
     
     def _append_experiments(self, hps):
         df = pd.DataFrame(hps)
         df.index += self.next_hp_idx
         new_exp = pd.concat((self.experiments, df))
-        new_exp.to_csv(f"{self.res_dir}/experiments.csv", sep='\t')
+        new_exp.to_csv(self.res_dir / f"experiments.csv", sep='\t')
 
     def _check_for_split_guide(self):
-        split_guide_path =f"{self.scratch_dir}/{self.split_guide_pref}.csv" 
+        split_guide_path =self.scratch_dir / f"{self.split_guide_pref}.csv" 
         if os.path.exists(split_guide_path):
             print(f"Found existing data split guide: {self.split_guide_pref}")
             return True
