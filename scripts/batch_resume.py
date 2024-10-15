@@ -1,32 +1,6 @@
 import pandas as pd
 from src.cross_validation import BatchGridSearch, BatchScript, HyperHyperParams
 from dataclasses import fields
-from math import isnan
-
-def fix_pd(hp_dict):
-    to_fix = [
-        'encoder_depth',
-        'embed_dim',
-        'seed',
-        'n_epochs',
-        'd_h_encoder',
-        'n_splits',
-        'neg_multiple',
-        'message_passing',
-        'agg',
-    ]
-    
-    for elt in to_fix:
-        if elt not in hp_dict:
-            continue
-        elif type(hp_dict[elt]) is str:
-            continue
-        elif isnan(hp_dict[elt]):
-            hp_dict[elt] = None
-        else:
-            hp_dict[elt]  = int(hp_dict[elt])
-    
-    return hp_dict
 
 # Args
 allocation = 'b1039'
@@ -71,8 +45,8 @@ for hhp_vals, group in gb:
 
 # Run bsg
 for hhp, hp, chkpt in zip(hhp_args, hps, chkpt_idxs):
-    hp = [fix_pd(elt) for elt in hp]
-    hhp = fix_pd(hhp)
+    hp = [fix_hps_from_dataframe(elt) for elt in hp]
+    hhp = fix_hps_from_dataframe(hhp)
     hhps = HyperHyperParams(**hhp)
     gs = BatchGridSearch(hhps, res_dir)
     gs.resume(hp, batch_script, chkpt)

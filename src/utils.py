@@ -1,3 +1,4 @@
+from math import isnan
 import pandas as pd
 import scipy as sp
 import json
@@ -266,3 +267,28 @@ def retrive_esm1b_embedding(fasta_path, outdir):
     command = ["python", esm_script, esm_type, 
               fasta_path, outdir, "--include", "mean"]
     subprocess.run(command)
+
+def fix_hps_from_dataframe(hps: dict):
+    to_fix = [
+        'encoder_depth',
+        'embed_dim',
+        'seed',
+        'n_epochs',
+        'd_h_encoder',
+        'n_splits',
+        'neg_multiple',
+        'message_passing',
+        'agg',
+    ]
+    
+    for elt in to_fix:
+        if elt not in hps:
+            continue
+        elif type(hps[elt]) is str:
+            continue
+        elif isnan(hps[elt]):
+            hps[elt] = None
+        else:
+            hps[elt]  = int(hps[elt])
+    
+    return hps

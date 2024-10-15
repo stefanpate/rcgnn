@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 from src.config import filepaths
 from src.task import construct_featurizer, construct_model, featurize_data
 from src.cross_validation import BatchGridSearch, HyperHyperParams
-from src.utils import load_json
+from src.utils import load_json, fix_hps_from_dataframe
 import torch
 import pandas as pd
 import numpy as np
@@ -13,6 +13,7 @@ def _predict_cv(args):
     res_dir = filepaths["model_evals"] / "gnn"
     experiments = pd.read_csv(filepath_or_buffer=res_dir / "experiments.csv", sep='\t', index_col=0)
     hps = experiments.loc[args.hp_idx, :].to_dict()
+    hps = fix_hps_from_dataframe(hps)
     dataset_base, generate_dataloader, featurizer = construct_featurizer(hps)
     hhps = HyperHyperParams(
         dataset_name=hps['dataset_name'], toc=hps['toc'], neg_multiple=hps['neg_multiple'], n_splits=hps['n_splits'],
@@ -21,11 +22,13 @@ def _predict_cv(args):
     )
     gs = BatchGridSearch(hhps, res_dir=res_dir)
     X, y = gs.sample_negatives()
-    _ = gs.split_data(X, y, do_save=True)
+    split_guide = gs.split_data(X, y, do_save=True)
     known_rxns = load_json(filepaths['data'] / f"{hps['dataset_name']}/{hps['toc']}.json") # Load reaction dataset
     for split_idx in range(hps['n_splits']):
         _, test_data = gs.load_data_split(split_idx=split_idx)
-        model = construct_model(hps, featurizer, hps['embed_dim'], res_dir / f"{args.hp_idx}_hp_idx_split_{split_idx+1}_of_{hps['n_splits']}")
+        chkpt = (res_dir / f"{args.hp_idx}_hp_idx_split_{split_idx+1}_of_{hps['n_splits']}" / "version_0" / "checkpoints").glob("*.ckpt")
+        chkpt = list(chkpt)[0]
+        model = construct_model(hps, featurizer, hps['embed_dim'], chkpt)
 
         dataloader = featurize_data(test_data, known_rxns, featurizer, dataset_base, generate_dataloader)
         
@@ -40,10 +43,14 @@ def _predict_cv(args):
             test_preds = trainer.predict(model, dataloader)
 
         # Save
-        logits = np.vstack(test_preds)
+        logits = np.vstack(test_preds).reshape(-1,)
         y_pred = (logits > 0.5).astype(np.int64).reshape(-1,)
-        y_true = test_data['y']
+        y_true = test_data['y'].reshape(-1,)
+        test_labels = split_guide.loc[(split_guide['train/test'] == 'test') & (split_guide['split_idx'] == split_idx), ['X1', 'X2']].copy()
+        test_labels.reset_index(drop=True, inplace=True)
+        test_labels.columns = ['protein', 'reaction']
         res_df = pd.DataFrame(data={"scores": logits, "y_hat": y_pred, "y_true": y_true})
+        res_df = pd.concat((test_labels, res_df), axis=1)
         res_df.to_csv(res_dir / f"{args.hp_idx}_hp_idx_split_{split_idx+1}_of_{hps['n_splits']}" / "predictions.csv", sep='\t')
 
 
