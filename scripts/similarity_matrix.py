@@ -1,5 +1,5 @@
 from src.utils import load_embed_matrix, construct_sparse_adj_mat, load_json
-from src.similarity import embedding_similarity_matrix, rcmcs_similarity_matrix, mcs_similarity_matrix, tanimoto_similarity_matrix, bag_of_tanimoto_similarity_matrix
+from src.similarity import embedding_similarity_matrix, rcmcs_similarity_matrix, mcs_similarity_matrix, tanimoto_similarity_matrix, agg_mfp_cosine_similarity_matrix
 from src.config import filepaths
 from pathlib import Path
 from argparse import ArgumentParser
@@ -91,13 +91,13 @@ def calc_tani_sim(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_
     S = tanimoto_similarity_matrix(rxns, idx_feature)
     save_sim_mat(S, save_to)
 
-def calc_bag_of_tani_sim(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_mats_dir):
-    save_to = sim_mats_dir / f"{args.dataset}_{args.toc}_bag_of_molecules_tanimoto"
+def calc_agg_mfp_cosine_sim(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_mats_dir):
+    save_to = sim_mats_dir / f"{args.dataset}_{args.toc}_agg_mfp_cosine"
 
     rxns = load_json(data_filepath / args.dataset / f"{args.toc}.json")
     _, _, idx_feature = construct_sparse_adj_mat(args.dataset, args.toc)
 
-    S = bag_of_tanimoto_similarity_matrix(rxns, idx_feature)
+    S = agg_mfp_cosine_similarity_matrix(rxns, idx_feature)
     save_sim_mat(S, save_to)
 
 parser = ArgumentParser(description="Simlarity matrix calculator")
@@ -143,11 +143,11 @@ parser_tanimoto.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
 parser_tanimoto.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
 parser_tanimoto.set_defaults(func=calc_tani_sim)
 
-# Tanimoto similarity
-parser_bag_of_tanimoto = subparsers.add_parser("bag-tanimoto", help="Calculate bag of molecules Tanimoto similarity")
-parser_bag_of_tanimoto.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
-parser_bag_of_tanimoto.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
-parser_bag_of_tanimoto.set_defaults(func=calc_bag_of_tani_sim)
+# Agg mfp cosine similarity
+parser_agg_mfp_cosine = subparsers.add_parser("agg-mfp-cosine", help="Calculate cosine similarity of aggregated Morgan FPs")
+parser_agg_mfp_cosine.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
+parser_agg_mfp_cosine.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
+parser_agg_mfp_cosine.set_defaults(func=calc_agg_mfp_cosine_sim)
 
 def main():
     args = parser.parse_args()

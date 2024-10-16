@@ -78,7 +78,7 @@ def tanimoto_similarity_matrix(rxns:dict[str, dict], matrix_idx_to_rxn_id: dict[
 
     return S.astype(dt)
 
-def bag_of_tanimoto_similarity_matrix(rxns:dict[str, dict], matrix_idx_to_rxn_id: dict[int, str], dt: np.dtype = np.float32):
+def agg_mfp_cosine_similarity_matrix(rxns:dict[str, dict], matrix_idx_to_rxn_id: dict[int, str], dt: np.dtype = np.float32):
     '''
     Computes similarity matrix using bag of tanimoto similarity: tanimoto similarity on vectors gotten
     by taking the abs diff of sum of mfps on each side of reaction.
@@ -114,7 +114,7 @@ def bag_of_tanimoto_similarity_matrix(rxns:dict[str, dict], matrix_idx_to_rxn_id
 
     print("\nProcessing pairs\n")    
     with mp.Pool() as pool:
-        res = list(tqdm(pool.imap(_wrap_bag_of_tani, to_do), total=len(to_do)))
+        res = list(tqdm(pool.imap(_wrap_agg_mfp_cosine, to_do), total=len(to_do)))
     
     if S_idxs:
         i, j = [np.array(elt) for elt in zip(*S_idxs)]
@@ -557,17 +557,19 @@ def reaction_tanimoto_similarity(reactions: Iterable[str], norm: str = 'max', an
 
     return cum_score / cum_atoms
 
-def bag_of_tanimoto_similarity(reactions: Iterable[str]) -> float:
+def agg_mfp_cosine_similarity(reactions: Iterable[str]) -> float:
     '''
-    Computes tanimoto similarity between abs(rct_mfp_sum - pdt_mfp_sum)
+    Computes cosine similarity between abs(rct_mfp_sum - pdt_mfp_sum)
     '''
     rxn_vecs = []
     for rxn in reactions:
         mols = [[Chem.MolFromSmiles(smi) for smi in side.split(".")] for side in rxn.split(">>")]
         mfps = [[morgan_fingerprint(mol) for mol in side] for side in mols]
-        rxn_vecs.append(abs(sum(mfps[0]) - sum(mfps[1])))
+        rvec = abs(sum(mfps[0]) - sum(mfps[1]))
+        rvec /= np.linalg.norm(rvec)
+        rxn_vecs.append(rvec)
 
-    return tanimoto_similarity(*rxn_vecs)
+    return np.dot(rxn_vecs[0], rxn_vecs[1])
 
 
 def extract_operator_patts(rxn_smarts:str, side:int):
@@ -696,10 +698,10 @@ def _wrap_rxn_mcs(args):
 def _wrap_rxn_tani(args):
     return reaction_tanimoto_similarity(*args)
 
-def _wrap_bag_of_tani(args):
-    return bag_of_tanimoto_similarity(*args)
+def _wrap_agg_mfp_cosine(args):
+    return agg_mfp_cosine_similarity(*args)
 
 if __name__ == '__main__':
     reaction1 = "CC=O.O>>CC.O.O"
     reaction2 = "CC=O.O>>CC.O.O"
-    print(bag_of_tanimoto_similarity([reaction1, reaction2]))
+    print(agg_mfp_cosine_similarity([reaction1, reaction2]))
