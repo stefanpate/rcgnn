@@ -215,6 +215,8 @@ class BatchGridSearch:
         elif self.split_strategy == 'rcmcs':
             split_guide = self._split_rcmcs(X, y)
 
+        split_guide = self._balance_test_set(split_guide)
+
         if do_save:
             split_guide.to_csv(split_guide_path, sep='\t', index=False)
 
@@ -390,6 +392,32 @@ class BatchGridSearch:
 
         return train_data, test_data
     
+    def _balance_test_set(self, split_guide: pd.DataFrame) -> pd.DataFrame:
+        if self.neg_multiple == 1:
+            return split_guide
+        elif self.neg_multiple > 1:
+            label_to_ds = 0
+            other_label = 1
+        else:
+            label_to_ds = 1
+            other_label = 0
+
+
+        to_remove = []
+        for i in range(self.n_splits):
+            sel_ds = (split_guide['split_idx'] == i) & (split_guide['train/test'] == 'test') & (split_guide['y'] == label_to_ds)
+            sel_other = (split_guide['split_idx'] == i) & (split_guide['train/test'] == 'test') & (split_guide['y'] == other_label)
+            other = split_guide[sel_other]
+            this = split_guide[sel_ds]
+            indices = this.index
+            rm = self.rng.choice(indices, size=len(this) - len(other), replace=False)
+            to_remove.append(rm)
+        
+        to_remove = np.hstack(to_remove)
+        split_guide.drop(labels=to_remove, inplace=True)
+        
+        return split_guide
+    
     def _get_adjacency_matrix(self):
         return construct_sparse_adj_mat(self.dataset_name, self.toc)
     
@@ -456,14 +484,14 @@ def sample_negatives(X_pos:List[Tuple[int]], neg_multiple:int, seed:int):
 
 if __name__ == '__main__':
     dataset_name = 'sprhea'
-    toc = 'sp_folded_pt_test' # Name of file with protein id | features/labels | sequence
-    n_splits = 3
+    toc = 'v3_folded_test' # Name of file with protein id | features/labels | sequence
+    n_splits = 5
     seed = 1234
-    neg_multiple = 1
-    split_strategy = 'homology'
+    neg_multiple = 5
+    split_strategy = 'random'
     split_sim_threshold = 0.8
     embed_type = 'esm'
-    res_dir = "/projects/p30041/spn1560/hiec/artifacts/model_evals/gnn"
+    res_dir = filepaths['model_evals'] / "gnn"
 
     # Configurtion stuff
     hhps = HyperHyperParams(
@@ -486,21 +514,19 @@ if __name__ == '__main__':
     X, y = gs.sample_negatives()
     split_guide = gs.split_data(X, y)
 
-    gb = split_guide.groupby(by='split_idx')
-    pos_neg = []
-    for name, group in gb:
-        train = group.loc[group["train/test"] == "train", ["X1", "X2"]].values.tolist()
-        train = set([tuple(elt) for elt in train])
-        test = group.loc[group["train/test"] == "test", ["X1", "X2"]].values.tolist()
-        test = set([tuple(elt) for elt in test])
+    for i in range(n_splits):
+        sel_test_split = (split_guide['split_idx'] == i) & (split_guide['train/test'] == 'test')
+        sel_train_split = (split_guide['split_idx'] == i) & (split_guide['train/test'] == 'train')
 
-        assert len(train & test) == 0
+        print(f"split {i}")
 
-        train_labels = list(chain(*group.loc[group["train/test"] == "train", ["y"]].values.tolist()))
-        test_labels = list(chain(*group.loc[group["train/test"] == "test", ["y"]].values.tolist()))
+        test_set = split_guide.loc[sel_test_split]
+        train_set = split_guide.loc[sel_train_split]
+        test_pos = test_set.loc[test_set['y'] == 1]
+        test_neg = test_set.loc[test_set['y'] == 0]
+        train_pos = train_set.loc[train_set['y'] == 1]
+        train_neg = train_set.loc[train_set['y'] == 0]
 
-        train_pos_neg = (len(train_labels) - sum(train_labels)) / len(train_labels)
-        test_pos_neg = (len(test_labels) - sum(test_labels)) / len(test_labels)
-        pos_neg.append({"train": train_pos_neg, "test": test_pos_neg})
-
-    print(pos_neg)
+        print("train test ratio", len(train_set) / len(test_neg))
+        print("train neg/pos ratio", len(train_neg) / len(train_pos))
+        print("test neg/pos ratio", len(test_neg) / len(test_pos))
