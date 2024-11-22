@@ -6,6 +6,7 @@ from chemprop.data import build_dataloader
 from chemprop.models import MPNN
 from chemprop.nn import MeanAggregation, BinaryClassificationFFN, BondMessagePassing
 
+from src.config import filepaths
 from src.utils import load_json, save_json
 from src.featurizer import SimpleReactionMolGraphFeaturizer, RCVNReactionMolGraphFeaturizer, MultiHotAtomFeaturizer, MultiHotBondFeaturizer, ReactionMorganFeaturizer
 from src.nn import LastAggregation, DotSig, LinDimRed, AttentionAggregation, BondMessagePassingDict
@@ -16,13 +17,14 @@ from src.cross_validation import load_single_experiment, HyperHyperParams, Batch
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import CSVLogger
 
+from pathlib import Path
 import numpy as np
 from argparse import ArgumentParser
 import torch
 import os
 from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score
 
-res_dir = "/projects/p30041/spn1560/hiec/artifacts/model_evals/gnn" # TODO this shouldn't be here. Should be set by batch fit/resume
+res_dir = filepaths['model_evals'] / "gnn" # TODO this shouldn't be here. Should be set by batch fit/resume
 
 # Aggregation fcns
 aggs = {
@@ -88,7 +90,7 @@ hp_split_dir = f"{hp_idx}_hp_idx_split_{split_idx+1}_of_{n_splits}"
 # Load data split
 print("Loading data")
 train_data, test_data = gs.load_data_split(split_idx=split_idx)
-known_rxns = load_json(f"../data/{dataset_name}/{toc}.json") # Load reaction dataset
+known_rxns = load_json(filepaths['data'] / f"{dataset_name}/{toc}.json") # Load reaction dataset
 
 # Init featurizer
 mfp_length = 2**10
@@ -168,9 +170,9 @@ elif hps['model'] == 'linear':
     )
 
 if chkpt_idx:
-    chkpt_dir = f"{res_dir}/{chkpt_idx}_hp_idx_split_{split_idx+1}_of_{n_splits}/version_0/checkpoints"
+    chkpt_dir = res_dir / f"{chkpt_idx}_hp_idx_split_{split_idx+1}_of_{n_splits}/version_0/checkpoints"
     chkpt_file = os.listdir(chkpt_dir)[0]
-    chkpt_path = f"{chkpt_dir}/{chkpt_file}"
+    chkpt_path = chkpt_dir / f"{chkpt_file}"
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     chkpt = torch.load(chkpt_path, map_location=device)
     model.load_state_dict(chkpt['state_dict'])
@@ -219,7 +221,7 @@ for k, scorer in scorers.items():
     scores[k] = scorer(y_true, y_pred)
 
 print(scores)
-sup_dir = f"{res_dir}/{hp_split_dir}"
+sup_dir = res_dir / f"{hp_split_dir}"
 versions = sorted([(fn, int(fn.split('_')[-1])) for fn in os.listdir(sup_dir)], key=lambda x : x[-1])
 latest_version = versions[-1][0]
-save_json(scores, f"{sup_dir}/{latest_version}/test_scores.json")
+save_json(scores, sup_dir / f"{latest_version}/test_scores.json")

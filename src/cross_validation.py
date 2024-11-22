@@ -10,6 +10,7 @@ import subprocess
 from dataclasses import dataclass, asdict, fields
 from typing import List, Tuple
 from src.config import filepaths
+from pathlib import Path
 
 @dataclass
 class BatchScript:
@@ -45,8 +46,8 @@ class BatchScript:
             f"#SBATCH --mem={self.mem}",
             f"#SBATCH -t {self.time}:00:00",
             f"#SBATCH --job-name={job_name}",
-            f"#SBATCH --output=../logs/out/{job_name}",
-            f"#SBATCH --error=../logs/error/{job_name}",
+            f"#SBATCH --output=/home/spn1560/hiec/logs/out/{job_name}",
+            f"#SBATCH --error=/home/spn1560/hiec/logs/error/{job_name}",
             f"#SBATCH --mail-type=END",
             f"#SBATCH --mail-type=FAIL",
             f"#SBATCH --mail-user=stefan.pate@northwestern.edu",
@@ -54,7 +55,7 @@ class BatchScript:
             f"module load python/anaconda3.6",
             f"module load gcc/9.2.0",
             f"source activate hiec",
-            f"python -u {self.script} {arg_str}",
+            f"python -u /home/spn1560/hiec/scripts/{self.script} {arg_str}",
         ]
 
         if self.partition == 'gengpu':
@@ -126,7 +127,7 @@ class BatchGridSearch:
     def __init__(
             self,
             hhps:HyperHyperParams,
-            res_dir:str,
+            res_dir: Path,
             scratch_dir=filepaths['scratch'],
             data_dir=filepaths['data'],
             ) -> None:
@@ -142,7 +143,7 @@ class BatchGridSearch:
         self.split_guide_pref = f"{self.dataset_name}_{self.toc}_{self.split_strategy}"\
             f"_threshold_{int(self.split_sim_threshold * 100)}_{self.n_splits}_splits"\
             f"_neg_multiple_{self.neg_multiple}_seed_{self.seed}"
-        self.experiments = pd.read_csv(res_dir / f"experiments.csv", sep='\t', index_col=0)
+        self.experiments = pd.read_csv(res_dir / "experiments.csv", sep='\t', index_col=0)
         self.next_hp_idx = self.experiments.index.max() + 1
         self.adj, self.idx_sample, self.idx_feature = self._get_adjacency_matrix()
         self.X_pos = list(zip(*self.adj.nonzero()))
