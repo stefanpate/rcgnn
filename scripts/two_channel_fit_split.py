@@ -9,7 +9,7 @@ from chemprop.nn import MeanAggregation, BinaryClassificationFFN, BondMessagePas
 from src.config import filepaths
 from src.utils import load_json, save_json
 from src.featurizer import SimpleReactionMolGraphFeaturizer, RCVNReactionMolGraphFeaturizer, MultiHotAtomFeaturizer, MultiHotBondFeaturizer, ReactionMorganFeaturizer
-from src.nn import LastAggregation, DotSig, LinDimRed, AttentionAggregation, BondMessagePassingDict
+from src.nn import LastAggregation, DotSig, LinDimRed, AttentionAggregation, BondMessagePassingDict, WeightedBCELoss
 from src.model import MPNNDimRed, TwoChannelFFN, TwoChannelLinear
 from src.data import RxnRCDatapoint, RxnRCDataset, MFPDataset, mfp_build_dataloader
 from src.cross_validation import load_single_experiment, HyperHyperParams, BatchGridSearch
@@ -17,7 +17,6 @@ from src.cross_validation import load_single_experiment, HyperHyperParams, Batch
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import CSVLogger
 
-from pathlib import Path
 import numpy as np
 from argparse import ArgumentParser
 import torch
@@ -138,7 +137,9 @@ if hps['message_passing']:
 if hps['agg']:
     agg = aggs[hps['agg']](input_dim=d_h_encoder) if hps['agg'] == 'attention' else aggs[hps['agg']]()
 
-pred_head = pred_heads[hps['pred_head']](input_dim=d_h_encoder * 2)
+pos_weight = torch.ones([1]) * hhps.neg_multiple
+criterion = WeightedBCELoss(pos_weight=pos_weight)
+pred_head = pred_heads[hps['pred_head']](input_dim=d_h_encoder * 2, criterion=criterion)
 
 if hps['model'] == 'mpnn':
     model = MPNN(

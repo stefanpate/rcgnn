@@ -5,6 +5,7 @@ Neural net modules
 import torch
 from torch import Tensor
 from torch.nn import Module
+from torch.nn import functional as F
 from chemprop.nn import Aggregation, Predictor
 from chemprop.nn.ffn import MLP
 from chemprop.nn.hparams import HasHParams
@@ -13,6 +14,14 @@ from chemprop.nn.metrics import BinaryAUROCMetric
 from chemprop.nn.message_passing.base import _MessagePassingBase, BondMessagePassing
 from chemprop.data import BatchMolGraph
 from lightning.pytorch.core.mixins import HyperparametersMixin
+
+class WeightedBCELoss(BCELoss):
+    def __init__(self, pos_weight = 1, task_weights = 1):
+        super().__init__(task_weights)
+        self.pos_weight = pos_weight
+
+    def _calc_unreduced_loss(self, preds: Tensor, targets: Tensor, *args) -> Tensor:
+        return F.binary_cross_entropy_with_logits(preds, targets, reduction="none", pos_weight=self.pos_weight)
 
 class LastAggregation(Aggregation):
     '''
@@ -93,11 +102,11 @@ class DotSig(Predictor, HyperparametersMixin):
     _T_default_criterion = BCELoss
     _T_default_metric = BinaryAUROCMetric
 
-    def __init__(self, input_dim:int):
+    def __init__(self, input_dim:int, criterion = None):
         super().__init__()
         self.input_dim = input_dim
         self.output_dim = self.n_targets * self.n_tasks
-        self.criterion = self._T_default_criterion()
+        self.criterion = criterion or self._T_default_criterion()
         self.d_h  = self.input_dim // 2 # Dimension of one embedding
 
     def forward(self, H):
