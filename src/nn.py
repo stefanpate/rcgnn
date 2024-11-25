@@ -16,7 +16,7 @@ from chemprop.data import BatchMolGraph
 from lightning.pytorch.core.mixins import HyperparametersMixin
 
 class WeightedBCELoss(BCELoss):
-    def __init__(self, pos_weight = 1, task_weights = 1):
+    def __init__(self, pos_weight, task_weights = 1):
         super().__init__(task_weights)
         self.pos_weight = pos_weight
 

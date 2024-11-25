@@ -24,6 +24,7 @@ import os
 from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score
 
 res_dir = filepaths['model_evals'] / "gnn" # TODO this shouldn't be here. Should be set by batch fit/resume
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Aggregation fcns
 aggs = {
@@ -137,7 +138,8 @@ if hps['message_passing']:
 if hps['agg']:
     agg = aggs[hps['agg']](input_dim=d_h_encoder) if hps['agg'] == 'attention' else aggs[hps['agg']]()
 
-pos_weight = torch.ones([1]) * hhps.neg_multiple
+pos_weight = torch.ones([1]) * hhps.neg_multiple * 2
+pos_weight = pos_weight.to(device)
 criterion = WeightedBCELoss(pos_weight=pos_weight)
 pred_head = pred_heads[hps['pred_head']](input_dim=d_h_encoder * 2, criterion=criterion)
 
@@ -169,12 +171,12 @@ elif hps['model'] == 'linear':
         d_h=d_h_encoder,
         predictor=pred_head,
     )
+    
 
 if chkpt_idx:
     chkpt_dir = res_dir / f"{chkpt_idx}_hp_idx_split_{split_idx+1}_of_{n_splits}/version_0/checkpoints"
     chkpt_file = os.listdir(chkpt_dir)[0]
     chkpt_path = chkpt_dir / f"{chkpt_file}"
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     chkpt = torch.load(chkpt_path, map_location=device)
     model.load_state_dict(chkpt['state_dict'])
     model.max_lr = 1e-4 # Constant lr
