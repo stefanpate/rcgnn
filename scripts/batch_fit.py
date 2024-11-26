@@ -1,5 +1,5 @@
 from src.cross_validation import BatchGridSearch, BatchScript, HyperHyperParams
-from src.config import filepaths
+from src.filepaths import filepaths
 
 dataset_name = 'sprhea'
 toc = 'v3_folded_pt_ns' # Name of file with protein id | features/labels | sequence

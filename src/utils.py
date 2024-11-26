@@ -9,7 +9,7 @@ import subprocess
 from collections import namedtuple
 import re
 from pathlib import Path
-from src.config import filepaths
+from src.filepaths import filepaths
 
 data_dir = filepaths['data']
 scratch_dir = filepaths['scratch']

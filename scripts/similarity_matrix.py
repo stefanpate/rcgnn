@@ -1,6 +1,6 @@
 from src.utils import load_embed_matrix, construct_sparse_adj_mat, load_json
 from src.similarity import embedding_similarity_matrix, rcmcs_similarity_matrix, mcs_similarity_matrix, tanimoto_similarity_matrix, agg_mfp_cosine_similarity_matrix
-from src.config import filepaths
+from src.filepaths import filepaths
 from pathlib import Path
 from argparse import ArgumentParser
 from time import perf_counter

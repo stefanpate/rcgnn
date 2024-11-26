@@ -6,7 +6,7 @@ from src.utils import load_json, load_precomputed_embeds, construct_sparse_adj_m
 from src.data import RxnRCDatapoint
 from src.cross_validation import sample_negatives
 from src.task import construct_model, construct_featurizer
-from src.config import filepaths
+from src.filepaths import filepaths
 
 import numpy as np
 from argparse import ArgumentParser

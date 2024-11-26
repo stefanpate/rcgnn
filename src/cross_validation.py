@@ -9,7 +9,7 @@ from collections import defaultdict
 import subprocess
 from dataclasses import dataclass, asdict, fields
 from typing import List, Tuple
-from src.config import filepaths
+from src.filepaths import filepaths
 from pathlib import Path
 
 @dataclass

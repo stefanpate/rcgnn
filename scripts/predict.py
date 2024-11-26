@@ -1,5 +1,5 @@
 from argparse import ArgumentParser
-from src.config import filepaths
+from src.filepaths import filepaths
 from src.task import construct_featurizer, construct_model, featurize_data
 from src.cross_validation import BatchGridSearch, HyperHyperParams
 from src.utils import load_json, fix_hps_from_dataframe
