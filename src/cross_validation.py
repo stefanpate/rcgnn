@@ -12,6 +12,41 @@ from typing import List, Tuple
 from src.filepaths import filepaths
 from pathlib import Path
 
+def load_data_split(split_idx: int, scratch_path: Path = Path(''), dataset: str = '', data_path: Path = Path(''), idx_sample: dict = {}, idx_feature: dict = {}, split_guide: pd.DataFrame = None):
+    # TODO: make better. Eliminate idx_feature & idx_sample by storing what you want in the .npy
+    embed_dim = 1280
+    embed_type = 'esm'
+
+    if split_guide is None:
+        train_data = np.load(scratch_path / f"{split_idx}_train.npy")
+        test_data = np.load(scratch_path / f"{split_idx}_test.npy")
+    else:
+        train_split =  split_guide.loc[(split_guide['train/test'] == 'train') & (split_guide['split_idx'] == split_idx)]
+        test_split =  split_guide.loc[(split_guide['train/test'] == 'test') & (split_guide['split_idx'] == split_idx)]
+
+        tp = np.dtype([('sample_embed', np.float32, (embed_dim,)), ('feature', '<U100'), ('y', int)])
+        tmp = []
+        for split in [train_split, test_split]:
+            samples = []
+            features = []
+            y = [elt for elt in split.loc[:, 'y']]
+            for sample_idx in split.loc[:, 'X1']:
+                sample_name = idx_sample[sample_idx]
+                samples.append(load_embed(data_path / f"{dataset}/{embed_type}/{sample_name}.pt", embed_key=33)[1])
+
+            for feature_idx in split.loc[:, 'X2']:
+                features.append(idx_feature[feature_idx])
+
+            data = np.zeros(len(samples), dtype=tp)
+            data['sample_embed'] = samples
+            data['feature'] = features
+            data['y'] = y
+            tmp.append(data)
+
+        train_data, test_data = tmp
+
+        return train_data, test_data
+
 @dataclass
 class BatchScript:
     '''

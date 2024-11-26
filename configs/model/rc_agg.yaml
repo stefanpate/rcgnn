@@ -1,2 +1,7 @@
 featurizer: rxn_rc
-model: 
+model: mpnn_dim_red
+agg: LastAggregation
+pred_head: DotSig
+message_passing: BondMessagePassing
+encoder_depth: 4
+d_h_encoder: 300
