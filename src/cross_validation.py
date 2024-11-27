@@ -45,7 +45,7 @@ def load_data_split(split_idx: int, scratch_path: Path = Path(''), dataset: str 
 
         train_data, test_data = tmp
 
-        return train_data, test_data
+    return train_data, test_data
 
 @dataclass
 class BatchScript:

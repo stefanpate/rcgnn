@@ -6,7 +6,7 @@ neg_multiple: 1
 split_strategy: random
 n_splits: 5
 split_bound: 100
-subdir_patt: ${dataset}_${toc}/${split_strategy}_${split_bound}/nm${neg_multiple}_${n_splits}fold
+subdir_patt: ${.dataset}_${.toc}/${.split_strategy}_${.split_bound}/nm${.neg_multiple}_${.n_splits}fold
 
 hydra:
   run:
