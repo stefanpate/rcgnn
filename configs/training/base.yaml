@@ -1,0 +1,10 @@
+n_epochs: 2
+pos_multiplier: 1
+metrics:
+  - BinaryF1Metric
+  - BinaryPrecision
+  - BinaryRecall
+  - BinaryMCCMetric
+  - BinaryAccuracyMetric
+  - BinaryAUPRCMetric
+  - BinaryAUROCMetric

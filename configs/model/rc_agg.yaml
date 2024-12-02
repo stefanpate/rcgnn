@@ -1,3 +1,4 @@
+name: rc_agg
 featurizer: rxn_rc
 model: mpnn_dim_red
 agg: LastAggregation

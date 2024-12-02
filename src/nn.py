@@ -97,7 +97,7 @@ class DotSig(Predictor, HyperparametersMixin):
     '''
     n_targets = 1
     n_tasks = 1
-    output_transform = None
+    output_transform = torch.nn.Identity()
     task_weights = None
     _T_default_criterion = BCELoss
     _T_default_metric = BinaryAUROCMetric

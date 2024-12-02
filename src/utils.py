@@ -9,10 +9,10 @@ import subprocess
 from collections import namedtuple
 import re
 from pathlib import Path
-from src.filepaths import filepaths
+# from src.filepaths import filepaths
 
-data_dir = filepaths['data']
-scratch_dir = filepaths['scratch']
+# data_dir = filepaths['data']
+# scratch_dir = filepaths['scratch']
 
 DatabaseEntry = namedtuple("DatabaseEntry", "db, id", defaults=[None, None])
 Enzyme = namedtuple("Enzyme", "uniprot_id, sequence, ec, validation_score, existence, reviewed, organism", defaults=[None, None, None, None, None, None, None])
@@ -63,20 +63,20 @@ def ensure_dirs(path):
     if not os.path.exists(path):
         os.makedirs(path)
 
-def construct_sparse_adj_mat(ds_name, toc):
+def construct_sparse_adj_mat(path: Path):
         '''
         Returns sparse representation of sample x feature adjacency matrix
         and lookup of sample names from row idx key.
 
         Args
-            - ds_name: Str name of dataset
-            - toc: Table of contents csv
+            - path: Path to dataset table of contents csv
         Returns
             - adj: Sparse adjacency matrix
             - idx_sample: Index to label dict for samples
             - idx_feature: Index to label dict for features / classes
         '''
-        df = pd.read_csv(data_dir / f"{ds_name}/{toc}.csv", delimiter='\t')
+        df = pd.read_csv(path, delimiter='\t')
+        # df = pd.read_csv(data_dir / f"{ds_name}/{toc}.csv", delimiter='\t')
 
         # Load from dataset "table of contents csv"
         df.set_index('Entry', inplace=True)
@@ -84,7 +84,7 @@ def construct_sparse_adj_mat(ds_name, toc):
         feature_idx = {}
         
         # Construct ground truth protein-function matrix
-        print(f"Constructing {ds_name}:{toc} sparse adjacency matrix")
+        print(f"Constructing {path.stem} sparse adjacency matrix")
         row, col, data = [], [], [] # For csr
         for i, elt in enumerate(df.index):
             labels = df.loc[elt, 'Label'].split(';')
@@ -136,90 +136,90 @@ def get_sample_feature_idxs(ds_name, toc):
             
         return idx_sample, idx_feature
 
-def load_precomputed_embeds(ds_name, toc, embed_type, sample_idx, do_norm=True, scratch_dir=scratch_dir, data_dir=data_dir):
-        '''
-        Args
-            - ds_name: Str name of dataset
-            - embed_type: Str
-            - sample_idx: {sample_label : row_idx}
-            - toc: Table of contents csv
+# def load_precomputed_embeds(ds_name, toc, embed_type, sample_idx, do_norm=True, scratch_dir=scratch_dir, data_dir=data_dir):
+#         '''
+#         Args
+#             - ds_name: Str name of dataset
+#             - embed_type: Str
+#             - sample_idx: {sample_label : row_idx}
+#             - toc: Table of contents csv
 
-        Returns
-            - X: Design matrixs (samples x embedding dim)
-        '''
-        # Load from scratch if pre-saved
-        path = f"{scratch_dir}/{ds_name}_{toc}_{embed_type}_X.npy"
-        if os.path.exists(path):
-            X = np.load(path)
-        else:
+#         Returns
+#             - X: Design matrixs (samples x embedding dim)
+#         '''
+#         # Load from scratch if pre-saved
+#         path = f"{scratch_dir}/{ds_name}_{toc}_{embed_type}_X.npy"
+#         if os.path.exists(path):
+#             X = np.load(path)
+#         else:
 
-            try:
-                print(f"Loading {embed_type} embeddings for {ds_name}:{toc} dataset")
-                magic_key = 33
-                data_path = f"{data_dir}/{ds_name}"
-                X = [None for _ in range(len(sample_idx))]
-                for i, (sample_id, idx) in enumerate(sample_idx.items()):
-                    X[idx] = load_embed(f"{data_path}/{embed_type}/{sample_id}.pt", embed_key=magic_key)[1]
+#             try:
+#                 print(f"Loading {embed_type} embeddings for {ds_name}:{toc} dataset")
+#                 magic_key = 33
+#                 data_path = f"{data_dir}/{ds_name}"
+#                 X = [None for _ in range(len(sample_idx))]
+#                 for i, (sample_id, idx) in enumerate(sample_idx.items()):
+#                     X[idx] = load_embed(f"{data_path}/{embed_type}/{sample_id}.pt", embed_key=magic_key)[1]
 
-                    if i % 5000 == 0:
-                        print(f"Embedding #{i} / {len(sample_idx)}")
+#                     if i % 5000 == 0:
+#                         print(f"Embedding #{i} / {len(sample_idx)}")
 
-                X = np.vstack(X)
+#                 X = np.vstack(X)
                 
-                if do_norm:
-                    X /= np.sqrt(np.square(X).sum(axis=1)).reshape(-1,1)
+#                 if do_norm:
+#                     X /= np.sqrt(np.square(X).sum(axis=1)).reshape(-1,1)
 
-                # Save to scratch
-                np.save(path, X)
-            except:
-                raise ValueError("Data not found in projects dir")
+#                 # Save to scratch
+#                 np.save(path, X)
+#             except:
+#                 raise ValueError("Data not found in projects dir")
 
-        return X
+#         return X
 
-def load_embed_matrix(filepath: Path, idx_sample: dict, dataset: str, toc: str) -> np.ndarray:
-    '''
-    Given a filepath to embedding-containing dir on projects,
-    checks if there is a numpy file containing an embedding
-    matrix on scratch, if not creates it, finally loads it
+# def load_embed_matrix(filepath: Path, idx_sample: dict, dataset: str, toc: str) -> np.ndarray:
+#     '''
+#     Given a filepath to embedding-containing dir on projects,
+#     checks if there is a numpy file containing an embedding
+#     matrix on scratch, if not creates it, finally loads it
 
-    Args
-    ----
-    filepath:Path
-        Filepath to directory containing individual embedding
-        files as .pt
-    idx_sample:dict
-        Maps index of sample in embedding matrix / adjacency matrix
-        to sample id
-    dataset:str
-        Name of dataset
-    toc: str
-        Name of table of contents
+#     Args
+#     ----
+#     filepath:Path
+#         Filepath to directory containing individual embedding
+#         files as .pt
+#     idx_sample:dict
+#         Maps index of sample in embedding matrix / adjacency matrix
+#         to sample id
+#     dataset:str
+#         Name of dataset
+#     toc: str
+#         Name of table of contents
     
 
-    Returns
-    -------
-    X:np.ndarray
-        Embedding matrix (n_samples x d_embedding)
-    '''
-    rel_path = filepath.relative_to(filepaths["projects"])
-    scratch_path = filepaths["scratch"] / rel_path / f"{dataset}_{toc}_X.npy"
-    if scratch_path.exists():
-        X = np.load(scratch_path)
-    else:
-        scratch_path.parent.mkdir(parents=True, exist_ok=True)
-        print(f"Loading embeddings from {str(filepath)}")
-        magic_key = 33
-        X = [None for _ in range(len(idx_sample))]
-        for i, (idx, sample_id) in enumerate(idx_sample.items()):
-            X[idx] = load_embed(filepath / f"{sample_id}.pt", embed_key=magic_key)[1]
+#     Returns
+#     -------
+#     X:np.ndarray
+#         Embedding matrix (n_samples x d_embedding)
+#     '''
+#     rel_path = filepath.relative_to(filepaths["projects"])
+#     scratch_path = filepaths["scratch"] / rel_path / f"{dataset}_{toc}_X.npy"
+#     if scratch_path.exists():
+#         X = np.load(scratch_path)
+#     else:
+#         scratch_path.parent.mkdir(parents=True, exist_ok=True)
+#         print(f"Loading embeddings from {str(filepath)}")
+#         magic_key = 33
+#         X = [None for _ in range(len(idx_sample))]
+#         for i, (idx, sample_id) in enumerate(idx_sample.items()):
+#             X[idx] = load_embed(filepath / f"{sample_id}.pt", embed_key=magic_key)[1]
 
-            if i % 5000 == 0:
-                print(f"Embedding #{i} / {len(idx_sample)}")
+#             if i % 5000 == 0:
+#                 print(f"Embedding #{i} / {len(idx_sample)}")
 
-        X = np.vstack(X)
-        np.save(scratch_path, X)
+#         X = np.vstack(X)
+#         np.save(scratch_path, X)
 
-    return X
+#     return X
 
 
 def load_known_rxns(path):

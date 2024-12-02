@@ -1,7 +1,7 @@
 import hydra
+from omegaconf import DictConfig
 from functools import partial
 from itertools import product
-from src.filepaths import filepaths
 from src.utils import construct_sparse_adj_mat
 from src.cross_validation import load_data_split
 import numpy as np
@@ -132,21 +132,23 @@ splitters = {
 
 }
 
-@hydra.main(version_base=None, config_path=str(filepaths['configs'] / "data"), config_name="sprhea_defaults")
-def main(cfg):
-    rng = np.random.default_rng(seed=cfg.seed)
+@hydra.main(version_base=None, config_path="../configs", config_name="prep_data")
+def main(cfg: DictConfig):
+    rng = np.random.default_rng(seed=cfg.data.seed)
     splitter = partial(
-        splitters[cfg.split_strategy],
-            split_bound=cfg.split_bound / 100, # Bound stored as percent
-            n_splits=cfg.n_splits
+        splitters[cfg.data.split_strategy],
+            split_bound=cfg.data.split_bound / 100, # Bound stored as percent
+            n_splits=cfg.data.n_splits
     )
 
-    adj, idx_sample, idx_feature = construct_sparse_adj_mat(cfg.dataset, cfg.toc)
+    adj, idx_sample, idx_feature = construct_sparse_adj_mat(
+        Path(cfg.filepaths.data) / cfg.data.dataset / (cfg.data.toc + ".csv")
+    )
     X_pos = list(zip(*adj.nonzero()))
 
     split_guide = make_split_guide(
         X_pos=X_pos,
-        neg_multiple=cfg.neg_multiple,
+        neg_multiple=cfg.data.neg_multiple,
         splitter=splitter,
         rng=rng
     )
@@ -154,10 +156,10 @@ def main(cfg):
     split_guide.to_parquet('split_guide.parquet')
 
     cache_data(
-        scratch_path=filepaths['scratch'] / cfg.subdir_patt,
-        data_path=filepaths['data'],
+        scratch_path=Path(cfg.filepaths.scratch) / cfg.data.subdir_patt,
+        data_path=Path(cfg.filepaths.data),
         split_guide=split_guide,
-        dataset=cfg.dataset,
+        dataset=cfg.data.dataset,
         idx_sample=idx_sample,
         idx_feature=idx_feature
     )

@@ -1,0 +1,10 @@
+defaults:
+  - data: sprhea_base
+  - filepaths: base
+  - _self_
+
+hydra:
+  run:
+    dir: ${filepaths.cv}/${data.subdir_patt}
+  job:
+    chdir: True

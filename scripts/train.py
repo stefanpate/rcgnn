@@ -1,11 +1,17 @@
 import hydra
+from pathlib import Path
+from omegaconf import DictConfig
 from chemprop.data import build_dataloader
 import chemprop.nn
+# from chemprop.nn.metrics import BinaryF1Metric
 import torch
 import numpy as np
+from lightning import pytorch as pl
+from lightning.pytorch.loggers import CSVLogger
 
 from src.utils import load_json
 import src.nn
+import src.metrics
 from src.model import (
     MPNNDimRed,
     TwoChannelFFN,
@@ -25,8 +31,8 @@ from src.featurizer import (
     MultiHotBondFeaturizer
 )
 
-from src.filepaths import filepaths
 from src.cross_validation import load_data_split
+
 
 # Featurizers +
 featurizers = {
@@ -55,42 +61,40 @@ def featurize_data(
         cfg
     ):
     featurizer, datapoint_from_smi, dataset_base, generate_dataloader = construct_featurizer(cfg)
-    datapoints_train = []
+    train_datapoints = []
     for row in train_data:
         rxn = reactions[row['feature']]
         y = np.array([row['y']]).astype(np.float32)
-        datapoints_train.append(datapoint_from_smi(rxn, y=y, x_d=row['sample_embed']))
+        train_datapoints.append(datapoint_from_smi(rxn, y=y, x_d=row['sample_embed']))
 
-    datapoints_test = []
+    test_datapoints = []
     for row in test_data:
         rxn = reactions[row['feature']]
         y = np.array([row['y']]).astype(np.float32)
-        datapoints_test.append(datapoint_from_smi(rxn, y=y, x_d=row['sample_embed']))
+        test_datapoints.append(datapoint_from_smi(rxn, y=y, x_d=row['sample_embed']))
 
-    dataset_train = dataset_base(datapoints_train, featurizer=featurizer)
-    dataset_test = dataset_base(datapoints_test, featurizer=featurizer)
+    train_dataset = dataset_base(train_datapoints, featurizer=featurizer)
+    test_dataset = dataset_base(test_datapoints, featurizer=featurizer)
 
-    data_loader_train = generate_dataloader(dataset_train, shuffle=False)
-    data_loader_test = generate_dataloader(dataset_test, shuffle=False)
+    train_dataloader = generate_dataloader(train_dataset, shuffle=True)
+    val_dataloader = generate_dataloader(test_dataset, shuffle=False)
 
-    return data_loader_train, data_loader_test, featurizer
+    return train_dataloader, val_dataloader, featurizer
 
-@hydra.main(version_base=None, config_path=str(filepaths['configs']), config_name="train_base")
-def main(cfg):
+@hydra.main(version_base=None, config_path="../configs", config_name="train")
+def main(cfg: DictConfig):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    pos_weight = torch.ones([1]) * cfg.data.neg_multiple * 2 # TODO bubble up thru cfgs
-    split_idx = 0 # TODO bubble up to cfgs / cl
     embed_dim = 1280 # TODO
 
     # Load data
-    reactions = load_json(filepaths['data'] / f"{cfg.data.dataset}/{cfg.data.toc}.json") # TODO eliminate by saving smiles and rcs to npy files
+    reactions = load_json(Path(cfg.filepaths.data) / cfg.data.dataset / (cfg.data.toc + ".json")) # TODO eliminate by saving smiles and rcs to npy files
 
     train_data, test_data = load_data_split(
-        split_idx=split_idx,
-        scratch_path=filepaths['scratch'] / cfg.data.subdir_patt
+        split_idx=cfg.data.split_idx,
+        scratch_path=Path(cfg.filepaths.scratch) / cfg.data.subdir_patt
     )
 
-    data_loader_train, data_loader_test, featurizer = featurize_data(
+    train_dataloader, val_dataloader, featurizer = featurize_data(
         train_data=train_data,
         test_data=test_data,
         reactions=reactions,
@@ -98,12 +102,14 @@ def main(cfg):
     )
 
     # Construct model
+    pos_weight = torch.ones([1]) * cfg.data.neg_multiple * cfg.training.pos_multiplier
     pos_weight = pos_weight.to(device)
     agg = getattr(src.nn, cfg.model.agg)()
     pred_head = getattr(src.nn, cfg.model.pred_head)(
         input_dim=cfg.model.d_h_encoder * 2,
         criterion = src.nn.WeightedBCELoss(pos_weight=pos_weight)
     )
+    metrics = [getattr(src.metrics, m)() for m in cfg.training.metrics]
     dv, de = featurizer.shape
 
     if cfg.model.message_passing:
@@ -121,6 +127,9 @@ def main(cfg):
             message_passing=mp,
             agg=agg,
             predictor=pred_head,
+            metrics=metrics
+            # metrics=[BinaryF1Metric(), Precision()]
+            # metrics=[ChempropPrecision()]
         )
     elif cfg.model.model == 'ffn':
         model = TwoChannelFFN(
@@ -129,6 +138,7 @@ def main(cfg):
             d_h=cfg.model.d_h_encoder,
             encoder_depth=cfg.model.encoder_depth,
             predictor=pred_head,
+            metrics=metrics
         )
     elif cfg.model.model == 'linear':
         model = TwoChannelLinear(
@@ -136,10 +146,28 @@ def main(cfg):
             d_prot=embed_dim,
             d_h=cfg.model.d_h_encoder,
             predictor=pred_head,
+            metrics=metrics
     )
-    
-    
-    print()
+     
+    # Fit
+    logger = CSVLogger(
+        save_dir=Path(cfg.filepaths.cv) / cfg.data.subdir_patt,
+        name=cfg.model.name,
+    )
+
+    trainer = pl.Trainer(
+        enable_progress_bar=True,
+        accelerator="auto",
+        devices=1,
+        max_epochs=cfg.training.n_epochs, # number of epochs to train for
+        logger=logger
+    )
+
+    trainer.fit(
+        model=model,
+        train_dataloaders=train_dataloader,
+        val_dataloaders=val_dataloader
+    )
 
 if __name__ == '__main__':
     main()

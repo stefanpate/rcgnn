@@ -1,4 +1,5 @@
 
+from typing import Iterable
 import torch
 from torch.optim import Adam
 from torch import Tensor
@@ -18,6 +19,7 @@ class MPNNDimRed(MPNN):
             predictor: Predictor,
             reduce_X_d,
             batch_norm: bool = True,
+            metrics: Iterable = [],
             warmup_epochs: int = 2,
             init_lr: float = 1e-4,
             max_lr: float = 1e-3,
@@ -29,6 +31,7 @@ class MPNNDimRed(MPNN):
             agg=agg,
             predictor=predictor,
             batch_norm=batch_norm,
+            metrics=metrics,
             warmup_epochs=warmup_epochs,
             init_lr=init_lr,
             max_lr=max_lr,

@@ -1,0 +1,5 @@
+defaults:
+  - filepaths: base
+  - data: sprhea_base
+  - model: rc_agg
+  - training: base
