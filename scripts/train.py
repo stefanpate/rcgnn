@@ -1,13 +1,14 @@
 import hydra
 from pathlib import Path
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 from chemprop.data import build_dataloader
 import chemprop.nn
-# from chemprop.nn.metrics import BinaryF1Metric
 import torch
 import numpy as np
+import pandas as pd
 from lightning import pytorch as pl
-from lightning.pytorch.loggers import CSVLogger
+from lightning.pytorch.loggers import MLFlowLogger
+import mlflow
 
 from src.utils import load_json
 import src.nn
@@ -121,6 +122,8 @@ def main(cfg: DictConfig):
         )
 
     # TODO streamline model api, get rid of LinDimRed
+    # NOTE you can use hydra.utils.instantiate and partial to move
+    # some of this up to configs
     if cfg.model.model == 'mpnn_dim_red':
         model = MPNNDimRed(
             reduce_X_d=src.nn.LinDimRed(d_in=embed_dim, d_out=cfg.model.d_h_encoder),
@@ -149,25 +152,34 @@ def main(cfg: DictConfig):
             metrics=metrics
     )
      
-    # Fit
-    logger = CSVLogger(
-        save_dir=Path(cfg.filepaths.cv) / cfg.data.subdir_patt,
-        name=cfg.model.name,
+    # Track
+    logger = MLFlowLogger(
+        experiment_name='test',
+        # save_dir=Path(cfg.filepaths.cv) / cfg.data.subdir_patt,
+        # name=cfg.model.name,
     )
+    mlflow.set_experiment(experiment_id=logger.experiment_id)
 
-    trainer = pl.Trainer(
-        enable_progress_bar=True,
-        accelerator="auto",
-        devices=1,
-        max_epochs=cfg.training.n_epochs, # number of epochs to train for
-        logger=logger
-    )
+    # Train
+    with mlflow.start_run(run_id=logger.run_id):
+        flat_resolved_cfg = pd.json_normalize(
+            {k: v for k,v in OmegaConf.to_container(cfg, resolve=True).items() if k != 'filepaths'}, # Resolved interpolated values
+            sep='/'
+        ).to_dict(orient='records')[0]
+        mlflow.log_params(flat_resolved_cfg)
+        trainer = pl.Trainer(
+            enable_progress_bar=True,
+            accelerator="auto",
+            devices=1,
+            max_epochs=cfg.training.n_epochs, # number of epochs to train for
+            logger=logger
+        )
 
-    trainer.fit(
-        model=model,
-        train_dataloaders=train_dataloader,
-        val_dataloaders=val_dataloader
-    )
+        trainer.fit(
+            model=model,
+            train_dataloaders=train_dataloader,
+            val_dataloaders=val_dataloader
+        )
 
 if __name__ == '__main__':
     main()
