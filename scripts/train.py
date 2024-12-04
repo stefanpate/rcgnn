@@ -82,7 +82,7 @@ def featurize_data(
 
     return train_dataloader, val_dataloader, featurizer
 
-@hydra.main(version_base=None, config_path="../configs", config_name="train")
+@hydra.main(version_base=None, config_path="../configs", config_name="cross_val")
 def main(cfg: DictConfig):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     embed_dim = 1280 # TODO
@@ -131,8 +131,6 @@ def main(cfg: DictConfig):
             agg=agg,
             predictor=pred_head,
             metrics=metrics
-            # metrics=[BinaryF1Metric(), Precision()]
-            # metrics=[ChempropPrecision()]
         )
     elif cfg.model.model == 'ffn':
         model = TwoChannelFFN(
@@ -154,9 +152,9 @@ def main(cfg: DictConfig):
      
     # Track
     logger = MLFlowLogger(
-        experiment_name='test',
-        # save_dir=Path(cfg.filepaths.cv) / cfg.data.subdir_patt,
-        # name=cfg.model.name,
+        experiment_name=cfg.exp or "Default",
+        save_dir=cfg.filepaths.runs,
+        log_model=True,
     )
     mlflow.set_experiment(experiment_id=logger.experiment_id)
 

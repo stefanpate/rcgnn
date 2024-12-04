@@ -1,0 +1,8 @@
+seed: 1234
+dataset: sprhea
+toc: v3_folded_test
+neg_multiple: 1
+split_strategy: homology
+n_splits: 5
+split_bound: 80
+subdir_patt: ${.dataset}_${.toc}/${.split_strategy}_${.split_bound}/nm${.neg_multiple}_${.n_splits}fold

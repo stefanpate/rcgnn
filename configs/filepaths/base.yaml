@@ -3,4 +3,6 @@ results: /home/stef/quest_data/hiec/results
 data: /home/stef/quest_data/hiec/data
 scratch: /home/stef/quest_data/hiec/scratch
 configs: /home/stef/hiec/configs
-cv: ${.results}/cv
+runs: ${.results}/runs
+clustering: ${.artifacts}/clustering
+split_guides: ${.results}/split_guides

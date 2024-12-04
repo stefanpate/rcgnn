@@ -3,12 +3,22 @@ from omegaconf import DictConfig
 from functools import partial
 from itertools import product
 from src.utils import construct_sparse_adj_mat
-from src.cross_validation import load_data_split
+from src.cross_validation import (
+    split_random,
+    split_rcmcs,
+    split_homology,
+    load_data_split
+)
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import KFold
 from pathlib import Path
 import torch
+
+splitters = {
+    'random': split_random,
+    'rcmcs': split_rcmcs,
+    'homology': split_homology
+}
 
 def _sample_negatives(X_pos: list[tuple[int]], neg_multiple: int, rng: np.random.Generator):
     '''
@@ -42,32 +52,6 @@ def _split_data(X: np.ndarray, y: np.ndarray, splitter: callable, rng: np.random
     split_guide = splitter(X, y)
     
     return split_guide
-
-
-def _split_random(X: np.ndarray, y: np.ndarray, n_splits: int, **kwargs) -> pd.DataFrame:
-    '''
-    Returns
-    -------
-    split_guide:pandas df - entries of (train/test, split_idx, X1, X2, y)
-        where
-        train/test:str - 'train' or 'test' split
-        split_idx:int - The cv data split index
-        X1:int - smaple_idx e.g., protein_idx
-        X2:int - label_idx e.g., reaction_idx
-        y:int - (sample, label) pair hyperlabels, e.g., 0 or 1
-    '''        
-    # Split provided data
-    cols = ['train/test', 'split_idx', 'X1', 'X2', 'y']
-    data = []
-    kfold = KFold(n_splits=n_splits)
-    for i, (train_idx, test_idx) in enumerate(kfold.split(X)):
-        # Append to data for split_guide
-        train_rows = list(zip(['train' for _ in range(train_idx.size)], [i for _ in range(train_idx.size)], X[train_idx, 0], X[train_idx, 1], y[train_idx].reshape(-1,)))
-        test_rows = list(zip(['test' for _ in range(test_idx.size)], [i for _ in range(test_idx.size)], X[test_idx, 0], X[test_idx, 1], y[test_idx].reshape(-1,)))
-        data += train_rows
-        data += test_rows
-
-    return pd.DataFrame(data=data, columns=cols)
 
 def _balance_test_set(split_guide: pd.DataFrame, rng: np.random.Generator):
         to_remove = []
@@ -127,23 +111,25 @@ def load_embed(path: Path, embed_key: int):
         embed = f
     return id, embed
 
-splitters = {
-    'random': _split_random,
-
-}
-
-@hydra.main(version_base=None, config_path="../configs", config_name="prep_data")
+@hydra.main(version_base=None, config_path="../configs", config_name="stage_data")
 def main(cfg: DictConfig):
     rng = np.random.default_rng(seed=cfg.data.seed)
-    splitter = partial(
-        splitters[cfg.data.split_strategy],
-            split_bound=cfg.data.split_bound / 100, # Bound stored as percent
-            n_splits=cfg.data.n_splits
-    )
 
     adj, idx_sample, idx_feature = construct_sparse_adj_mat(
         Path(cfg.filepaths.data) / cfg.data.dataset / (cfg.data.toc + ".csv")
     )
+
+    cluster_path = Path(cfg.filepaths.clustering) / f"{cfg.data.dataset}_{cfg.data.toc}_{cfg.data.split_strategy}_{cfg.data.split_bound}"
+
+    splitter = partial(
+        splitters[cfg.data.split_strategy],
+        split_bound=cfg.data.split_bound / 100, # Convert percent to fraction
+        n_splits=cfg.data.n_splits,
+        cluster_path=cluster_path,
+        idx_feature=idx_feature,
+        idx_sample=idx_sample
+    )
+
     X_pos = list(zip(*adj.nonzero()))
 
     split_guide = make_split_guide(
