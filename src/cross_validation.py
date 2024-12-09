@@ -1,15 +1,9 @@
-from src.utils import construct_sparse_adj_mat, load_embed, load_json
+from src.utils import load_embed, load_json
 import numpy as np
 import pandas as pd
-import os
 from sklearn.model_selection import KFold
-from itertools import product, chain
-import json
+from itertools import chain
 from collections import defaultdict
-import subprocess
-from dataclasses import dataclass, asdict, fields
-from typing import List, Tuple
-# from src.filepaths import filepaths
 from pathlib import Path
 
 def load_data_split(split_idx: int, scratch_path: Path = Path(''), dataset: str = '', data_path: Path = Path(''), idx_sample: dict = {}, idx_feature: dict = {}, split_guide: pd.DataFrame = None):

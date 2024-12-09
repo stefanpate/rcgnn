@@ -2,6 +2,8 @@
 Fit "two channel" (reaction gnn + esm) model on a data split
 '''
 
+# TODO: Delete when confident has been replaced by train.py
+
 from chemprop.data import build_dataloader
 from chemprop.models import MPNN
 from chemprop.nn import MeanAggregation, BinaryClassificationFFN, BondMessagePassing

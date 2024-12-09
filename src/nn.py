@@ -6,7 +6,7 @@ import torch
 from torch import Tensor
 from torch.nn import Module
 from torch.nn import functional as F
-from chemprop.nn import Aggregation, Predictor
+from chemprop.nn import Aggregation, Predictor, MeanAggregation, BinaryClassificationFFN # Don't remove unused objects
 from chemprop.nn.ffn import MLP
 from chemprop.nn.hparams import HasHParams
 from chemprop.nn.loss import BCELoss

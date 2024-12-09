@@ -4,7 +4,7 @@ metrics:
   - BinaryF1Metric
   - BinaryPrecision
   - BinaryRecall
-  # - BinaryMCCMetric
+  - BinaryMCC
   - BinaryAccuracyMetric
   - BinaryAUPRCMetric
   - BinaryAUROCMetric

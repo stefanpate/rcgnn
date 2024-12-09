@@ -2,7 +2,6 @@ import hydra
 from pathlib import Path
 from omegaconf import DictConfig, OmegaConf
 from chemprop.data import build_dataloader
-import chemprop.nn
 import torch
 import numpy as np
 import pandas as pd
