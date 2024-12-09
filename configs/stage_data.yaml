@@ -1,6 +1,7 @@
 defaults:
   - data: sprhea_random
   - filepaths: base
+  - override hydra/launcher: quest_cpu
   - _self_
 
 hydra:
