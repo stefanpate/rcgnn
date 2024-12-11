@@ -8,6 +8,7 @@ config.yaml
 **/.ipynb_checkpoints
 **/logs
 **/sim_mats
+nohup.out
 
 # Large data files
 data/sprhea/known_rxns_swissprot_enzymes_240310.json

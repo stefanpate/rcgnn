@@ -4,4 +4,4 @@ defaults:
 timeout_min: 240 # 4 hours
 account: p30041
 partition: short
-mem_gb: 12G
+mem_gb: 12

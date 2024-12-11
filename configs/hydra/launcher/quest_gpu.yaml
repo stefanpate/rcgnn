@@ -5,4 +5,4 @@ timeout_min: 600 # 10 hours
 account: p30041
 partition: gengpu
 gres: gpu:a100:1
-mem_gb: 12G
+mem_gb: 32

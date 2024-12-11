@@ -1,6 +1,6 @@
 defaults:
   - filepaths: base
-  - data: sprhea_random
+  - data: ???
   - model: rc_agg
   - training: base
   - override hydra/hydra_logging: disabled # Redundant w/ mlflow

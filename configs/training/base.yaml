@@ -1,4 +1,4 @@
-n_epochs: 2
+n_epochs: 25
 pos_multiplier: 1
 metrics:
   - BinaryF1Metric

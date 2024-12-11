@@ -62,7 +62,7 @@ def _balance_test_set(split_guide: pd.DataFrame, rng: np.random.Generator):
             other = split_guide[sel_other]
             this = split_guide[sel_ds]
             indices = this.index
-            rm = rng.choice(indices, size=len(this) - len(other), replace=False)
+            rm = rng.choice(indices, size=max(len(this) - len(other), 0), replace=False)
             to_remove.append(rm)
         
         to_remove = np.hstack(to_remove)
