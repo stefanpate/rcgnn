@@ -1,8 +1,0 @@
-artifacts: /home/spn1560/hiec/artifacts
-results: /projects/p30041/spn1560/hiec/results
-data: /projects/p30041/spn1560/hiec/data
-scratch: /scratch/spn1560/hiec
-configs: /home/spn1560/hiec/configs
-runs: ${.results}/runs
-clustering: ${.artifacts}/clustering
-split_guides: ${.results}/split_guides
