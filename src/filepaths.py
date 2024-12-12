@@ -1,19 +1,8 @@
-import yaml
 from pathlib import Path
+from omegaconf import OmegaConf
 
-project_dir = Path(__file__).parent.parent
+project_dir = Path(__file__).parents[1]
+filepaths = OmegaConf.load(project_dir / "configs" / "filepaths" / "base.yaml")
 
-with open(project_dir / "configs" / "filepaths.yaml", 'r') as f:
-    configs = yaml.safe_load(f)
-
-filepaths = {}
-for k, v in configs['dirs'].items():
-    filepaths[k] = Path(v)
-    if k in configs['subdirs']:
-        for subdir in configs['subdirs'][k]:
-            
-            if subdir == k:
-                raise ValueError(f"Keys for dirs and subdirs should not be the same to avoid conflicts. Please rename {subdir}")
-
-            sub_k = f"{subdir}"
-            filepaths[sub_k] = filepaths[k] / subdir
+for k in filepaths.keys():
+    filepaths[k] = Path(filepaths[k])
