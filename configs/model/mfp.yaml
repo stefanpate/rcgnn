@@ -1,0 +1,8 @@
+name: mfp
+featurizer: mfp
+model: linear
+agg: null
+pred_head: DotSig
+message_passing: null
+encoder_depth: null
+d_h_encoder: 300

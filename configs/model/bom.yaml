@@ -1,0 +1,8 @@
+name: bom
+featurizer: rxn_simple
+model: mpnn_dim_red
+agg: MeanAggregation
+pred_head: DotSig
+message_passing: BondMessagePassing
+encoder_depth: 5
+d_h_encoder: 300

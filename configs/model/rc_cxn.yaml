@@ -1,0 +1,8 @@
+name: rc_cxn
+featurizer: rxn_rc
+model: mpnn_dim_red
+agg: MeanAggregation
+pred_head: DotSig
+message_passing: BondMessagePassing
+encoder_depth: 4
+d_h_encoder: 300

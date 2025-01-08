@@ -104,15 +104,15 @@ def main(cfg: DictConfig):
     # Construct model
     pos_weight = torch.ones([1]) * cfg.data.neg_multiple * cfg.training.pos_multiplier
     pos_weight = pos_weight.to(device)
-    agg = getattr(src.nn, cfg.model.agg)()
+    agg = getattr(src.nn, cfg.model.agg)() if cfg.model.agg else None
     pred_head = getattr(src.nn, cfg.model.pred_head)(
         input_dim=cfg.model.d_h_encoder * 2,
         criterion = src.nn.WeightedBCELoss(pos_weight=pos_weight)
     )
     metrics = [getattr(src.metrics, m)() for m in cfg.training.metrics]
-    dv, de = featurizer.shape
 
     if cfg.model.message_passing:
+        dv, de = featurizer.shape
         mp = getattr(src.nn, cfg.model.message_passing)(
             d_v=dv,
             d_e=de,
