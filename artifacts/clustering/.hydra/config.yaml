@@ -1,0 +1,16 @@
+filepaths:
+  artifacts: /home/stef/hiec/artifacts
+  results: /home/stef/quest_data/hiec/results
+  data: /home/stef/quest_data/hiec/data
+  scratch: /home/stef/quest_data/hiec/scratch
+  configs: /home/stef/hiec/configs
+  runs: ${.results}/runs
+  clustering: ${.artifacts}/clustering
+  split_guides: ${.results}/split_guides
+similarity_score: rcmcs
+dataset: sprhea
+toc: v3_folded_test
+cutoffs:
+- 80
+- 60
+- 40

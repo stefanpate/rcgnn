@@ -1,0 +1,14 @@
+defaults:
+  - filepaths: base
+  - override hydra/hydra_logging: disabled
+  - override hydra/job_logging: disabled
+  - _self_
+
+similarity_score: ??? # rcmcs or homology
+dataset: sprhea
+toc: ???
+cutoffs: [80, 60, 40]
+
+hydra:
+  run:
+    dir: ${filepaths.clustering}

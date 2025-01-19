@@ -76,8 +76,7 @@ def construct_sparse_adj_mat(path: Path):
             - idx_feature: Index to label dict for features / classes
         '''
         df = pd.read_csv(path, delimiter='\t')
-        # df = pd.read_csv(data_dir / f"{ds_name}/{toc}.csv", delimiter='\t')
-
+        
         # Load from dataset "table of contents csv"
         df.set_index('Entry', inplace=True)
         sample_idx = {}

@@ -4,6 +4,7 @@ from functools import partial
 from itertools import product
 from src.utils import construct_sparse_adj_mat
 from src.cross_validation import (
+    stratified_sim_split,
     split_random,
     split_rcmcs,
     split_homology,
@@ -119,7 +120,13 @@ def main(cfg: DictConfig):
         Path(cfg.filepaths.data) / cfg.data.dataset / (cfg.data.toc + ".csv")
     )
 
-    cluster_path = Path(cfg.filepaths.clustering) / f"{cfg.data.dataset}_{cfg.data.toc}_{cfg.data.split_strategy}_{cfg.data.split_bound}"
+    X_pos = list(zip(*adj.nonzero()))
+
+    
+
+    train_data, val_data, test_data = stratified_sim_split(
+        
+        )
 
     splitter = partial(
         splitters[cfg.data.split_strategy],
@@ -130,7 +137,6 @@ def main(cfg: DictConfig):
         idx_sample=idx_sample
     )
 
-    X_pos = list(zip(*adj.nonzero()))
 
     split_guide = make_split_guide(
         X_pos=X_pos,

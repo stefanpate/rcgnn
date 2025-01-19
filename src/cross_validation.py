@@ -85,6 +85,79 @@ def split_homology(X: np.ndarray, y: np.ndarray, n_splits: int, cluster_path: Pa
 
     return _split_clusters(X, y, cluster_id_2_upid, upid_2_idx, n_splits, check_side=0)
 
+def stratified_sim_split(
+        X: np.ndarray,
+        y: np.ndarray,
+        split_strategy: str,
+        split_bounds: list[int],
+        n_inner_splits: int,
+        test_percent: int,
+        cluster_dir: Path,
+        adj_mat_idx_to_id: dict,
+        dataset: str,
+        toc: str,
+        rng
+    ):
+    def level_split(level_clusters, test_frac, rng, already_sampled = []):
+        level_test_frac = test_frac / level_clusters.shape[1] # Fraction of l-level test points
+        test = []
+        for l in range(level_clusters.shape[1]):
+            avail_clusters = list(set(level_clusters[:, l]) - set(level_clusters[already_sampled, l]))
+            n = int(level_test_frac * level_clusters[:, l].max()) # Number of l-level test clusters / points
+            test_clusters = rng.choice(avail_clusters, size=(n,), replace=False)
+
+            for c in test_clusters:
+                new = list(np.where(level_clusters[:, l] == c)[0])
+                test += new
+                already_sampled += new
+
+        return test, already_sampled
+
+    cluster_paths = [
+        cluster_dir / f"{dataset}_{toc}_{split_strategy}_{bound}"
+        for bound in sorted(split_bounds)
+    ]
+    id_to_adj_mat_idx = {v: k for k, v in adj_mat_idx_to_id.items()} # Either for prots or rxns
+
+    if split_strategy == 'rcmcs':
+        level_clusters = np.zeros(shape=(len(X), len(split_bounds))) - 1 # (# pairs x # levels of clustering) cols contain jth level cluster idxs
+        single2pair_idx = defaultdict(list) # Maps reaction matrix index to pair index in X
+        
+        for i, pair in enumerate(X):
+            single2pair_idx[pair[1]].append(i)
+
+        idxs, cluster_numbers = [], []
+        for l, cp in enumerate(cluster_paths):
+            point_to_cluster = load_json(cp.with_suffix(".json"))
+
+            for id, cid in point_to_cluster.items():
+                for idx in single2pair_idx[id_to_adj_mat_idx[id]]:
+                    idxs.append(idx)
+                    cluster_numbers.append(cid)
+
+            level_clusters[idxs, l] = cluster_numbers
+    
+    
+
+    test, already_sampled = level_split(level_clusters, test_percent / 100, rng) # Split train_val / test
+
+    # Split train_val into k folds
+    train_val_splits = []
+    for i in range(n_inner_splits - 1):
+        val, already_sampled = level_split(level_clusters, 1 / n_inner_splits, rng, already_sampled=already_sampled)
+        train_val_splits.append(val)
+
+    last_train_val = [i for i in range(level_clusters.shape[0]) if i not in already_sampled]
+    train_val_splits.append(last_train_val)
+
+    # Convert to pairs of (prot, rxn) indices and y labels
+
+    
+    return train_val_splits, test
+
+    
+
+
 def _split_clusters(X: np.ndarray, y: np.ndarray, cluster_2_elt: dict, elt_2_idx: dict, n_splits: int, check_side: int) -> pd.DataFrame:
     '''
     Splits clusters, returns dataframe split guide
@@ -136,3 +209,29 @@ def parse_cd_hit_clusters(filepath: Path):
                     clusters[current_cluster].append(line.split()[2][1:-3])
 
         return clusters
+
+if __name__ == '__main__':
+    from src.utils import construct_sparse_adj_mat
+    rng = np.random.default_rng(seed=1234)
+    dataset = 'sprhea'
+    toc = 'v3_folded_test'
+
+    adj, idx_sample, idx_feature = construct_sparse_adj_mat(
+        Path('/home/stef/quest_data/hiec/data') / dataset / (toc + ".csv")
+    )
+
+    X_pos = list(zip(*adj.nonzero()))
+
+    train, val, test = stratified_sim_split(
+        X=X_pos,
+        y=None,
+        split_strategy='rcmcs',
+        split_bounds=[80, 60, 40],
+        n_inner_splits=3,
+        test_percent=20,
+        cluster_dir=Path('/home/stef/hiec/artifacts/clustering'),
+        adj_mat_idx_to_id=idx_feature,
+        dataset=dataset,
+        toc=toc,
+        rng=rng
+    )
