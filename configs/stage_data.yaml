@@ -6,9 +6,9 @@ defaults:
 
 hydra:
   sweep:
-    dir: ${filepaths.split_guides}
+    dir: ${filepaths.scratch}
     subdir: ${data.subdir_patt}
   run:
-    dir: ${filepaths.split_guides}/${data.subdir_patt}
+    dir: ${filepaths.scratch}/${data.subdir_patt}
   job:
     chdir: True

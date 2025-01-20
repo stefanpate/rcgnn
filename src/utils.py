@@ -9,10 +9,6 @@ import subprocess
 from collections import namedtuple
 import re
 from pathlib import Path
-# from src.filepaths import filepaths
-
-# data_dir = filepaths['data']
-# scratch_dir = filepaths['scratch']
 
 DatabaseEntry = namedtuple("DatabaseEntry", "db, id", defaults=[None, None])
 Enzyme = namedtuple("Enzyme", "uniprot_id, sequence, ec, validation_score, existence, reviewed, organism", defaults=[None, None, None, None, None, None, None])
@@ -26,8 +22,7 @@ def load_json(path):
         data = json.load(f)
     return data
 
-def load_embed(path, embed_key):
-    # TODO fix when older functions call this w/o a proper path object
+def load_embed(path: Path, embed_key: int):
     id = path.stem
     f = torch.load(path)
     if type(f) == dict:

@@ -85,6 +85,63 @@ def split_homology(X: np.ndarray, y: np.ndarray, n_splits: int, cluster_path: Pa
 
     return _split_clusters(X, y, cluster_id_2_upid, upid_2_idx, n_splits, check_side=0)
 
+def sample_negatives(X: list[tuple[int]], y: list[int], neg_multiple: int, rng: np.random.Generator) -> tuple[np.ndarray, np.ndarray]:
+    '''
+    Samples negatives to bring the ratio of positives to negatives to neg_multiple
+
+    Args
+    ----
+    X:list[tuple[int]]
+        List of (sample, feature) pairs
+    y:list[int]
+        List of labels
+    neg_multiple:int
+        Ratio of negatives to positives
+    rng:np.random.Generator
+        Random number generator
+
+    Returns
+    -------
+    X:np.ndarray
+        Sample, feature pairs
+    y:np.ndarray
+        Labels
+
+    '''
+    if len(X) != len(y):
+        raise ValueError("Lengths of X an y must match.")
+
+    # Break up into pos and neg
+    X_pos = []
+    X_neg = []
+    row_idxs = set()
+    col_idxs = set()
+    for elt, label in zip(X, y):
+        row_idxs.add(elt[0])
+        col_idxs.add(elt[1])
+        if label == 1:
+            X_pos.append(elt)
+        else:
+            X_neg.append(elt)
+
+    row_idxs = list(row_idxs)
+    col_idxs = list(col_idxs)
+    n_neg_samples = (neg_multiple * len(X_pos)) - len(X_neg)
+    
+    # Sample subset of unobserved pairs
+    while len(X_neg) < n_neg_samples:
+        i = rng.choice(row_idxs, size=(1,))[0]
+        j = rng.choice(col_idxs, size=(1,))[0]
+
+        if (i, j) not in X_pos and (i, j) not in X_neg:
+            X_neg.append((i, j))
+
+    # Concat full dataset
+    X = X_pos + X_neg
+    y = [1 for _ in range(len(X_pos))] +  [0 for _ in range(len(X_neg))]
+
+    return X, y
+
 def stratified_sim_split(
         X: np.ndarray,
         y: np.ndarray,
@@ -96,7 +153,7 @@ def stratified_sim_split(
         adj_mat_idx_to_id: dict,
         dataset: str,
         toc: str,
-        rng
+        rng: np.random.Generator
     ):
     def level_split(level_clusters, test_frac, rng, already_sampled = []):
         level_test_frac = test_frac / level_clusters.shape[1] # Fraction of l-level test points
@@ -151,7 +208,18 @@ def stratified_sim_split(
     train_val_splits.append(last_train_val)
 
     # Convert to pairs of (prot, rxn) indices and y labels
+    indices = train_val_splits + [test]
+    labeled_pairs = []
+    for elt in indices:
+        Xi = []
+        yi = []
+        for idx in elt:
+            Xi.append((X[idx]))
+            yi.append(y[idx])
+        labeled_pairs.append((tuple(Xi), tuple(yi)))
 
+    train_val_splits = labeled_pairs[:-1]
+    test = labeled_pairs[-1]
     
     return train_val_splits, test
 
@@ -224,7 +292,7 @@ if __name__ == '__main__':
 
     train, val, test = stratified_sim_split(
         X=X_pos,
-        y=None,
+        y=[1 for _ in range(len(X_pos))],
         split_strategy='rcmcs',
         split_bounds=[80, 60, 40],
         n_inner_splits=3,
