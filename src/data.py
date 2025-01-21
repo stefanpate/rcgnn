@@ -29,14 +29,15 @@ class _RCDatapointMixin:
     @classmethod
     def from_smi(
         cls,
-        rxn: dict,
+        smarts: str,
+        reaction_center: list[list[int]],
         *args,
         keep_h: bool = False,
         add_h: bool = False,
         **kwargs
     ) -> _RCDatapointMixin:
-        rcs = list(chain(*rxn['rcs']))
-        lhs, rhs = rxn['smarts'].split('>>')
+        rcs = list(chain(*reaction_center))
+        lhs, rhs = smarts.split('>>')
         reactants = [make_mol(elt, keep_h, add_h) for elt in lhs.split('.')]
         products = [make_mol(elt, keep_h, add_h) for elt in rhs.split('.')]
         

@@ -5,6 +5,7 @@ from chemprop.data import build_dataloader
 import torch
 import numpy as np
 import pandas as pd
+from ast import literal_eval
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import MLFlowLogger
 import mlflow
@@ -31,15 +32,18 @@ from src.featurizer import (
     MultiHotBondFeaturizer
 )
 
-from src.cross_validation import load_data_split
-
-
 # Featurizers +
 featurizers = {
     'rxn_simple': (RxnRCDataset, SimpleReactionMolGraphFeaturizer, build_dataloader),
     'rxn_rc': (RxnRCDataset, RCVNReactionMolGraphFeaturizer, build_dataloader),
     'mfp': (MFPDataset, ReactionMorganFeaturizer, mfp_build_dataloader)
 }
+
+def downsample_negatives(data: pd.DataFrame, neg_multiple: int, rng: np.random.Generator):
+    neg_idxs = data[data['y'] == 0].index
+    n_to_rm = len(neg_idxs) - (len(data[data['y'] == 1]) * neg_multiple)
+    idx_to_rm = rng.choice(neg_idxs, n_to_rm, replace=False)
+    return data.drop(axis=0, index=idx_to_rm, inplace=False)
 
 def construct_featurizer(cfg):
     datapoint_from_smi = RxnRCDatapoint.from_smi
@@ -54,50 +58,58 @@ def construct_featurizer(cfg):
 
     return featurizer, datapoint_from_smi, dataset_base, generate_dataloader
 
-def featurize_data(
-        train_data,
-        test_data,
-        reactions,
-        cfg
-    ):
+def featurize_data(train_data: pd.DataFrame, val_data: pd.DataFrame, cfg: DictConfig):
     featurizer, datapoint_from_smi, dataset_base, generate_dataloader = construct_featurizer(cfg)
     train_datapoints = []
-    for row in train_data:
-        rxn = reactions[row['feature']]
+    for _, row in train_data.iterrows():
         y = np.array([row['y']]).astype(np.float32)
-        train_datapoints.append(datapoint_from_smi(rxn, y=y, x_d=row['sample_embed']))
+        train_datapoints.append(datapoint_from_smi(smarts=row['smarts'], reaction_center=row['reaction_center'], y=y, x_d=row['protein_embedding']))
 
-    test_datapoints = []
-    for row in test_data:
-        rxn = reactions[row['feature']]
+    val_datapoints = []
+    for _, row in val_data.iterrows():
         y = np.array([row['y']]).astype(np.float32)
-        test_datapoints.append(datapoint_from_smi(rxn, y=y, x_d=row['sample_embed']))
+        val_datapoints.append(datapoint_from_smi(smarts=row['smarts'], reaction_center=row['reaction_center'], y=y, x_d=row['protein_embedding']))
 
     train_dataset = dataset_base(train_datapoints, featurizer=featurizer)
-    test_dataset = dataset_base(test_datapoints, featurizer=featurizer)
+    val_dataset = dataset_base(val_datapoints, featurizer=featurizer)
 
-    train_dataloader = generate_dataloader(train_dataset, shuffle=True)
-    val_dataloader = generate_dataloader(test_dataset, shuffle=False)
+    train_dataloader = generate_dataloader(train_dataset, shuffle=True, seed=cfg.data.seed)
+    val_dataloader = generate_dataloader(val_dataset, shuffle=False)
 
     return train_dataloader, val_dataloader, featurizer
 
 @hydra.main(version_base=None, config_path="../configs", config_name="cross_val")
 def main(cfg: DictConfig):
+    rng = np.random.default_rng(seed=cfg.data.seed)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    embed_dim = 1280 # TODO
 
     # Load data
-    reactions = load_json(Path(cfg.filepaths.data) / cfg.data.dataset / (cfg.data.toc + ".json")) # TODO eliminate by saving smiles and rcs to npy files
+    train_val_splits = []
+    for i in range(cfg.data.n_splits):
+        split = pd.read_parquet(
+            Path(cfg.filepaths.scratch) / cfg.data.subdir_patt / f"train_val_{i}.parquet"
+        )
+        split['protein_embedding'] = split['protein_embedding'].apply(lambda x : np.array(x))
+        train_val_splits.append(split)
 
-    train_data, test_data = load_data_split(
-        split_idx=cfg.data.split_idx,
-        scratch_path=Path(cfg.filepaths.scratch) / cfg.data.subdir_patt
-    )
+    # Arrange data
+    if cfg.data.split_idx == -1: # Test on outer fold
+        val_data = pd.read_parquet(
+            Path(cfg.filepaths.scratch) / cfg.data.subdir_patt / "test.parquet"
+        )
+        val_data['protein_embedding'] = val_data['protein_embedding'].apply(lambda x : np.array(x))
+        train_data = pd.concat(train_val_splits, ignore_index=True)
+    else: # Test on inner fold
+        train_data = pd.concat([train_val_splits[i] for i in range(cfg.data.n_splits) if i != cfg.data.split_idx], ignore_index=True)
+        val_data = train_val_splits[cfg.data.split_idx]
+
+    # Downsample negatives   
+    train_data = downsample_negatives(train_data, cfg.data.neg_multiple, rng)
+    val_data = downsample_negatives(val_data, 1, rng)
 
     train_dataloader, val_dataloader, featurizer = featurize_data(
         train_data=train_data,
-        test_data=test_data,
-        reactions=reactions,
+        val_data=val_data,
         cfg=cfg
     )
 
@@ -123,6 +135,7 @@ def main(cfg: DictConfig):
     # TODO streamline model api, get rid of LinDimRed
     # NOTE you can use hydra.utils.instantiate and partial to move
     # some of this up to configs
+    embed_dim = train_data.loc[0, 'protein_embedding'].shape[0]
     if cfg.model.model == 'mpnn_dim_red':
         model = MPNNDimRed(
             reduce_X_d=src.nn.LinDimRed(d_in=embed_dim, d_out=cfg.model.d_h_encoder),

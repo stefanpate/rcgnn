@@ -72,7 +72,7 @@ def main(cfg: DictConfig):
     X, y = sample_negatives(X_pos, y, 1, rng) # Sample to balance labels pre-split
 
     if cfg.data.split_strategy == 'random':
-        train_val_splits, test_split = random_split(X, y, cfg.data.n_splits, cfg.data.test_percent)
+        train_val_splits, test_split = random_split(X, y, cfg.data.n_splits, cfg.data.test_percent, seed=cfg.data.seed)
     else:
         train_val_splits, test_split = stratified_sim_split(
             X=X,

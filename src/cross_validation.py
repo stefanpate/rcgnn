@@ -147,11 +147,12 @@ def random_split(
         y: np.ndarray,
         n_inner_splits: int,
         test_percent: int,
+        seed: int,
     ) -> tuple[list, tuple]:
 
     # TODO: orient around seed instead of np.rng for reproducibility across packages
-    kfold = KFold(n_splits=n_inner_splits, shuffle=True, random_state=1234)
-    X_train_val, X_test, y_train_val, y_test = train_test_split(X, y, test_size=test_percent / 100, shuffle=True, random_state=1234)
+    kfold = KFold(n_splits=n_inner_splits, shuffle=True, random_state=seed)
+    X_train_val, X_test, y_train_val, y_test = train_test_split(X, y, test_size=test_percent / 100, shuffle=True, random_state=seed)
     train_val_splits = []
     for _, val_idx in kfold.split(X_train_val):
         X_val = [X_train_val[i] for i in val_idx]
