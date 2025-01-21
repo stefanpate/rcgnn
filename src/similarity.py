@@ -340,7 +340,7 @@ def homology_similarity_matrix(sequences:Dict[str, str], aligner:Align.PairwiseA
     -------
     S:np.ndarray
         nxn similarity matrix
-    sim_i_to_rxn_idx:dict
+    sim_i_to_id:dict
         Maps sequences's similarity matrix index to its sequence id
     '''
     sim_i_to_id = {i : id for i, id in enumerate(sequences.keys())}

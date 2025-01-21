@@ -5,12 +5,10 @@ from chemprop.data import build_dataloader
 import torch
 import numpy as np
 import pandas as pd
-from ast import literal_eval
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import MLFlowLogger
 import mlflow
 
-from src.utils import load_json
 import src.nn
 import src.metrics
 from src.model import (
