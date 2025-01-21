@@ -1,7 +1,7 @@
 import hydra
 from omegaconf import DictConfig
 from src.utils import construct_sparse_adj_mat, load_json, load_embed
-from src.cross_validation import stratified_sim_split, sample_negatives
+from src.cross_validation import stratified_sim_split, random_split, sample_negatives
 
 import numpy as np
 import pandas as pd
@@ -71,19 +71,22 @@ def main(cfg: DictConfig):
 
     X, y = sample_negatives(X_pos, y, 1, rng) # Sample to balance labels pre-split
 
-    train_val_splits, test_split = stratified_sim_split(
-        X=X,
-        y=y,
-        split_strategy=cfg.data.split_strategy,
-        split_bounds=cfg.data.split_bounds,
-        n_inner_splits=cfg.data.n_splits,
-        test_percent=cfg.data.test_percent,
-        cluster_dir=Path(cfg.filepaths.clustering),
-        adj_mat_idx_to_id=idx_feature if cfg.data.split_strategy == 'rcmcs' else idx_sample,
-        dataset=cfg.data.dataset,
-        toc=cfg.data.toc,
-        rng=rng
-    )
+    if cfg.data.split_strategy == 'random':
+        train_val_splits, test_split = random_split(X, y, cfg.data.n_splits, cfg.data.test_percent)
+    else:
+        train_val_splits, test_split = stratified_sim_split(
+            X=X,
+            y=y,
+            split_strategy=cfg.data.split_strategy,
+            split_bounds=cfg.data.split_bounds,
+            n_inner_splits=cfg.data.n_splits,
+            test_percent=cfg.data.test_percent,
+            cluster_dir=Path(cfg.filepaths.clustering),
+            adj_mat_idx_to_id=idx_feature if cfg.data.split_strategy == 'rcmcs' else idx_sample,
+            dataset=cfg.data.dataset,
+            toc=cfg.data.toc,
+            rng=rng
+        )
     
     # Oversample negatives on train_val side (10 x pos)
     tmp = []
