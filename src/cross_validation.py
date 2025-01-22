@@ -99,7 +99,53 @@ def stratified_sim_split(
         toc: str,
         rng: np.random.Generator
     ) -> tuple[list, tuple]:
+    '''
+    Does stratified test + inner kfold splits where clusters are defined by
+    levels of similarity.
+
+    Args
+    ----
+    X:np.ndarray
+        Sample, feature pairs expressed as adj mat indices
+    y:np.ndarray
+        Labels
+    split_strategy:str
+        'rcmcs' or 'homology'
+    split_bounds:list[int]
+        List of similarity upper bounds
+    n_inner_splits:int
+        Number of inner kfold splits
+    test_percent:int
+        Percentage of data to hold out for testing
+    cluster_dir:Path
+        Directory containing clustering results
+    adj_mat_idx_to_id:dict
+        Maps adj mat indices to reaction / protein ids
+    dataset:str
+        Name of dataset
+    toc:str
+        Table of contents / what subset of dataset
+    rng:np.random.Generator
+
+    Returns
+    -------
+    train_val_splits:list
+        List of kfold splits
+    test:tuple
+        Test split    
+    '''
     def level_split(level_clusters, test_frac, rng, already_sampled = []):
+        '''
+        Samples clusters for each level l, first removing those clusters w/
+        datapoints already sampled at previous levels
+
+        Returns
+        -------
+        test:list
+            List of test indices
+        already_sampled:list
+            List of datapoint indices already sampled
+        '''
         level_test_frac = test_frac / level_clusters.shape[1] # Fraction of l-level test points
         test = []
         for l in range(level_clusters.shape[1]):
@@ -115,7 +161,6 @@ def stratified_sim_split(
         return test, already_sampled
 
     id_to_adj_mat_idx = {v: k for k, v in adj_mat_idx_to_id.items()} # Either for prots or rxns
-    level_clusters = np.zeros(shape=(len(X), len(split_bounds))) - 1 # (# pairs x # levels of clustering) cols contain jth level cluster idxs
 
     # Maps reaction or protein matrix index to pair index in X
     single2pair_idx = defaultdict(list) 
@@ -125,6 +170,8 @@ def stratified_sim_split(
         elif split_strategy == 'homology':
             single2pair_idx[pair[0]].append(i) # Orient to prot matrix idx
 
+    # Assemble level clusters matrix
+    level_clusters = np.zeros(shape=(len(X), len(split_bounds))) - 1 # (# pairs x # levels of clustering) cols contain jth level cluster idxs
     idxs, cluster_numbers = [], []
     for l, bound in enumerate(split_bounds):
         if bound == 100: # Each id is its own cluster

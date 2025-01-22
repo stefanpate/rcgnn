@@ -15,7 +15,9 @@ def assemble_data(
         idx_sample: dict,
         idx_feature: dict
     ):
-    
+    '''
+    Pull together the actual data from the split indices
+    '''
     splits = train_val_splits + [test_split]
     datas = []
     cols = ['protein_idx', 'reaction_idx', 'pid', 'rid', 'protein_embedding', 'smarts', 'reaction_center', 'y']
@@ -52,6 +54,8 @@ def main(cfg: DictConfig):
     adj, idx_sample, idx_feature = construct_sparse_adj_mat(
         Path(cfg.filepaths.data) / cfg.data.dataset / (cfg.data.toc + ".csv")
     )
+    X_pos = list(zip(*adj.nonzero()))
+    y = [1 for _ in range(len(X_pos))]
 
     # Load protein embeddings
     proteins = {}
@@ -63,11 +67,7 @@ def main(cfg: DictConfig):
             )[1]
         )
 
-    # Load reactions
-    reactions = load_json(Path(cfg.filepaths.data) / cfg.data.dataset / (cfg.data.toc + ".json"))
-
-    X_pos = list(zip(*adj.nonzero()))
-    y = [1 for _ in range(len(X_pos))]
+    reactions = load_json(Path(cfg.filepaths.data) / cfg.data.dataset / (cfg.data.toc + ".json")) # Load reactions
 
     X, y = sample_negatives(X_pos, y, 1, rng) # Sample to balance labels pre-split
 

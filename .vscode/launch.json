@@ -18,7 +18,8 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args": "${command:pickArgs}",
-            "justMyCode": false
+            "justMyCode": false,
+            "cwd": "${fileDirname}",
         },
         {
             "name": "similarity_matrix",

@@ -1,15 +1,24 @@
 from src.utils import load_embed_matrix, construct_sparse_adj_mat, load_json
-from src.similarity import embedding_similarity_matrix, rcmcs_similarity_matrix, mcs_similarity_matrix, tanimoto_similarity_matrix, agg_mfp_cosine_similarity_matrix
-from src.filepaths import filepaths
+from src.similarity import(
+    embedding_similarity_matrix,
+    rcmcs_similarity_matrix,
+    mcs_similarity_matrix,
+    tanimoto_similarity_matrix,
+    agg_mfp_cosine_similarity_matrix,
+    homology_similarity_matrix,
+)
+from omegaconf import OmegaConf
 from pathlib import Path
 from argparse import ArgumentParser
 from time import perf_counter
 import pandas as pd
 import numpy as np
+from Bio import Align
 
-embeddings_superdir = filepaths['embeddings']
-sim_mats_dir = filepaths['sim_mats']
-data_fp = filepaths['data']
+filepaths = OmegaConf.load("../configs/filepaths/base.yaml")
+embeddings_superdir = Path(filepaths['results']) / "embeddings"
+sim_mats_dir = Path(filepaths['results']) / "similarity_matrices"
+data_fp = Path(filepaths['data'])
 
 def save_sim_mat(S: np.ndarray, save_to: Path):
     parent = save_to.parent
@@ -100,6 +109,22 @@ def calc_agg_mfp_cosine_sim(args, data_filepath: Path = data_fp, sim_mats_dir: P
     S = agg_mfp_cosine_similarity_matrix(rxns, idx_feature)
     save_sim_mat(S, save_to)
 
+def calc_gsi(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_mats_dir):
+    save_to = sim_mats_dir / f"{args.dataset}_{args.toc}_gsi"
+
+    toc = pd.read_csv(
+        filepath_or_buffer=data_filepath / args.dataset / f"{args.toc}.csv",
+        sep='\t'
+    ).set_index("Entry")
+
+    aligner = Align.PairwiseAligner(
+        mode="global",
+        scoring="blastp"
+    )
+    sequences = {id: row["Sequence"] for id, row in toc.iterrows()}
+    S, _ = homology_similarity_matrix(sequences, aligner)
+    save_sim_mat(S, save_to)
+
 parser = ArgumentParser(description="Simlarity matrix calculator")
 subparsers = parser.add_subparsers(title="Commands", description="Available comands")
 
@@ -142,6 +167,12 @@ parser_tanimoto = subparsers.add_parser("tanimoto", help="Calculate substrate-al
 parser_tanimoto.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
 parser_tanimoto.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
 parser_tanimoto.set_defaults(func=calc_tani_sim)
+
+# Global sequence identity
+parser_gsi = subparsers.add_parser("gsi", help="Calculate global sequence identity")
+parser_gsi.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
+parser_gsi.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
+parser_gsi.set_defaults(func=calc_gsi)
 
 # Agg mfp cosine similarity
 parser_agg_mfp_cosine = subparsers.add_parser("agg-mfp-cosine", help="Calculate cosine similarity of aggregated Morgan FPs")

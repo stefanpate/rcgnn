@@ -9,7 +9,9 @@ import subprocess
 from collections import namedtuple
 import re
 from pathlib import Path
+from omegaconf import OmegaConf
 
+filepaths = OmegaConf.load("../configs/filepaths/base.yaml")
 DatabaseEntry = namedtuple("DatabaseEntry", "db, id", defaults=[None, None])
 Enzyme = namedtuple("Enzyme", "uniprot_id, sequence, ec, validation_score, existence, reviewed, organism", defaults=[None, None, None, None, None, None, None])
 
@@ -170,50 +172,50 @@ def get_sample_feature_idxs(ds_name, toc):
 
 #         return X
 
-# def load_embed_matrix(filepath: Path, idx_sample: dict, dataset: str, toc: str) -> np.ndarray:
-#     '''
-#     Given a filepath to embedding-containing dir on projects,
-#     checks if there is a numpy file containing an embedding
-#     matrix on scratch, if not creates it, finally loads it
+def load_embed_matrix(filepath: Path, idx_sample: dict, dataset: str, toc: str) -> np.ndarray:
+    '''
+    Given a filepath to embedding-containing dir on projects,
+    checks if there is a numpy file containing an embedding
+    matrix on scratch, if not creates it, finally loads it
 
-#     Args
-#     ----
-#     filepath:Path
-#         Filepath to directory containing individual embedding
-#         files as .pt
-#     idx_sample:dict
-#         Maps index of sample in embedding matrix / adjacency matrix
-#         to sample id
-#     dataset:str
-#         Name of dataset
-#     toc: str
-#         Name of table of contents
+    Args
+    ----
+    filepath:Path
+        Filepath to directory containing individual embedding
+        files as .pt
+    idx_sample:dict
+        Maps index of sample in embedding matrix / adjacency matrix
+        to sample id
+    dataset:str
+        Name of dataset
+    toc: str
+        Name of table of contents
     
 
-#     Returns
-#     -------
-#     X:np.ndarray
-#         Embedding matrix (n_samples x d_embedding)
-#     '''
-#     rel_path = filepath.relative_to(filepaths["projects"])
-#     scratch_path = filepaths["scratch"] / rel_path / f"{dataset}_{toc}_X.npy"
-#     if scratch_path.exists():
-#         X = np.load(scratch_path)
-#     else:
-#         scratch_path.parent.mkdir(parents=True, exist_ok=True)
-#         print(f"Loading embeddings from {str(filepath)}")
-#         magic_key = 33
-#         X = [None for _ in range(len(idx_sample))]
-#         for i, (idx, sample_id) in enumerate(idx_sample.items()):
-#             X[idx] = load_embed(filepath / f"{sample_id}.pt", embed_key=magic_key)[1]
+    Returns
+    -------
+    X:np.ndarray
+        Embedding matrix (n_samples x d_embedding)
+    '''
+    rel_path = filepath.relative_to(filepaths["projects"])
+    scratch_path = filepaths["scratch"] / rel_path / f"{dataset}_{toc}_X.npy"
+    if scratch_path.exists():
+        X = np.load(scratch_path)
+    else:
+        scratch_path.parent.mkdir(parents=True, exist_ok=True)
+        print(f"Loading embeddings from {str(filepath)}")
+        magic_key = 33
+        X = [None for _ in range(len(idx_sample))]
+        for i, (idx, sample_id) in enumerate(idx_sample.items()):
+            X[idx] = load_embed(filepath / f"{sample_id}.pt", embed_key=magic_key)[1]
 
-#             if i % 5000 == 0:
-#                 print(f"Embedding #{i} / {len(idx_sample)}")
+            if i % 5000 == 0:
+                print(f"Embedding #{i} / {len(idx_sample)}")
 
-#         X = np.vstack(X)
-#         np.save(scratch_path, X)
+        X = np.vstack(X)
+        np.save(scratch_path, X)
 
-#     return X
+    return X
 
 
 def load_known_rxns(path):
