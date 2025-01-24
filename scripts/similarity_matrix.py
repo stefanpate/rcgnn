@@ -30,7 +30,7 @@ def save_sim_mat(S: np.ndarray, save_to: Path):
 def calc_rxn_embed_sim(args, embeddings_superdir: Path = embeddings_superdir, sim_mats_dir: Path = sim_mats_dir):
     embed_path = embeddings_superdir / args.embed_path
     save_to = sim_mats_dir / f"{args.dataset}_{args.toc}_{'_'.join(args.embed_path.split('/'))}"
-    _, _, idx_feature = construct_sparse_adj_mat(args.dataset, args.toc)
+    _, _, idx_feature = construct_sparse_adj_mat(data_fp / args.dataset / f"{args.toc}.csv")
     X = load_embed_matrix(embed_path, idx_feature, args.dataset, args.toc)
     tic = perf_counter()
     S = embedding_similarity_matrix(X)
@@ -41,7 +41,7 @@ def calc_rxn_embed_sim(args, embeddings_superdir: Path = embeddings_superdir, si
 def calc_prot_embed_sim(args, embeddings_superdir: Path = embeddings_superdir, sim_mats_dir: Path = sim_mats_dir):
     embed_path = embeddings_superdir / args.embed_path
     save_to = sim_mats_dir / f"{args.dataset}_{args.toc}_{'_'.join(args.embed_path.split('/'))}"
-    _, idx_sample, _ = construct_sparse_adj_mat(args.dataset, args.toc)
+    _, idx_sample, _ = construct_sparse_adj_mat(data_fp / args.dataset / f"{args.toc}.csv")
     X = load_embed_matrix(embed_path, idx_sample, args.dataset, args.toc)
     tic = perf_counter()
     S = embedding_similarity_matrix(X)
@@ -59,7 +59,7 @@ def calc_prot_by_rxn_sim(args, embeddings_superdir: Path = embeddings_superdir, 
         raise ValueError("Embedding type for proteins and reactions must be the same")
 
     save_to = sim_mats_dir / f"{args.dataset}_{args.toc}_{prot_parent}_proteins_x_reactions"
-    _, idx_sample, idx_feature = construct_sparse_adj_mat(args.dataset, args.toc)
+    _, idx_sample, idx_feature = construct_sparse_adj_mat(data_fp / args.dataset / f"{args.toc}.csv")
     X = load_embed_matrix(prot_embed_path, idx_sample, args.dataset, args.toc)
     X2 = load_embed_matrix(rxn_embed_path, idx_feature, args.dataset, args.toc)
     tic = perf_counter()
@@ -77,7 +77,7 @@ def calc_rcmcs_sim(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim
     rules.set_index('Name', inplace=True)
 
     rxns = load_json(data_filepath / args.dataset / f"{args.toc}.json")
-    _, _, idx_feature = construct_sparse_adj_mat(args.dataset, args.toc)
+    _, _, idx_feature = construct_sparse_adj_mat(data_fp / args.dataset / f"{args.toc}.csv")
 
     S = rcmcs_similarity_matrix(rxns, rules, idx_feature)
     save_sim_mat(S, save_to)
@@ -86,7 +86,7 @@ def calc_mcs_sim(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_m
     save_to = sim_mats_dir / f"{args.dataset}_{args.toc}_mcs"
 
     rxns = load_json(data_filepath / args.dataset / f"{args.toc}.json")
-    _, _, idx_feature = construct_sparse_adj_mat(args.dataset, args.toc)
+    _, _, idx_feature = construct_sparse_adj_mat(data_fp / args.dataset / f"{args.toc}.csv")
 
     S = mcs_similarity_matrix(rxns, idx_feature)
     save_sim_mat(S, save_to)
@@ -95,7 +95,7 @@ def calc_tani_sim(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_
     save_to = sim_mats_dir / f"{args.dataset}_{args.toc}_tanimoto"
 
     rxns = load_json(data_filepath / args.dataset / f"{args.toc}.json")
-    _, _, idx_feature = construct_sparse_adj_mat(args.dataset, args.toc)
+    _, _, idx_feature = construct_sparse_adj_mat(data_fp / args.dataset / f"{args.toc}.csv")
 
     S = tanimoto_similarity_matrix(rxns, idx_feature)
     save_sim_mat(S, save_to)
@@ -104,7 +104,7 @@ def calc_agg_mfp_cosine_sim(args, data_filepath: Path = data_fp, sim_mats_dir: P
     save_to = sim_mats_dir / f"{args.dataset}_{args.toc}_agg_mfp_cosine"
 
     rxns = load_json(data_filepath / args.dataset / f"{args.toc}.json")
-    _, _, idx_feature = construct_sparse_adj_mat(args.dataset, args.toc)
+    _, _, idx_feature = construct_sparse_adj_mat(data_fp / args.dataset / f"{args.toc}.csv")
 
     S = agg_mfp_cosine_similarity_matrix(rxns, idx_feature)
     save_sim_mat(S, save_to)
