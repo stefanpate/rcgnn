@@ -151,7 +151,7 @@ def stratified_sim_split(
         for l in range(level_clusters.shape[1]):
             avail_clusters = list(set(level_clusters[:, l]) - set(level_clusters[already_sampled, l]))
             n = int(level_test_frac * level_clusters[:, l].max()) # Number of l-level test clusters / points
-            test_clusters = rng.choice(avail_clusters, size=(n,), replace=False)
+            test_clusters = rng.choice(avail_clusters, size=(min(n, len(avail_clusters)),), replace=False)
 
             for c in test_clusters:
                 new = list(np.where(level_clusters[:, l] == c)[0])

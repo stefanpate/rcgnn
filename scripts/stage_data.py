@@ -51,6 +51,7 @@ def main(cfg: DictConfig):
     rng = np.random.default_rng(seed=cfg.data.seed)
 
     # Load adjacency matrix
+    print("Loading data...")
     adj, idx_sample, idx_feature = construct_sparse_adj_mat(
         Path(cfg.filepaths.data) / cfg.data.dataset / (cfg.data.toc + ".csv")
     )
@@ -69,8 +70,10 @@ def main(cfg: DictConfig):
 
     reactions = load_json(Path(cfg.filepaths.data) / cfg.data.dataset / (cfg.data.toc + ".json")) # Load reactions
 
+    print("Sampling negatives pre-split...")
     X, y = sample_negatives(X_pos, y, 1, rng) # Sample to balance labels pre-split
 
+    print("Splitting data...")
     if cfg.data.split_strategy == 'random':
         train_val_splits, test_split = random_split(X, y, cfg.data.n_splits, cfg.data.test_percent, seed=cfg.data.seed)
     else:
@@ -96,6 +99,7 @@ def main(cfg: DictConfig):
 
     train_val_splits = tmp
 
+    print("Assembling data...")
     train_val_data, test_data = assemble_data(
         train_val_splits=train_val_splits,
         test_split=test_split,
@@ -106,6 +110,7 @@ def main(cfg: DictConfig):
     )
 
     # Save
+    print("Saving data...")
     for i, split in enumerate(train_val_data):
         split.to_parquet(
             Path(cfg.filepaths.scratch) / cfg.data.subdir_patt / f"train_val_{i}.parquet",
