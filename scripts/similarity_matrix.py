@@ -121,6 +121,7 @@ def calc_gsi(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_mats_
         mode="global",
         scoring="blastp"
     )
+    aligner.open_gap_score = -1e6
     sequences = {id: row["Sequence"] for id, row in toc.iterrows()}
     S, _ = homology_similarity_matrix(sequences, aligner)
     save_sim_mat(S, save_to)
