@@ -1,0 +1,17 @@
+defaults:
+  - filepaths: base
+  - data: sprhea_rcmcs
+  - model: rc_agg
+  - training: base
+  - override hydra/hydra_logging: disabled
+  - override hydra/job_logging: disabled
+  - _self_
+
+exp_id: 0
+model_id: 2037b6b3ceaa4819acf4884636a1f540
+
+hydra:
+  run:
+    dir: ${filepaths.results}/predictions/${...exp_id}/${...model_id}
+  job:
+    chdir: True

@@ -1,4 +1,3 @@
-from math import isnan
 import pandas as pd
 import scipy as sp
 import json
@@ -7,7 +6,6 @@ import torch
 import os
 import subprocess
 from collections import namedtuple
-import re
 from pathlib import Path
 from omegaconf import OmegaConf
 
@@ -32,29 +30,6 @@ def load_embed(path: Path, embed_key: int):
     elif type(f) == torch.Tensor:
         embed = f
     return id, embed
-
-def load_class(ec, dir_path):
-    '''Loads samples from
-    provided EC class given 
-    as an array or str'''
-    if type(ec) == str:
-        ec_str = '| ' + ec + '.'
-    else:
-        ec_str = '| ' + '.'.join([str(elt) for elt in ec]) + '.'
-    
-    ids, ecs, embeds = [], [], []
-    for elt in os.listdir(dir_path):
-        if ec_str in elt:
-            path = dir_path + elt
-            uni_id, this_ec, embed = load_embed(path)
-            ids.append(uni_id)
-            ecs.append(this_ec)
-            embeds.append(embed)
-
-    if len(embeds) > 0:
-        embeds = torch.stack(embeds)
-
-    return ids, ecs, embeds
 
 def ensure_dirs(path):
     if not os.path.exists(path):
@@ -101,36 +76,6 @@ def construct_sparse_adj_mat(path: Path):
             
         return adj, idx_sample, idx_feature
 
-def get_sample_feature_idxs(ds_name, toc):
-        '''
-        Load in dicts mapping sample and feature labels
-        to a standard indexing 
-
-        Args:
-            - toc: Table of contents csv
-        '''      
-        # Load from dataset "table of contents csv"
-        df = pd.read_csv(f"../data/{ds_name}/{toc}.csv", delimiter='\t')
-        df.set_index('Entry', inplace=True)
-        sample_idx = {}
-        feature_idx = {}
-        
-        # Construct ground truth protein-function matrix
-        print(f"Loading {ds_name}:{toc} sample and feature idx dicts")
-        for i, elt in enumerate(df.index):
-            labels = df.loc[elt, 'Label'].split(';')
-            sample_idx[elt] = i
-            for label in labels:
-                if label in feature_idx:
-                    j = feature_idx[label]
-                else:
-                    j = len(feature_idx)
-                    feature_idx[label] = j
-
-        idx_sample = {v:k for k,v in sample_idx.items()}
-        idx_feature = {v:k for k,v in feature_idx.items()}
-            
-        return idx_sample, idx_feature
 
 # def load_precomputed_embeds(ds_name, toc, embed_type, sample_idx, do_norm=True, scratch_dir=scratch_dir, data_dir=data_dir):
 #         '''
@@ -240,19 +185,6 @@ def load_known_rxns(path):
 
     return data
 
-def read_last_ckpt(exp_dir):
-    def get_step(chkpt_str):
-        pattern = r'=(\d+)\.'
-        match = re.search(pattern, chkpt_str)
-        return int(match.group(1))
-
-    versions = sorted([(fn, int(fn.split('_')[-1])) for fn in os.listdir(exp_dir)], key=lambda x : x[-1])
-    latest_version = versions[-1][0]
-    chkpts = sorted([(fn, get_step(fn)) for fn in os.listdir(f"{exp_dir}/{latest_version}/checkpoints")], key=lambda x : x[-1])
-    latest_chkpt = chkpts[-1][0]
-
-    return f"{exp_dir}/{latest_version}/{latest_chkpt}"
-
 def ensure_dirs(path):
     if not os.path.exists(path):
         os.makedirs(path)
@@ -263,28 +195,3 @@ def retrive_esm1b_embedding(fasta_path, outdir):
     command = ["python", esm_script, esm_type, 
               fasta_path, outdir, "--include", "mean"]
     subprocess.run(command)
-
-def fix_hps_from_dataframe(hps: dict):
-    to_fix = [
-        'encoder_depth',
-        'embed_dim',
-        'seed',
-        'n_epochs',
-        'd_h_encoder',
-        'n_splits',
-        'neg_multiple',
-        'message_passing',
-        'agg',
-    ]
-    
-    for elt in to_fix:
-        if elt not in hps:
-            continue
-        elif type(hps[elt]) is str:
-            continue
-        elif isnan(hps[elt]):
-            hps[elt] = None
-        else:
-            hps[elt]  = int(hps[elt])
-    
-    return hps
