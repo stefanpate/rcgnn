@@ -37,6 +37,7 @@ def main(cfg: DictConfig):
 
     _, val_dataloader, featurizer = featurize_data(
         cfg=cfg,
+        rng=rng,
         val_data=val_data,
     )
 
@@ -45,7 +46,11 @@ def main(cfg: DictConfig):
     ckpt_dir = Path(cfg.filepaths.results) / 'runs' / str(cfg.exp_id) / cfg.model_id / 'checkpoints' 
     ckpt = ckpt_dir / next(ckpt_dir.glob("*.ckpt"))
     model = construct_model(cfg, embed_dim, featurizer, device, ckpt=ckpt)
-    
+
+    for batch in val_dataloader:
+        losses = model._evaluate_batch(batch)
+        print({f"val/{m.alias}": l for m, l in zip(model.metrics, losses)})
+
     # Predict
     with torch.inference_mode():
         trainer = pl.Trainer(
