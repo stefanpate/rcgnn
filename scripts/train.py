@@ -41,7 +41,7 @@ def downsample_negatives(data: pd.DataFrame, neg_multiple: int, rng: np.random.G
     neg_idxs = data[data['y'] == 0].index
     n_to_rm = len(neg_idxs) - (len(data[data['y'] == 1]) * neg_multiple)
     idx_to_rm = rng.choice(neg_idxs, n_to_rm, replace=False)
-    return data.drop(axis=0, index=idx_to_rm, inplace=False)
+    data.drop(axis=0, index=idx_to_rm, inplace=True)
 
 def construct_featurizer(cfg):
     datapoint_from_smi = RxnRCDatapoint.from_smi
@@ -101,9 +101,9 @@ def main(cfg: DictConfig):
         train_data = pd.concat([train_val_splits[i] for i in range(cfg.data.n_splits) if i != cfg.data.split_idx], ignore_index=True)
         val_data = train_val_splits[cfg.data.split_idx]
 
-    # Downsample negatives   
-    train_data = downsample_negatives(train_data, cfg.data.neg_multiple, rng)
-    val_data = downsample_negatives(val_data, 1, rng)
+    # Downsample negatives (in place)
+    downsample_negatives(train_data, cfg.data.neg_multiple, rng)
+    downsample_negatives(val_data, 1, rng)
 
     train_dataloader, val_dataloader, featurizer = featurize_data(
         train_data=train_data,

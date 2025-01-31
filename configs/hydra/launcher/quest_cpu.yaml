@@ -1,7 +1,7 @@
 defaults:
   - submitit_slurm
 
-timeout_min: 240 # 4 hours
+timeout_min: 1800
 account: p30041
-partition: short
-mem_gb: 12
+partition: normal
+mem_gb: 24
