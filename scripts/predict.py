@@ -47,10 +47,6 @@ def main(cfg: DictConfig):
     ckpt = ckpt_dir / next(ckpt_dir.glob("*.ckpt"))
     model = construct_model(cfg, embed_dim, featurizer, device, ckpt=ckpt)
 
-    for batch in val_dataloader:
-        losses = model._evaluate_batch(batch)
-        print({f"val/{m.alias}": l for m, l in zip(model.metrics, losses)})
-
     # Predict
     with torch.inference_mode():
         trainer = pl.Trainer(

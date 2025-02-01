@@ -44,9 +44,10 @@ def main(cfg: DictConfig):
     downsample_negatives(val_data, 1, rng)
 
     train_dataloader, val_dataloader, featurizer = featurize_data(
+        cfg=cfg,
+        rng=rng,
         train_data=train_data,
         val_data=val_data,
-        cfg=cfg
     )
 
     # Construct model
