@@ -37,7 +37,7 @@ def construct_featurizer(cfg: DictConfig):
     datapoint_from_smi = RxnRCDatapoint.from_smi
     dataset_base, featurizer_base, generate_dataloader = featurizers[cfg.model.featurizer]
     if cfg.model.featurizer == 'mfp':
-        featurizer = featurizer_base()
+        featurizer = featurizer_base(radius=cfg.model.radius, length=cfg.model.vec_len)
     else:
         featurizer = featurizer_base(
             atom_featurizer=MultiHotAtomFeaturizer.no_stereo(),
