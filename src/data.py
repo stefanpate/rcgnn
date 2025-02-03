@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from chemprop.data.datapoints import _DatapointMixin
 from chemprop.data.datasets import ReactionDataset
+from chemprop.data.samplers import SeededSampler
 from chemprop.data.molgraph import MolGraph
 from chemprop.utils import make_mol
 from typing import List, Tuple
@@ -93,5 +94,18 @@ def collate_mfps(batch: Iterable[MFPDatum]):
         None if gt_masks[0] is None else torch.from_numpy(np.array(gt_masks)),
     )
 
-def mfp_build_dataloader(dataset, batch_size=64, shuffle=False, collate_fcn=collate_mfps):
-    return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, collate_fn=collate_fcn)
+def mfp_build_dataloader(dataset, batch_size=64, shuffle=False, seed=None, collate_fcn=collate_mfps):
+    if shuffle and seed is not None:
+        sampler = SeededSampler(len(dataset), seed)
+    else:
+        sampler = None
+
+    dataloader =  DataLoader(
+        dataset, 
+        batch_size=batch_size,
+        shuffle=sampler is None and shuffle,
+        sampler=sampler,
+        collate_fn=collate_fcn
+    )
+
+    return dataloader

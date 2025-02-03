@@ -7,7 +7,7 @@ import lightning as L
 from chemprop.schedulers import NoamLR
 from chemprop.models import MPNN
 from chemprop.data import BatchMolGraph
-from chemprop.nn import MessagePassing, Aggregation, Predictor, LossFunction
+from chemprop.nn import MessagePassing, Aggregation, Predictor, LossFunction, Metric
 from chemprop.nn.ffn import MLP
 
 
@@ -58,6 +58,7 @@ class TwoChannelLinear(L.LightningModule):
             d_prot: int,
             d_h: int,
             predictor: Predictor,
+            metrics: Iterable[Metric] | None = None,
             warmup_epochs: int = 2,
             init_lr: float = 1e-4,
             max_lr: float = 1e-3,
@@ -72,6 +73,12 @@ class TwoChannelLinear(L.LightningModule):
         self.max_lr = max_lr
         self.final_lr = final_lr
 
+        self.metrics = (
+            [*metrics, self.criterion]
+            if metrics
+            else [self.predictor._T_default_metric(), self.criterion]
+        )
+
     @property
     def criterion(self) -> LossFunction:
         return self.predictor.criterion
@@ -85,6 +92,13 @@ class TwoChannelLinear(L.LightningModule):
         loss = self.criterion(Y_hat, Y, mask, weights, gt_mask, lt_mask)
         self.log("train_loss", loss, prog_bar=True)
         return loss
+    
+    def validation_step(self, batch, batch_idx: int = 0):
+        losses = self._evaluate_batch(batch)
+        metric2loss = {f"val/{m.alias}": l for m, l in zip(self.metrics, losses)}
+
+        self.log_dict(metric2loss, batch_size=len(batch[0]))
+        self.log("val_loss", losses[0], batch_size=len(batch[0]), prog_bar=True)
     
     def forward(self, R, P):
         R = self.reaction_encoder(R)
@@ -114,6 +128,17 @@ class TwoChannelLinear(L.LightningModule):
         }
 
         return {"optimizer": opt, "lr_scheduler": lr_sched_config}
+    
+    def _evaluate_batch(self, batch) -> list[Tensor]:
+        R, Y, P, weights, gt_mask, lt_mask = batch
+
+        mask = Y.isfinite()
+        Y = Y.nan_to_num(nan=0.0)
+        preds = self(R, P)
+
+        return [
+            metric(preds, Y, mask, None, lt_mask, gt_mask) for metric in self.metrics[:-1]
+        ]
 
 class TwoChannelFFN(TwoChannelLinear):
     def __init__(
