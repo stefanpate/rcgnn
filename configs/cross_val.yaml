@@ -5,7 +5,7 @@ defaults:
   - training: base
   - override hydra/hydra_logging: disabled # Redundant w/ mlflow
   - override hydra/job_logging: disabled # Redundant w/ mlflow
-  - override hydra/launcher: quest_cpu
+  - override hydra/launcher: quest_gpu
   - _self_
 
 exp: null
