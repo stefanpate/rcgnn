@@ -1,15 +1,14 @@
 defaults:
   - filepaths: base
   - training: base
+  - data: ???
+  - model: ???
   - override hydra/hydra_logging: disabled # Redundant w/ mlflow
   - override hydra/job_logging: disabled # Redundant w/ mlflow
   - override hydra/launcher: quest_gpu
   - _self_
 
 exp: null
-data: ???
-model: ???
-data.split_idx: -1
 
 hydra:
   output_subdir: null # Redundant w/ mlflow

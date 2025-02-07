@@ -13,7 +13,7 @@ exp: null
 hydra:
   sweeper:
     params:
-      +data.split_idx: range(${data.n_splits})
+      data.split_idx: range(${data.n_splits})
   output_subdir: null # Redundant w/ mlflow
   run:
     dir: ${filepaths.scratch} # Redundant w/ mlflow

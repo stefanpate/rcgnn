@@ -7,4 +7,5 @@ n_splits: 3
 test_percent: 20
 split_bounds: [100, 80, 60, 40]
 embed_type: esm
+split_idx: -1
 subdir_patt: ${.dataset}_${.toc}/${.split_strategy}/${.n_splits}fold
