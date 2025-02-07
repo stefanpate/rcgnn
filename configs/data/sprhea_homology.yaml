@@ -1,7 +1,7 @@
 seed: 1234
 dataset: sprhea
 toc: v3_folded_pt_ns
-neg_multiple: 5
+neg_multiple: 3
 split_strategy: homology
 n_splits: 3
 test_percent: 20

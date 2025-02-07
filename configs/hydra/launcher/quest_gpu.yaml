@@ -1,8 +1,8 @@
 defaults:
   - submitit_slurm
 
-timeout_min: 2160 # 10 hours
+timeout_min: 700
 account: p30041
 partition: gengpu
 gres: gpu:a100:1
-mem_gb: 32
+mem_gb: 30

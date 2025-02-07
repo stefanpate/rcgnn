@@ -6,5 +6,5 @@ pred_head: DotSig
 message_passing: null
 encoder_depth: null
 d_h_encoder: 300
-radius: 2
-vec_len: 2048
+radius: 1
+vec_len: 1024

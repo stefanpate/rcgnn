@@ -1,5 +1,5 @@
 n_epochs: 25
-pos_multiplier: 1
+pos_multiplier: 3
 metrics:
   - BinaryF1Metric
   - BinaryPrecision

@@ -41,7 +41,9 @@ def main(cfg: DictConfig):
 
     # Downsample negatives (in place)
     downsample_negatives(train_data, cfg.data.neg_multiple, rng)
-    downsample_negatives(val_data, 1, rng)
+
+    if cfg.data.split_idx != -1:
+        downsample_negatives(val_data, 1, rng) # Val splits are oversampled
 
     train_dataloader, val_dataloader, featurizer = featurize_data(
         cfg=cfg,
