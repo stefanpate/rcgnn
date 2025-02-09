@@ -13,6 +13,7 @@ from argparse import ArgumentParser
 from time import perf_counter
 import pandas as pd
 import numpy as np
+import scipy.sparse as sp
 from Bio import Align
 
 filepaths = OmegaConf.load("../configs/filepaths/base.yaml")
@@ -110,7 +111,6 @@ def calc_agg_mfp_cosine_sim(args, data_filepath: Path = data_fp, sim_mats_dir: P
     save_sim_mat(S, save_to)
 
 def calc_gsi(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_mats_dir):
-    save_to = sim_mats_dir / f"{args.dataset}_{args.toc}_gsi"
 
     toc = pd.read_csv(
         filepath_or_buffer=data_filepath / args.dataset / f"{args.toc}.csv",
@@ -122,9 +122,20 @@ def calc_gsi(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_mats_
         scoring="blastp"
     )
     aligner.open_gap_score = -1e6
-    sequences = {id: row["Sequence"] for id, row in toc.iterrows()}
-    S, _ = homology_similarity_matrix(sequences, aligner)
-    save_sim_mat(S, save_to)
+    n_chunks = -(len(toc) // - args.chunk_size)
+    for i in range(n_chunks):
+        sequences = {id: row["Sequence"] for id, row in toc.iloc[i * args.chunk_size : (i + 1) * args.chunk_size].iterrows()}
+        S_chunk = homology_similarity_matrix(sequences, aligner)
+        
+        save_to = sim_mats_dir / f"{args.dataset}_{args.toc}_gsi_chunk_{i}"
+        parent = save_to.parent
+        
+        if not parent.exists():
+            parent.mkdir(parents=True)
+
+        sp.save_npz(save_to, S_chunk)
+
+        del S_chunk
 
 parser = ArgumentParser(description="Simlarity matrix calculator")
 subparsers = parser.add_subparsers(title="Commands", description="Available comands")
@@ -173,6 +184,7 @@ parser_tanimoto.set_defaults(func=calc_tani_sim)
 parser_gsi = subparsers.add_parser("gsi", help="Calculate global sequence identity")
 parser_gsi.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
 parser_gsi.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
+parser_gsi.add_argument("chunk_size", type=int, help="Breaks up rows of sim mat")
 parser_gsi.set_defaults(func=calc_gsi)
 
 # Agg mfp cosine similarity
