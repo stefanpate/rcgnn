@@ -325,7 +325,7 @@ def global_sequence_identity(seq1:str, seq2:str, aligner:Align.PairwiseAligner):
     
     return ct / min(len(alignment.target), len(alignment.query))
 
-def homology_similarity_matrix(sequences:Dict[str, str], aligner:Align.PairwiseAligner):
+def homology_similarity_matrix(sequences:Dict[str, str], start: int, end: int, aligner:Align.PairwiseAligner):
     '''
     With multiprocessing, Computes reaction center MCS 
     similarity matrix for set of reactions
@@ -347,7 +347,7 @@ def homology_similarity_matrix(sequences:Dict[str, str], aligner:Align.PairwiseA
     to_do = []
     S_idxs = []
     print("Preparing reaction pairs\n")
-    for i in range(len(sim_i_to_id) - 1):
+    for i in range(start, min(end, len(sim_i_to_id) - 1)):
         seq1 = sequences[sim_i_to_id[i]]
         print(f"Sequence # {i} : {sim_i_to_id[i]}", end='\r')
         for j in range(i + 1, len(sim_i_to_id)):

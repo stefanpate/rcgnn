@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH -A p30041
-#SBATCH -p short
+#SBATCH -A b1039
+#SBATCH -p b1039
 #SBATCH -N 1
 #SBATCH -n 50
 #SBATCH --mem=0
-#SBATCH -t 3:00:00
-#SBATCH --job-name=hiec
+#SBATCH -t 36:00:00
+#SBATCH --job-name=sim_mats
 #SBATCH --output=/home/spn1560/hiec/logs/out/%A
 #SBATCH --error=/home/spn1560/hiec/logs/error/%A
 #SBATCH --mail-type=END
@@ -21,4 +21,4 @@ module purge
 module load python/anaconda3.6
 module load gcc/9.2.0
 source activate hiec
-python $scripts_dir/similarity_matrix.py rcmcs sprhea v3_folded_pt_ns
+python $scripts_dir/similarity_matrix.py gsi sprhea v3_folded_pt_ns 1000

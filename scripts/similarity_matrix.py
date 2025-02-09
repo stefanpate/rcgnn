@@ -124,8 +124,10 @@ def calc_gsi(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_mats_
     aligner.open_gap_score = -1e6
     n_chunks = -(len(toc) // - args.chunk_size)
     for i in range(n_chunks):
-        sequences = {id: row["Sequence"] for id, row in toc.iloc[i * args.chunk_size : (i + 1) * args.chunk_size].iterrows()}
-        S_chunk = homology_similarity_matrix(sequences, aligner)
+        sequences = {id: row["Sequence"] for id, row in toc.iterrows()}
+        start = i * args.chunk_size
+        end = (i + 1) * args.chunk_size
+        S_chunk = homology_similarity_matrix(sequences, start, end, aligner)
         
         save_to = sim_mats_dir / f"{args.dataset}_{args.toc}_gsi_chunk_{i}"
         parent = save_to.parent
