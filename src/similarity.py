@@ -7,6 +7,7 @@ from rdkit import Chem
 from rdkit.Chem import rdFMCS, Mol, AllChem
 from typing import Iterable, Dict
 import numpy as np
+import scipy.sparse as sp
 import pandas as pd
 import multiprocessing as mp
 from tqdm import tqdm
@@ -338,13 +339,10 @@ def homology_similarity_matrix(sequences:Dict[str, str], aligner:Align.PairwiseA
     
     Returns
     -------
-    S:np.ndarray
-        nxn similarity matrix
-    sim_i_to_id:dict
-        Maps sequences's similarity matrix index to its sequence id
+    S:scipy.sparse.csr_array
+        chunk_size x n sparse array
     '''
     sim_i_to_id = {i : id for i, id in enumerate(sequences.keys())}
-    S = np.eye(N=len(sim_i_to_id)) # Similarity matrix
 
     to_do = []
     S_idxs = []
@@ -361,11 +359,10 @@ def homology_similarity_matrix(sequences:Dict[str, str], aligner:Align.PairwiseA
     with mp.Pool() as pool:
         res = list(tqdm(pool.imap(wrap_gsi, to_do), total=len(to_do)))
     
-    i, j = [np.array(elt) for  elt in zip(*S_idxs)]
-    S[i, j] = res
-    S[j, i] = res
+    row_idxs, col_idxs = zip(*S_idxs)
+    S_chunk = sp.csr_array((res, (row_idxs, col_idxs))).astype(np.float16)
 
-    return S, sim_i_to_id
+    return S_chunk
 
 def molecule_mcs_similarity(molecules: Iterable[Mol], reaction_centers: Iterable[tuple[int]] = None, patt:str = None, norm: str='max', return_match_patt: bool = False):
     '''
