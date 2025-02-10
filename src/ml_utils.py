@@ -49,7 +49,15 @@ def construct_featurizer(cfg: DictConfig):
 
     return featurizer, datapoint_from_smi, dataset_base, generate_dataloader
 
-def featurize_data(cfg: DictConfig, rng: np.random.Generator, train_data: pd.DataFrame = None, val_data: pd.DataFrame = None):
+def featurize_data(cfg: DictConfig, rng: np.random.Generator, train_data: pd.DataFrame = None, val_data: pd.DataFrame = None, shuffle_val: bool = True):
+    '''
+    
+    Args
+    -----
+    shuffle_val:bool
+        Set to True when training to avoid batch effects in validation
+        Set to False when predicting / testing to avoid shuffling
+    '''
     featurizer, datapoint_from_smi, dataset_base, generate_dataloader = construct_featurizer(cfg)
     
     if train_data is not None:
@@ -69,7 +77,9 @@ def featurize_data(cfg: DictConfig, rng: np.random.Generator, train_data: pd.Dat
             y = np.array([row['y']]).astype(np.float32)
             val_datapoints.append(datapoint_from_smi(smarts=row['smarts'], reaction_center=row['reaction_center'], y=y, x_d=row['protein_embedding']))
 
-        rng.shuffle(val_datapoints) # Avoid weirdness of calculating metrics with only one class in the batch
+        if shuffle_val:
+            rng.shuffle(val_datapoints) # Avoid weirdness of calculating metrics with only one class in the batch
+        
         val_dataset = dataset_base(val_datapoints, featurizer=featurizer)
         val_dataloader = generate_dataloader(val_dataset, shuffle=False, batch_size=500)
     else:
@@ -150,6 +160,8 @@ def mlflow_to_omegaconf(run_data: RunData):
             except:
                 pass
 
+        if v == 'None': 
+            v = None
         
         if '/' in k:
             uk, lk = k.split('/')
