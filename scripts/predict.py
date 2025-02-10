@@ -27,7 +27,7 @@ def main(outer_cfg: DictConfig):
     # Load data
     if cfg.data.split_idx == -1: # Test on outer fold
         val_data = pd.read_parquet(
-            Path(cfg.filepaths.scratch) / cfg.data.subdir_patt / "test.parquet"
+            Path(outer_cfg.filepaths.scratch) / cfg.data.subdir_patt / "test.parquet"
         )
     else:
         val_data = pd.read_parquet(
@@ -41,6 +41,7 @@ def main(outer_cfg: DictConfig):
         cfg=cfg,
         rng=rng,
         val_data=val_data,
+        shuffle_val=False
     )
 
     # Construct model
