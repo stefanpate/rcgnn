@@ -1,8 +1,11 @@
+from collections import defaultdict
 from chemprop.data import build_dataloader
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
+from mlflow.entities.run_data import RunData
 import numpy as np
 import pandas as pd
 import torch
+from pathlib import Path
 
 import src.nn
 import src.metrics
@@ -134,4 +137,36 @@ def downsample_negatives(data: pd.DataFrame, neg_multiple: int, rng: np.random.G
     n_to_rm = len(neg_idxs) - (len(data[data['y'] == 1]) * neg_multiple)
     idx_to_rm = rng.choice(neg_idxs, n_to_rm, replace=False)
     data.drop(axis=0, index=idx_to_rm, inplace=True)
+
+
+def mlflow_to_omegaconf(run_data: RunData):
+    tmp = {}
+    for k, v in run_data.data.params.items():
+        try:
+            v = int(v)
+        except:
+            try:
+                v = float(v)
+            except:
+                pass
+
+        
+        if '/' in k:
+            uk, lk = k.split('/')
+            
+            if lk == 'metrics':
+                v = v.strip("['']").split("', '")
+            
+            if uk in tmp:
+                tmp[uk][lk] = v
+            else:
+                tmp[uk] = {}
+                tmp[uk][lk] = v
+        else:
+            tmp[k] = v
+
+    cfg = OmegaConf.create(tmp)
+    artifacts_path = Path(run_data.info.artifact_uri.removeprefix('file://'))
+
+    return cfg, artifacts_path
      
