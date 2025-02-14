@@ -29,7 +29,14 @@ def main(cfg: DictConfig):
         train_val_splits.append(split)
 
     # Arrange data
-    if cfg.data.split_idx == -1: # Test on outer fold
+    if cfg.data.split_idx == -2: # Train on full dataset
+        more_train_data = pd.read_parquet(
+            Path(cfg.filepaths.scratch) / cfg.data.subdir_patt / "test.parquet"
+        )
+        more_train_data['protein_embedding'] = more_train_data['protein_embedding'].apply(lambda x : np.array(x))
+        train_data = pd.concat(train_val_splits + [more_train_data], ignore_index=True)
+        val_data = None
+    elif cfg.data.split_idx == -1: # Test on outer fold
         val_data = pd.read_parquet(
             Path(cfg.filepaths.scratch) / cfg.data.subdir_patt / "test.parquet"
         )
