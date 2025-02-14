@@ -12,6 +12,7 @@ import pandas as pd
 import multiprocessing as mp
 from tqdm import tqdm
 from Bio import Align
+from pathlib import Path
 
 def embedding_similarity_matrix(X: np.ndarray, X2: np.ndarray = None, dt: np.dtype = np.float32):
     '''
@@ -698,7 +699,36 @@ def _wrap_rxn_tani(args):
 def _wrap_agg_mfp_cosine(args):
     return agg_mfp_cosine_similarity(*args)
 
+def load_similarity_matrix(sim_path: Path, dataset: str, toc: str, sim_metric: str):
+    if sim_metric == 'rcmcs':
+        S = np.load(
+            sim_path / f"{dataset}_{toc}_{sim_metric}.npy"
+        ).astype(np.float32)
+    elif sim_metric == 'gsi':
+        for i, file in enumerate(sim_path.glob(f"{dataset}_{toc}_{sim_metric}*.npz")):
+            chunk = sp.load_npz(file).astype(np.float32)
+
+            if i == 0:
+                S = np.zeros(shape=(chunk.shape[1], chunk.shape[1]), dtype=np.float32)
+            
+            nz_coordinates = chunk.nonzero()
+            S[nz_coordinates] = chunk[nz_coordinates]
+
+    return S
+
 if __name__ == '__main__':
-    reaction1 = "CC=O.O>>CC.O.O"
-    reaction2 = "CC=O.O>>CC.O.O"
-    print(agg_mfp_cosine_similarity([reaction1, reaction2]))
+    # reaction1 = "CC=O.O>>CC.O.O"
+    # reaction2 = "CC=O.O>>CC.O.O"
+    # print(agg_mfp_cosine_similarity([reaction1, reaction2]))
+
+    sim_path = Path("/home/stef/quest_data/hiec/results/similarity_matrices")
+    dataset = "sprhea"
+    toc = "v3_folded_pt_ns"
+    sim_metric = 'gsi'
+    S = load_similarity_matrix(
+        sim_path=sim_path,
+        dataset=dataset,
+        toc=toc,
+        sim_metric=sim_metric
+    )
+    print()
