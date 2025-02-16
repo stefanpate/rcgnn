@@ -5,12 +5,66 @@ import torch
 import numpy as np
 import pandas as pd
 import mlflow
+from itertools import chain
+from rdkit import Chem
 
+from src.cheminfo import get_r_hop_from_rc
 from src.ml_utils import (
     featurize_data,
     construct_model,
     mlflow_to_omegaconf
 )
+
+def radially_mask_reactions(data: pd.DataFrame, radius: int):
+    '''
+    Args
+    ----
+    data:pd.DataFrame
+        Reaction data
+    radius:int
+        Number of hops
+    '''
+    fragmented_data = []
+    for i, row in data.iterrows():
+            smarts = row['smarts']
+            rc = row['reaction_center']
+            rcts, pdts = [elt.split('.') for elt in smarts.split('>>')]
+            rrcs, prcs = rc[0], rc[1]
+
+
+            fragment_smarts = [[], []]
+            fragment_rcs = [[], []]
+
+            for (smiles, rc) in zip(rcts, rrcs):
+                fragment_smiles, fragment_rc = get_r_hop_from_rc(smiles, rc, radius)
+                fragment_smarts[0].append(fragment_smiles)
+                fragment_rcs[0].append(fragment_rc)
+            
+            for (smiles, rc) in zip(pdts, prcs):
+                fragment_smiles, fragment_rc = get_r_hop_from_rc(smiles, rc, radius)
+                fragment_smarts[1].append(fragment_smiles)
+                fragment_rcs[1].append(fragment_rc)
+
+            fragment_smarts = '.'.join(fragment_smarts[0]) + '>>' + '.'.join(fragment_smarts[1])
+            fragment_rcs = (fragment_rcs[0], fragment_rcs[1])
+            fragmented_data.append((fragment_smarts, fragment_rcs))
+    
+    fragmented_data = pd.DataFrame(fragmented_data, columns=['smarts', 'reaction_center'])
+    data[['smarts', 'reaction_center']] = fragmented_data
+
+    # Drop those that cannot be sanitized; will run into chemprop issues
+    to_drop = []
+    for i, row in data.iterrows():
+        smarts = row['smarts']
+        smiles = chain(*[elt.split('.') for elt in smarts.split('>>')])
+        for s in smiles:
+            m = Chem.MolFromSmiles(s)
+            if m is None:
+                to_drop.append(i)
+                break
+    
+    data.drop(to_drop, inplace=True)
+    data.reset_index(drop=True, inplace=True)
 
 @hydra.main(version_base=None, config_path="../configs", config_name="encode")
 def main(outer_cfg: DictConfig):
@@ -37,7 +91,11 @@ def main(outer_cfg: DictConfig):
     more_data['protein_embedding'] = more_data['protein_embedding'].apply(lambda x : np.array(x))
     splits.append(more_data)
     data = pd.concat(splits, ignore_index=True)
-    data = data.loc[data['y'] == 1] # Take out negative datapoints
+    data = data.loc[data['y'] == 1].reset_index(drop=True) # Take out negative datapoints
+
+    # Radially mask reactions
+    if outer_cfg.radial_mask:
+        radially_mask_reactions(data, outer_cfg.r_hop)
 
     _, dataloader, featurizer = featurize_data(
         cfg=cfg,
@@ -60,7 +118,7 @@ def main(outer_cfg: DictConfig):
         ]
         fingerprints = torch.cat(fingerprints, 0)
 
-    fingerprints = fingerprints.detach().numpy()
+    fingerprints = fingerprints.detach().numpy().astype(np.float32)
 
     # Save
     data["output_reaction_embeddings"] = list(fingerprints[: , : cfg.model.d_h_encoder])
