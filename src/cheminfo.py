@@ -143,8 +143,8 @@ def get_r_hop_from_rc(smiles: str, reaction_center: tuple[int], radius: int):
     return fragment_smiles, fragment_rc
 
 if __name__ == "__main__":
-    smi1 = 'CSCCC(=O)C(=O)O'
-    rc1 = (4, 6, 8)
+    smi1 = 'CC(C)=CCCC(C)=CCCC(C)=CCOP(=O)(O)OP(=O)(O)O'
+    rc1 = (6, 8, 12, 11, 13, 14, 15)
     r = 1
     fragment_smiles, fragment_rc = get_r_hop_from_rc(smi1, rc1, r)
     print()

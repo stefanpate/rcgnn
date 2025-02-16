@@ -24,6 +24,7 @@ def radially_mask_reactions(data: pd.DataFrame, radius: int):
     radius:int
         Number of hops
     '''
+    to_drop = []
     fragmented_data = []
     for i, row in data.iterrows():
             smarts = row['smarts']
@@ -37,15 +38,26 @@ def radially_mask_reactions(data: pd.DataFrame, radius: int):
 
             for (smiles, rc) in zip(rcts, rrcs):
                 fragment_smiles, fragment_rc = get_r_hop_from_rc(smiles, rc, radius)
+
+                if '.' in fragment_smiles:
+                    to_drop.append(i)
+                    break
+
                 fragment_smarts[0].append(fragment_smiles)
                 fragment_rcs[0].append(fragment_rc)
             
             for (smiles, rc) in zip(pdts, prcs):
                 fragment_smiles, fragment_rc = get_r_hop_from_rc(smiles, rc, radius)
+                
+                if '.' in fragment_smiles:
+                    to_drop.append(i)
+                    break
+
                 fragment_smarts[1].append(fragment_smiles)
                 fragment_rcs[1].append(fragment_rc)
 
             fragment_smarts = '.'.join(fragment_smarts[0]) + '>>' + '.'.join(fragment_smarts[1])
+
             fragment_rcs = (fragment_rcs[0], fragment_rcs[1])
             fragmented_data.append((fragment_smarts, fragment_rcs))
     
@@ -53,7 +65,6 @@ def radially_mask_reactions(data: pd.DataFrame, radius: int):
     data[['smarts', 'reaction_center']] = fragmented_data
 
     # Drop those that cannot be sanitized; will run into chemprop issues
-    to_drop = []
     for i, row in data.iterrows():
         smarts = row['smarts']
         smiles = chain(*[elt.split('.') for elt in smarts.split('>>')])
