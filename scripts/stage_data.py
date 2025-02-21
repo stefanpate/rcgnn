@@ -31,7 +31,7 @@ def assemble_data(
                     idx_sample[pidx],
                     idx_feature[ridx],
                     list(proteins[idx_sample[pidx]]),
-                    reactions[idx_feature[ridx]]['smarts'],
+                    reactions[idx_feature[ridx]]['am_smarts'],
                     reactions[idx_feature[ridx]]['rcs'],
                     yi
                 )

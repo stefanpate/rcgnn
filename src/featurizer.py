@@ -3,6 +3,7 @@ import numpy as np
 from rdkit.Chem import AllChem
 from rdkit.Chem.rdchem import Atom, HybridizationType, Mol, Bond, BondType
 from chemprop.featurizers.base import VectorFeaturizer, GraphFeaturizer
+from chemprop.data import ReactionDatapoint
 from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
 from dataclasses import dataclass
@@ -491,3 +492,21 @@ class ReactionMorganFeaturizer:
         p_embed = self._agg_side(pmfps)
 
         return abs(p_embed - r_embed)
+
+def cp_reaction_dp_from_smi(smarts: str, **kwargs) -> ReactionDatapoint:
+    """Create a :class:`ReactionDatapoint` from a SMILES string.
+
+    Parameters
+    ----------
+    smarts : str
+        The SMILES string.
+    kwargs : dict
+        Additional arguments to pass to the :class:`ReactionDatapoint` constructor.
+
+    Returns
+    -------
+    ReactionDatapoint
+        The reaction datapoint.
+    """
+    kwargs.pop("reaction_center") # Temp to unify w/ other featurizers
+    return ReactionDatapoint.from_smi(smarts, **kwargs)

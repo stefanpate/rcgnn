@@ -84,12 +84,11 @@ hydra:
     hydra:
     - hydra.mode=RUN
     task:
-    - similarity_score=rcmcs
-    - toc=v3_folded_test
+    - toc=v3_folded_n_100
   job:
     name: cluster
     chdir: null
-    override_dirname: similarity_score=rcmcs,toc=v3_folded_test
+    override_dirname: toc=v3_folded_n_100
     id: ???
     num: ???
     config_name: cluster
@@ -103,7 +102,7 @@ hydra:
   runtime:
     version: 1.3.2
     version_base: '1.3'
-    cwd: /home/stef/hiec
+    cwd: /home/stef/hiec/scripts
     config_sources:
     - path: hydra.conf
       schema: pkg

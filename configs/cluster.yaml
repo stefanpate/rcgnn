@@ -4,7 +4,7 @@ defaults:
   - override hydra/job_logging: disabled
   - _self_
 
-similarity_score: ??? # rcmcs or homology
+similarity_score: rcmcs
 dataset: sprhea
 toc: ???
 cutoffs: [80, 60, 40]

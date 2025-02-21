@@ -1,0 +1,8 @@
+name: cgr
+featurizer: cgr
+model: mpnn_dim_red
+agg: MeanAggregation
+pred_head: DotSig
+message_passing: BondMessagePassing
+encoder_depth: 6
+d_h_encoder: 300

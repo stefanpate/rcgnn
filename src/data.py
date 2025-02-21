@@ -23,6 +23,7 @@ MFPDatum = namedtuple("MFPDatum", field_names=["rxn_embed", "y", "x_d", "weight"
 
 @dataclass
 class _RCDatapointMixin:
+    '''Adds reaction center field to datapoint'''
     reactants: List[Mol]
     products: List[Mol]
     rcs: List[list] # Reaction centers

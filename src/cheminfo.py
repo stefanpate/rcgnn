@@ -2,6 +2,7 @@ from rdkit import Chem
 from rdkit.Chem import Draw, Mol, rdmolfiles
 from rdkit.Chem.rdChemReactions import ChemicalReaction
 from itertools import combinations
+from typing import Iterable
 
 def draw_molecule(molecule: str | Chem.Mol, size: tuple = (200, 200), highlight_atoms: tuple = tuple(), draw_options: dict = {}) -> str:
     '''
@@ -143,8 +144,29 @@ def get_r_hop_from_rc(smiles: str, reaction_center: tuple[int], radius: int):
     return fragment_smiles, fragment_rc
 
 if __name__ == "__main__":
-    smi1 = 'CC(C)=CCCC(C)=CCCC(C)=CCOP(=O)(O)OP(=O)(O)O'
-    rc1 = (6, 8, 12, 11, 13, 14, 15)
-    r = 1
-    fragment_smiles, fragment_rc = get_r_hop_from_rc(smi1, rc1, r)
+    # smi1 = 'CC(C)=CCCC(C)=CCCC(C)=CCOP(=O)(O)OP(=O)(O)O'
+    # rc1 = (6, 8, 12, 11, 13, 14, 15)
+    # r = 1
+    # fragment_smiles, fragment_rc = get_r_hop_from_rc(smi1, rc1, r)
+
+    from rdkit.Chem import rdChemReactions
+    
+    rxn = rdChemReactions.ReactionFromSmarts('[C:1]-[O:2].[C:3](=[O:4])[OH]>>[C:1]-[O:2]-[C:3]=[O:4]')
+    reactants = [Chem.MolFromSmiles(x) for x in ('CCO','OC=O')]
+    for i,m in enumerate(reactants):
+        for atom in m.GetAtoms():
+            atom.SetIntProp('reactant_idx',i)
+    
+    ps = rxn.RunReactants(reactants)
+    p0 = ps[0][0]
+    for atom in p0.GetAtoms():
+        print(atom.GetIdx(),atom.GetPropsAsDict())
+    
+    atomMapToReactantMap={}
+    for ri in range(rxn.GetNumReactantTemplates()):
+        rt = rxn.GetReactantTemplate(ri)
+        for atom in rt.GetAtoms():
+            if atom.GetAtomMapNum():
+                atomMapToReactantMap[atom.GetAtomMapNum()] = ri
+    
     print()

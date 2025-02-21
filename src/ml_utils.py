@@ -1,5 +1,3 @@
-from collections import defaultdict
-from chemprop.data import build_dataloader
 from omegaconf import DictConfig, OmegaConf
 from mlflow.entities.run_data import RunData
 import numpy as np
@@ -9,6 +7,11 @@ from pathlib import Path
 
 import src.nn
 import src.metrics
+
+from chemprop.data import (
+    build_dataloader,
+    ReactionDataset,
+)
 
 from src.model import (
     MPNNDimRed,
@@ -22,25 +25,40 @@ from src.data import (
     mfp_build_dataloader,
     RxnRCDatapoint
 )
+
 from src.featurizer import (  
     SimpleReactionMolGraphFeaturizer,
     RCVNReactionMolGraphFeaturizer,
     ReactionMorganFeaturizer,
     MultiHotAtomFeaturizer,
-    MultiHotBondFeaturizer
+    MultiHotBondFeaturizer,
+    cp_reaction_dp_from_smi,
+)
+from chemprop.featurizers import (
+    CondensedGraphOfReactionFeaturizer,
+    RxnMode
 )
 
 featurizers = {
+    'cgr': (ReactionDataset, CondensedGraphOfReactionFeaturizer, build_dataloader),
     'rxn_simple': (RxnRCDataset, SimpleReactionMolGraphFeaturizer, build_dataloader),
     'rxn_rc': (RxnRCDataset, RCVNReactionMolGraphFeaturizer, build_dataloader),
     'mfp': (MFPDataset, ReactionMorganFeaturizer, mfp_build_dataloader)
 }
 
 def construct_featurizer(cfg: DictConfig):
-    datapoint_from_smi = RxnRCDatapoint.from_smi
+    
+    if cfg.model.featurizer == 'cgr':
+        datapoint_from_smi = cp_reaction_dp_from_smi
+    else:
+        datapoint_from_smi = RxnRCDatapoint.from_smi
+
     dataset_base, featurizer_base, generate_dataloader = featurizers[cfg.model.featurizer]
+    
     if cfg.model.featurizer == 'mfp':
         featurizer = featurizer_base(radius=cfg.model.radius, length=cfg.model.vec_len)
+    elif cfg.model.featurizer == 'cgr':
+        featurizer = featurizer_base(mode_=RxnMode.REAC_PROD)
     else:
         featurizer = featurizer_base(
             atom_featurizer=MultiHotAtomFeaturizer.no_stereo(),
