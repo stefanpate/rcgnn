@@ -1,5 +1,5 @@
 from sklearn.cluster import AgglomerativeClustering
-from src.similarity import rcmcs_similarity_matrix, homology_similarity_matrix
+from src.similarity import rcmcs_similarity_matrix, load_similarity_matrix
 from src.utils import load_json, save_json, construct_sparse_adj_mat
 import pandas as pd
 from Bio import Align
@@ -22,19 +22,15 @@ def main(cfg: DictConfig):
         rxns = load_json(Path(cfg.filepaths.data) / f"{cfg.dataset}/{cfg.toc}.json")
         matrix_idx_to_id = adj_to_rxn_id
         S = rcmcs_similarity_matrix(rxns, rules, matrix_idx_to_id)
-
-    if cfg.similarity_score == 'homology':
-        toc = pd.read_csv(
-            filepath_or_buffer=Path(cfg.filepaths.data) / f"{cfg.dataset}/{cfg.toc}.csv",
-            sep='\t'
-        ).set_index("Entry")
-        aligner = Align.PairwiseAligner(
-            mode="local",
-            scoring="blastp"
+    else: # Protein based similarity
+        S = load_similarity_matrix(
+            sim_path=Path(cfg.filepaths.results) / "similarity_matrices",
+            dataset=cfg.dataset,
+            toc=cfg.toc,
+            sim_metric=cfg.similarity_score
         )
-        sequences = {id: row["Sequence"] for id, row in toc.iterrows()}
-        S, matrix_idx_to_id = homology_similarity_matrix(sequences, aligner)
-
+        matrix_idx_to_id = adj_to_prot_id
+        
     D = 1 - S # Distance matrix
     
     for cutoff in cfg.cutoffs:

@@ -6,6 +6,7 @@ from src.similarity import(
     tanimoto_similarity_matrix,
     agg_mfp_cosine_similarity_matrix,
     homology_similarity_matrix,
+    blosum_similarity_matrix
 )
 from omegaconf import OmegaConf
 from pathlib import Path
@@ -15,6 +16,7 @@ import pandas as pd
 import numpy as np
 import scipy.sparse as sp
 from Bio import Align
+from Bio.Align import substitution_matrices
 
 filepaths = OmegaConf.load("../configs/filepaths/base.yaml")
 embeddings_superdir = Path(filepaths['results']) / "embeddings"
@@ -139,6 +141,36 @@ def calc_gsi(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_mats_
 
         del S_chunk
 
+def calc_blosum62(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_mats_dir):
+
+    toc = pd.read_csv(
+        filepath_or_buffer=data_filepath / args.dataset / f"{args.toc}.csv",
+        sep='\t'
+    ).set_index("Entry")
+
+    # BLASTp defaults
+    aligner = Align.PairwiseAligner()
+    aligner.substitution_matrix = substitution_matrices.load("BLOSUM62")
+    aligner.open_gap_score = -11
+    aligner.extend_gap_score = -1
+
+    n_chunks = -(len(toc) // - args.chunk_size)
+    for i in range(n_chunks):
+        sequences = {id: row["Sequence"] for id, row in toc.iterrows()}
+        start = i * args.chunk_size
+        end = (i + 1) * args.chunk_size
+        S_chunk = blosum_similarity_matrix(sequences, start, end, aligner)
+        
+        save_to = sim_mats_dir / f"{args.dataset}_{args.toc}_blosum_chunk_{i}"
+        parent = save_to.parent
+        
+        if not parent.exists():
+            parent.mkdir(parents=True)
+
+        sp.save_npz(save_to, S_chunk)
+
+        del S_chunk
+
 parser = ArgumentParser(description="Simlarity matrix calculator")
 subparsers = parser.add_subparsers(title="Commands", description="Available comands")
 
@@ -188,6 +220,13 @@ parser_gsi.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
 parser_gsi.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
 parser_gsi.add_argument("chunk_size", type=int, help="Breaks up rows of sim mat")
 parser_gsi.set_defaults(func=calc_gsi)
+
+# BLOSUM62 sequence similarity
+parser_blosum = subparsers.add_parser("blosum", help="Calculate BLOSUM62 sequence similarity")
+parser_blosum.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
+parser_blosum.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
+parser_blosum.add_argument("chunk_size", type=int, help="Breaks up rows of sim mat")
+parser_blosum.set_defaults(func=calc_blosum62)
 
 # Agg mfp cosine similarity
 parser_agg_mfp_cosine = subparsers.add_parser("agg-mfp-cosine", help="Calculate cosine similarity of aggregated Morgan FPs")

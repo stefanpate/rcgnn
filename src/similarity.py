@@ -326,10 +326,53 @@ def global_sequence_identity(seq1:str, seq2:str, aligner:Align.PairwiseAligner):
     
     return ct / min(len(alignment.target), len(alignment.query))
 
+def blosum_similarity(seq1:str, seq2:str, aligner:Align.PairwiseAligner):
+    alignment = aligner.align(seq1, seq2)
+    return alignment.score
+
+def blosum_similarity_matrix(sequences:Dict[str, str], start: int, end: int, aligner:Align.PairwiseAligner):
+    '''
+    With multiprocessing, Computes blosum 
+    similarity matrix for set of amino acid sequences
+
+    Args
+    ----
+    sequences:Dict[str, str]
+        {id: amino acid sequence}
+    aligner:Bio.Align.PairwiseAligner
+        Pairwise aligner object
+    
+    Returns
+    -------
+    S:scipy.sparse.csr_array
+        chunk_size x n sparse array
+    '''
+    sim_i_to_id = {i : id for i, id in enumerate(sequences.keys())}
+
+    to_do = []
+    S_idxs = []
+    print("Preparing reaction pairs\n")
+    for i in range(start, min(end, len(sim_i_to_id) - 1)):
+        seq1 = sequences[sim_i_to_id[i]]
+        print(f"Sequence # {i} : {sim_i_to_id[i]}", end='\r')
+        for j in range(i + 1, len(sim_i_to_id)):
+            seq2 = sequences[sim_i_to_id[j]]
+            S_idxs.append((i, j))
+            to_do.append((seq1, seq2, aligner))
+
+    print("\nProcessing pairs\n")    
+    with mp.Pool() as pool:
+        res = list(tqdm(pool.imap(wrap_blosum, to_do), total=len(to_do)))
+    
+    row_idxs, col_idxs = zip(*S_idxs)
+    S_chunk = sp.csr_array((res, (row_idxs, col_idxs))).astype(np.float16)
+
+    return S_chunk
+
 def homology_similarity_matrix(sequences:Dict[str, str], start: int, end: int, aligner:Align.PairwiseAligner):
     '''
-    With multiprocessing, Computes reaction center MCS 
-    similarity matrix for set of reactions
+    With multiprocessing, Computes global sequence identity 
+    similarity matrix for set of amino acid sequences
 
     Args
     ----
@@ -690,6 +733,9 @@ def _check_ring_info(molecules: Iterable[Mol], reaction_centers: Iterable[tuple[
 def wrap_gsi(args):
     return global_sequence_identity(*args)
 
+def wrap_blosum(args):
+    return blosum_similarity(*args)
+
 def _wrap_rxn_mcs(args):
     return reaction_mcs_similarity(*args)
 
@@ -704,7 +750,7 @@ def load_similarity_matrix(sim_path: Path, dataset: str, toc: str, sim_metric: s
         S = np.load(
             sim_path / f"{dataset}_{toc}_{sim_metric}.npy"
         ).astype(np.float32)
-    elif sim_metric == 'gsi':
+    else:
         for i, file in enumerate(sim_path.glob(f"{dataset}_{toc}_{sim_metric}*.npz")):
             chunk = sp.load_npz(file).astype(np.float32)
 

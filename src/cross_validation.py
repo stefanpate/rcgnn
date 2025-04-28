@@ -176,13 +176,13 @@ def stratified_sim_split(
     for l, bound in enumerate(split_bounds):
         if bound == 100: # Each id is its own cluster
             point_to_cluster = {id: cid for cid, id in enumerate(id_to_adj_mat_idx.keys())}
-        elif split_strategy == 'rcmcs':
-            cluster_path = cluster_dir / f"{dataset}_{toc}_{split_strategy}_{bound}.json"
-            point_to_cluster = load_json(cluster_path)
         elif split_strategy == 'homology':
             cluster_path = cluster_dir / f"{dataset}_{toc}_{split_strategy}_{bound}.clstr"
             clusters = parse_cd_hit_clusters(cluster_path)
             point_to_cluster = {id: cid for cid, ids in clusters.items() for id in ids}
+        else:
+            cluster_path = cluster_dir / f"{dataset}_{toc}_{split_strategy}_{bound}.json"
+            point_to_cluster = load_json(cluster_path)
 
         for id, cid in point_to_cluster.items():
             for idx in single2pair_idx[id_to_adj_mat_idx[id]]:

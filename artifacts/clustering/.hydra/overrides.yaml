@@ -1,1 +1,3 @@
+- dataset=sprhea
 - toc=v3_folded_n_100
+- similarity_score=blosum

@@ -2,7 +2,7 @@ seed: 1234
 dataset: sprhea
 toc: v3_folded_n_100
 neg_multiple: 1
-split_strategy: rcmcs
+split_strategy: blosum
 n_splits: 3
 test_percent: 20
 split_bounds: [100, 80, 60, 40]
