@@ -21,4 +21,4 @@ module purge
 module load python/anaconda3.6
 module load gcc/9.2.0
 source activate hiec
-python $scripts_dir/similarity_matrix.py gsi sprhea v3_folded_pt_ns 1000
+python $scripts_dir/similarity_matrix.py blosum sprhea v3_folded_pt_ns 1000
