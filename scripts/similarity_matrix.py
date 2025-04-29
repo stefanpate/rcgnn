@@ -18,7 +18,7 @@ import scipy.sparse as sp
 from Bio import Align
 from Bio.Align import substitution_matrices
 
-filepaths = OmegaConf.load("../configs/filepaths/base.yaml")
+filepaths = OmegaConf.load("/home/spn1560/hiec/configs/filepaths/base.yaml")
 embeddings_superdir = Path(filepaths['results']) / "embeddings"
 sim_mats_dir = Path(filepaths['results']) / "similarity_matrices"
 data_fp = Path(filepaths['data'])
