@@ -327,6 +327,10 @@ def global_sequence_identity(seq1:str, seq2:str, aligner:Align.PairwiseAligner):
     return ct / min(len(alignment.target), len(alignment.query))
 
 def blosum_similarity(seq1:str, seq2:str, aligner:Align.PairwiseAligner):
+    if any(c not in aligner.alphabet for c in seq1 + seq2):
+        print("Encountered characters not in aligner alphabet. Returning -1e6 score")
+        return -1e6
+    
     alignment = aligner.align(seq1, seq2)
     return alignment.score
 
