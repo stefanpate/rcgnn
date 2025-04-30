@@ -4,10 +4,10 @@ defaults:
   - override hydra/job_logging: disabled
   - _self_
 
-similarity_score: rcmcs
+similarity_score: gsi
 dataset: sprhea
-toc: ???
-cutoffs: [80, 60, 40]
+toc: v3_folded_pt_ns
+cutoffs: [69.141, 22.216, 12.195, 9.155, 8.38, 7.123]
 
 hydra:
   run:

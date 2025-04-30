@@ -84,13 +84,11 @@ hydra:
     hydra:
     - hydra.mode=RUN
     task:
-    - dataset=sprhea
-    - toc=v3_folded_n_100
-    - similarity_score=blosum
+    - toc=v3_folded_pt_ns
   job:
     name: cluster
     chdir: null
-    override_dirname: dataset=sprhea,similarity_score=blosum,toc=v3_folded_n_100
+    override_dirname: toc=v3_folded_pt_ns
     id: ???
     num: ???
     config_name: cluster
