@@ -2,7 +2,7 @@ from sklearn.cluster import AgglomerativeClustering
 from src.similarity import rcmcs_similarity_matrix, load_similarity_matrix
 from src.utils import load_json, save_json, construct_sparse_adj_mat
 import pandas as pd
-from Bio import Align
+import numpy as np
 from omegaconf import DictConfig
 import hydra
 from pathlib import Path
@@ -30,6 +30,12 @@ def main(cfg: DictConfig):
             sim_metric=cfg.similarity_score
         )
         matrix_idx_to_id = adj_to_prot_id
+
+        if cfg.similarity_score == 'blosum':
+            # Normalize blosum alignment scores
+            S = np.where(S > cfg.blosum_ub, cfg.blosum_ub, S)
+            S = np.where(S < cfg.blosum_lb, cfg.blosum_lb, S)
+            S = (S - S.min()) / (S.max() - S.min())
         
     D = 1 - S # Distance matrix
     
