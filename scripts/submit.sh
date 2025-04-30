@@ -4,7 +4,7 @@
 #SBATCH -N 1
 #SBATCH -n 50
 #SBATCH --mem=0
-#SBATCH -t 10:00:00
+#SBATCH -t 48:00:00
 #SBATCH --job-name=sim_mats
 #SBATCH --output=/home/spn1560/hiec/logs/out/%A
 #SBATCH --error=/home/spn1560/hiec/logs/error/%A
