@@ -2,6 +2,7 @@ defaults:
   - filepaths: base
   - override hydra/hydra_logging: disabled
   - override hydra/job_logging: disabled
+  - override hydra/launcher: quest_cpu
   - _self_
 
 similarity_score: gsi
