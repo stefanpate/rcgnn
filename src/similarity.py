@@ -749,7 +749,7 @@ def _wrap_rxn_tani(args):
 def _wrap_agg_mfp_cosine(args):
     return agg_mfp_cosine_similarity(*args)
 
-def load_similarity_matrix(sim_path: Path, dataset: str, toc: str, sim_metric: str):
+def load_similarity_matrix(sim_path: Path, dataset: str, toc: str, sim_metric: str, dtype: np.dtype = np.float32):
     if sim_metric == 'rcmcs':
         S = np.load(
             sim_path / f"{dataset}_{toc}_{sim_metric}.npy"
