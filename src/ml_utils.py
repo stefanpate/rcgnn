@@ -167,7 +167,7 @@ def downsample_negatives(data: pd.DataFrame, neg_multiple: int, rng: np.random.G
     data.drop(axis=0, index=idx_to_rm, inplace=True)
 
 
-def mlflow_to_omegaconf(run_data: RunData):
+def mlflow_to_omegaconf(run_data: 'RunData'):
     tmp = {}
     for k, v in run_data.data.params.items():
         try:

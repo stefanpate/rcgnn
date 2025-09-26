@@ -8,6 +8,7 @@ from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
 from dataclasses import dataclass
 
+
 class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
 
     """A :class:`MultiHotAtomFeaturizer` uses a multi-hot encoding to featurize atoms.

@@ -2,6 +2,7 @@ README.md
 setup.py
 src/__init__.py
 src/cheminfo.py
+src/clip.py
 src/cross_validation.py
 src/data.py
 src/featurizer.py

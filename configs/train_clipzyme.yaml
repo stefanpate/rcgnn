@@ -1,0 +1,18 @@
+defaults:
+  - filepaths: base
+  - data: sprhea_n_100
+  - model: clipzyme
+  - training: base
+  - _self_
+
+exp: debug_clip
+
+hydra:
+  sweeper:
+    params:
+      data.split_idx: range(${data.n_splits})
+  output_subdir: null # Redundant w/ mlflow
+  run:
+    dir: ${filepaths.scratch} # Redundant w/ mlflow
+  sweep:
+    dir: ${filepaths.scratch} # Redundant w/ mlflow
