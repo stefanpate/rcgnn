@@ -1,4 +1,4 @@
-batch_size: 2
+batch_size: 8
 n_epochs: 25
 warmup_epochs: 2
 init_lr: 1e-4

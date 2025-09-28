@@ -14,6 +14,7 @@ import copy
 from pytorch_lightning import LightningModule
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LambdaLR
+from omegaconf import DictConfig
 
 
 def clip_collate(datapoints: list[dict[str, tuple[Data, Data] | torch.Tensor]]) -> dict[str, dict[str, Batch] | torch.Tensor]:
@@ -37,39 +38,40 @@ class EnzymeReactionCLIP(LightningModule):
     pre-trained protein embedding. Adapted from Mikhael, Chinn, & Barzilay 2024
     aka CLIPZyme. https://github.com/pgmikhael/clipzyme/
     '''
-    def __init__(self, args):
+    def __init__(self, model_hps: DictConfig, negative_multiple: int = 1, positive_multiplier: int = 1):
         super().__init__()
-        self.args = args
-        self.reaction_clip_model_path = args.reaction_clip_model_path
-        self.use_as_protein_encoder = getattr(args, "use_as_protein_encoder", False)
-        self.use_as_mol_encoder = getattr(args, "use_as_mol_encoder", False) or getattr(
-            args, "use_as_reaction_encoder", False
-        )  # keep mol for backward compatibility
+        self.save_hyperparameters()
+        self.args = model_hps
+        pos_weight = torch.ones([1]) * negative_multiple * positive_multiplier
+        self.register_buffer("pos_weight", pos_weight) # Adds non-trainable tensor to model state dict thus goes to right device
+        self.reaction_clip_model_path = model_hps.reaction_clip_model_path
 
-        if args.reaction_clip_model_path is not None:
-            state_dict = torch.load(args.reaction_clip_model_path)
-            state_dict_copy = {
-                k.replace("model.", "", 1): v
-                for k, v in state_dict["state_dict"].items()
-            }
-            args = state_dict["hyper_parameters"]["args"]
+        ## Obviated by PL's load_from_checkpoint SP 9/25
+        # if model_hps.reaction_clip_model_path is not None:
+        #     state_dict = torch.load(model_hps.reaction_clip_model_path)
+        #     state_dict_copy = {
+        #         k.replace("model.", "", 1): v
+        #         for k, v in state_dict["state_dict"].items()
+        #     }
+        #     model_hps = state_dict["hyper_parameters"]["args"]
 
-        wln_diff_args = copy.deepcopy(args)
-        if args.model_name != "enzyme_reaction_clip_wldnv1":
-            self.wln = DMPNNEncoder(args)  # WLN for mol representation
-            wln_diff_args = copy.deepcopy(args)
-            wln_diff_args.chemprop_edge_dim = args.chemprop_hidden_dim
+        wln_diff_args = copy.deepcopy(model_hps)
+        if model_hps.model_name != "enzyme_reaction_clip_wldnv1":
+            self.wln = DMPNNEncoder(model_hps)  # WLN for mol representation
+            wln_diff_args = copy.deepcopy(model_hps)
+            wln_diff_args.chemprop_edge_dim = model_hps.chemprop_hidden_dim
             # wln_diff_args.chemprop_num_layers = 1 ## Sic clipzyme original code
             self.wln_diff = DMPNNEncoder(wln_diff_args)
 
             # mol: attention pool
             self.final_linear = nn.Linear(
-                args.chemprop_hidden_dim, args.chemprop_hidden_dim, bias=False
+                model_hps.chemprop_hidden_dim, model_hps.chemprop_hidden_dim, bias=False
             )
-            self.attention_fc = nn.Linear(args.chemprop_hidden_dim, 1, bias=False)
-
-        if self.reaction_clip_model_path is not None:
-            self.load_state_dict(state_dict_copy)
+            self.attention_fc = nn.Linear(model_hps.chemprop_hidden_dim, 1, bias=False)
+        
+        ## Obviated by PL's load_from_checkpoint SP 9/25
+        # if self.reaction_clip_model_path is not None:
+        #     self.load_state_dict(state_dict_copy)
 
     def encode_reaction(self, batch):
         '''
@@ -140,16 +142,30 @@ class EnzymeReactionCLIP(LightningModule):
         )
         return self.dot_sig(R, P)
     
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch, batch_idx : int = 0):
         Y_hat = self.forward(batch)
         Y = batch["target"]
         mask = Y_hat.isfinite()
-        loss = F.binary_cross_entropy(Y_hat[mask], Y[mask])
-        self.log("train_loss", loss, prog_bar=True, on_step=True, on_epoch=True)
-        print( f"train_loss: {loss}" )
+        loss = F.binary_cross_entropy_with_logits(Y_hat[mask], Y[mask], pos_weight=self.pos_weight)
+        self.log("train_loss", loss, prog_bar=True, on_step=False, on_epoch=True, batch_size=len(batch["target"]))
         return loss
     
+    def validation_step(self, batch, batch_idx: int = 0):
+        Y_hat = self.forward(batch)
+        Y = batch["target"]
+        mask = Y_hat.isfinite()
+        loss = F.binary_cross_entropy_with_logits(Y_hat[mask], Y[mask], pos_weight=self.pos_weight)
+        self.log("val_loss", loss, batch_size=len(batch["target"]), prog_bar=True, on_step=False, on_epoch=True)
+        return loss
+    
+    def predict_step(self, batch, batch_idx: int = 0):
+        Y_hat = self.forward(batch)
+        return Y_hat.detach().cpu().numpy()
+    
     def configure_optimizers(self):
+        ''' Sets up Noam-like LR scheduler with Adam optimizer. 
+        cf. chemprop
+        '''
         opt = torch.optim.Adam(self.parameters(), self.args.init_lr)
         if self.trainer.train_dataloader is None:
             # Loading `train_dataloader` to estimate number of training batches.
@@ -173,10 +189,6 @@ class EnzymeReactionCLIP(LightningModule):
         lr_sched_config = {"scheduler": lr_sched, "interval": "step"}
 
         return {"optimizer": opt, "lr_scheduler": lr_sched_config}
-
-    # def configure_optimizers(self):
-    #     optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
-    #     return optimizer
 
     
 class ClipDataset:

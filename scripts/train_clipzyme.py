@@ -20,7 +20,6 @@ def downsample_negatives(data: pd.DataFrame, neg_multiple: int, rng: np.random.G
 @hydra.main(version_base=None, config_path="../configs", config_name="train_clipzyme")
 def main(cfg: DictConfig):
     rng = np.random.default_rng(seed=cfg.data.seed)
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Load data
     train_val_splits = []
@@ -33,6 +32,7 @@ def main(cfg: DictConfig):
 
     # Arrange data
     if cfg.data.split_idx == -2: # Train on full dataset
+        version = "full_data"
         more_train_data = pd.read_parquet(
             Path(cfg.filepaths.scratch) / cfg.data.subdir_patt / "test.parquet"
         )
@@ -40,12 +40,14 @@ def main(cfg: DictConfig):
         train_data = pd.concat(train_val_splits + [more_train_data], ignore_index=True)
         val_data = None
     elif cfg.data.split_idx == -1: # Test on outer fold
+        version = "outer_fold"
         val_data = pd.read_parquet(
             Path(cfg.filepaths.scratch) / cfg.data.subdir_patt / "test.parquet"
         )
         val_data['protein_embedding'] = val_data['protein_embedding'].apply(lambda x : np.array(x))
         train_data = pd.concat(train_val_splits, ignore_index=True)
     else: # Test on inner fold
+        version = f"inner_fold_{cfg.data.split_idx + 1}_of_{cfg.data.n_splits}"
         train_data = pd.concat([train_val_splits[i] for i in range(cfg.data.n_splits) if i != cfg.data.split_idx], ignore_index=True)
         val_data = train_val_splits[cfg.data.split_idx]
         downsample_negatives(val_data, 1, rng) # Inner fold val are oversampled
@@ -78,33 +80,29 @@ def main(cfg: DictConfig):
         val_dataset,
         shuffle=False,
         collate_fn=clip_collate,
+        batch_size=cfg.model.batch_size,
     )
 
     # Construct model
-    model = EnzymeReactionCLIP(cfg.model)
+    model = EnzymeReactionCLIP(
+        model_hps=cfg.model,
+        negative_multiple=cfg.data.neg_multiple,
+        positive_multiplier=cfg.training.pos_multiplier,
+    )
 
-    # TODO: Use CSVLogger for tracking
-    # TODO: Figure out checkpoint saving & loading
     # Track
     logger = CSVLogger(
         name=cfg.exp or "Default",
         save_dir=cfg.filepaths.runs,
+        version=version,
     )
-    # mlflow.set_experiment(experiment_id=logger.experiment_id)
 
-    # # Train
-    # with mlflow.start_run(run_id=logger.run_id):
-    #     flat_resolved_cfg = pd.json_normalize(
-    #         {k: v for k,v in OmegaConf.to_container(cfg, resolve=True).items() if k != 'filepaths'}, # Resolved interpolated values
-    #         sep='/'
-    #     ).to_dict(orient='records')[0]
-    #     mlflow.log_params(flat_resolved_cfg)
-
+    # Train
     trainer = pl.Trainer(
         enable_progress_bar=True,
         accelerator="auto",
         devices=1,
-        max_epochs=5,#TODO
+        max_epochs=1,#TODO
         # max_epochs=cfg.training.n_epochs, # number of epochs to train for
         logger=logger,
     )
@@ -112,8 +110,30 @@ def main(cfg: DictConfig):
     trainer.fit(
         model=model,
         train_dataloaders=train_dataloader,
-        # val_dataloaders=val_dataloader
+        val_dataloaders=val_dataloader
     )
+
+    # Predict
+    with torch.inference_mode():
+        trainer = pl.Trainer(
+            logger=None,
+            enable_progress_bar=True,
+            accelerator="auto",
+            devices=1
+        )
+        val_preds = trainer.predict(model, val_dataloader)
+
+    logits = np.vstack(val_preds).reshape(-1,)
+    
+    # Save outputs
+    target_output = val_data.loc[:, ["protein_idx", "reaction_idx", "pid", "rid", "y"]]
+    target_output.loc[:, "logits"] = logits # These are not really logits but keep naming for consistency
+
+    subdir = Path(f"{cfg.exp}/{version}")
+    if not subdir.exists():
+        subdir.mkdir(parents=True)
+
+    target_output.to_parquet(subdir / "target_output.parquet", index=False)
 
 if __name__ == '__main__':
     main()
