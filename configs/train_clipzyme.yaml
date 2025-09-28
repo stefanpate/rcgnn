@@ -1,6 +1,6 @@
 defaults:
   - filepaths: base
-  - data: sprhea_n_100
+  - data: sprhea_rcmcs
   - model: clipzyme
   - training: base
   - _self_
