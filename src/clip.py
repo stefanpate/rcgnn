@@ -44,16 +44,6 @@ class EnzymeReactionCLIP(LightningModule):
         self.args = model_hps
         pos_weight = torch.ones([1]) * negative_multiple * positive_multiplier
         self.register_buffer("pos_weight", pos_weight) # Adds non-trainable tensor to model state dict thus goes to right device
-        self.reaction_clip_model_path = model_hps.reaction_clip_model_path
-
-        ## Obviated by PL's load_from_checkpoint SP 9/25
-        # if model_hps.reaction_clip_model_path is not None:
-        #     state_dict = torch.load(model_hps.reaction_clip_model_path)
-        #     state_dict_copy = {
-        #         k.replace("model.", "", 1): v
-        #         for k, v in state_dict["state_dict"].items()
-        #     }
-        #     model_hps = state_dict["hyper_parameters"]["args"]
 
         wln_diff_args = copy.deepcopy(model_hps)
         if model_hps.model_name != "enzyme_reaction_clip_wldnv1":
@@ -68,10 +58,6 @@ class EnzymeReactionCLIP(LightningModule):
                 model_hps.chemprop_hidden_dim, model_hps.chemprop_hidden_dim, bias=False
             )
             self.attention_fc = nn.Linear(model_hps.chemprop_hidden_dim, 1, bias=False)
-        
-        ## Obviated by PL's load_from_checkpoint SP 9/25
-        # if self.reaction_clip_model_path is not None:
-        #     self.load_state_dict(state_dict_copy)
 
     def encode_reaction(self, batch):
         '''
