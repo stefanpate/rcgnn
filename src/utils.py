@@ -76,47 +76,6 @@ def construct_sparse_adj_mat(path: Path):
             
         return adj, idx_sample, idx_feature
 
-
-# def load_precomputed_embeds(ds_name, toc, embed_type, sample_idx, do_norm=True, scratch_dir=scratch_dir, data_dir=data_dir):
-#         '''
-#         Args
-#             - ds_name: Str name of dataset
-#             - embed_type: Str
-#             - sample_idx: {sample_label : row_idx}
-#             - toc: Table of contents csv
-
-#         Returns
-#             - X: Design matrixs (samples x embedding dim)
-#         '''
-#         # Load from scratch if pre-saved
-#         path = f"{scratch_dir}/{ds_name}_{toc}_{embed_type}_X.npy"
-#         if os.path.exists(path):
-#             X = np.load(path)
-#         else:
-
-#             try:
-#                 print(f"Loading {embed_type} embeddings for {ds_name}:{toc} dataset")
-#                 magic_key = 33
-#                 data_path = f"{data_dir}/{ds_name}"
-#                 X = [None for _ in range(len(sample_idx))]
-#                 for i, (sample_id, idx) in enumerate(sample_idx.items()):
-#                     X[idx] = load_embed(f"{data_path}/{embed_type}/{sample_id}.pt", embed_key=magic_key)[1]
-
-#                     if i % 5000 == 0:
-#                         print(f"Embedding #{i} / {len(sample_idx)}")
-
-#                 X = np.vstack(X)
-                
-#                 if do_norm:
-#                     X /= np.sqrt(np.square(X).sum(axis=1)).reshape(-1,1)
-
-#                 # Save to scratch
-#                 np.save(path, X)
-#             except:
-#                 raise ValueError("Data not found in projects dir")
-
-#         return X
-
 def load_embed_matrix(filepath: Path, idx_sample: dict, dataset: str, toc: str) -> np.ndarray:
     '''
     Given a filepath to embedding-containing dir on projects,
