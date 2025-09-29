@@ -7,6 +7,8 @@ from chemprop.data import ReactionDatapoint
 from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
 from dataclasses import dataclass
+from drfp import DrfpEncoder
+from src.cheminfo import de_am
 
 class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
 
@@ -484,7 +486,7 @@ class ReactionMorganFeaturizer:
             self,
             reactants: List[Mol],
             products: List[Mol],
-    ):
+    ) -> np.ndarray:
         rmfps = np.vstack([self._get_mfp(mol) for mol in reactants])
         pmfps = np.vstack([self._get_mfp(mol) for mol in products])
 
@@ -492,6 +494,20 @@ class ReactionMorganFeaturizer:
         p_embed = self._agg_side(pmfps)
 
         return abs(p_embed - r_embed)
+
+@dataclass
+class ReactionDRFPFeaturizer:
+    length: int = 2048
+
+    def __call__(
+            self,
+            reactants: List[Mol],
+            products: List[Mol],
+    ) -> np.ndarray:
+        de_am_rxn = de_am(reactants, products)
+        fp = DrfpEncoder.encode(de_am_rxn, n_folded_length=self.length)[0]
+
+        return fp.astype(np.float32)
 
 def cp_reaction_dp_from_smi(smarts: str, **kwargs) -> ReactionDatapoint:
     """Create a :class:`ReactionDatapoint` from a SMILES string.

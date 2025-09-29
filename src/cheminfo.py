@@ -143,6 +143,30 @@ def get_r_hop_from_rc(smiles: str, reaction_center: tuple[int], radius: int):
     
     return fragment_smiles, fragment_rc
 
+def de_am(am_rcts: list[Chem.Mol], am_pdts: list[Chem.Mol]) -> str:
+    '''
+    Converts an atom-mapped rct and pdt mols to a de atom mapped rxn.
+
+    Args
+    ----
+    rcts: list[Chem.Mol]
+        List of reactant molecules
+    pdts: list[Chem.Mol]
+        List of product molecules
+    
+    Returns
+    -------
+    de_am_rxn: str
+        De-atom-mapped reaction string in the form of "R1.R2.R3>>P1.P2.P3"
+    '''
+    for mol in am_rcts + am_pdts:
+        for atom in mol.GetAtoms():
+            atom.SetAtomMapNum(0)
+
+    rcts = [Chem.MolToSmiles(mol) for mol in am_rcts]
+    pdts = [Chem.MolToSmiles(mol) for mol in am_pdts]
+    return '.'.join(rcts) + '>>' + '.'.join(pdts)
+
 if __name__ == "__main__":
     # smi1 = 'CC(C)=CCCC(C)=CCCC(C)=CCOP(=O)(O)OP(=O)(O)O'
     # rc1 = (6, 8, 12, 11, 13, 14, 15)

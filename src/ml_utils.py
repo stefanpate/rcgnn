@@ -33,17 +33,19 @@ from src.featurizer import (
     MultiHotAtomFeaturizer,
     MultiHotBondFeaturizer,
     cp_reaction_dp_from_smi,
+    ReactionDRFPFeaturizer,
 )
 from chemprop.featurizers import (
     CondensedGraphOfReactionFeaturizer,
-    RxnMode
+    RxnMode,
 )
 
 featurizers = {
     'cgr': (ReactionDataset, CondensedGraphOfReactionFeaturizer, build_dataloader),
     'rxn_simple': (RxnRCDataset, SimpleReactionMolGraphFeaturizer, build_dataloader),
     'rxn_rc': (RxnRCDataset, RCVNReactionMolGraphFeaturizer, build_dataloader),
-    'mfp': (MFPDataset, ReactionMorganFeaturizer, mfp_build_dataloader)
+    'mfp': (MFPDataset, ReactionMorganFeaturizer, mfp_build_dataloader),
+    'drfp': (MFPDataset, ReactionDRFPFeaturizer, mfp_build_dataloader),
 }
 
 def construct_featurizer(cfg: DictConfig):
@@ -57,6 +59,8 @@ def construct_featurizer(cfg: DictConfig):
     
     if cfg.model.featurizer == 'mfp':
         featurizer = featurizer_base(radius=cfg.model.radius, length=cfg.model.vec_len)
+    elif cfg.model.featurizer == 'drfp':
+        featurizer = featurizer_base(length=cfg.model.vec_len)
     elif cfg.model.featurizer == 'cgr':
         featurizer = featurizer_base(mode_=RxnMode.REAC_PROD)
     else:
