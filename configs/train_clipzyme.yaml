@@ -1,8 +1,8 @@
 defaults:
   - filepaths: base
-  - data: sprhea_rcmcs
+  - data: sprhea_homology
   - model: clipzyme
-  - training: base
+  - training: clipzyme
   - _self_
 
 exp: debug_clip

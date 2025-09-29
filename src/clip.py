@@ -1,7 +1,6 @@
 from clipzyme.utils.screening import process_mapped_reaction
 from clipzyme.utils.loading import default_collate
 from clipzyme.models.protmol import EnzymeReactionCLIP
-from clipzyme.models.abstract import AbstractModel
 from clipzyme.models.chemprop import DMPNNEncoder
 import torch
 from torch import nn
@@ -133,7 +132,7 @@ class EnzymeReactionCLIP(LightningModule):
         Y = batch["target"]
         mask = Y_hat.isfinite()
         loss = F.binary_cross_entropy_with_logits(Y_hat[mask], Y[mask], pos_weight=self.pos_weight)
-        self.log("train_loss", loss, prog_bar=True, on_step=False, on_epoch=True, batch_size=len(batch["target"]))
+        self.log("train_loss", loss, prog_bar=True, on_step=False, on_epoch=True, batch_size=batch["target"].shape[0])
         return loss
     
     def validation_step(self, batch, batch_idx: int = 0):
@@ -141,7 +140,7 @@ class EnzymeReactionCLIP(LightningModule):
         Y = batch["target"]
         mask = Y_hat.isfinite()
         loss = F.binary_cross_entropy_with_logits(Y_hat[mask], Y[mask], pos_weight=self.pos_weight)
-        self.log("val_loss", loss, batch_size=len(batch["target"]), prog_bar=True, on_step=False, on_epoch=True)
+        self.log("val_loss", loss, batch_size=batch["target"].shape[0], prog_bar=True, on_step=False, on_epoch=True)
         return loss
     
     def predict_step(self, batch, batch_idx: int = 0):
