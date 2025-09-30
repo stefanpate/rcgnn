@@ -3,8 +3,6 @@ defaults:
   - data: ???
   - model: rc_agg
   - training: base
-  - override hydra/hydra_logging: disabled # Redundant w/ mlflow
-  - override hydra/job_logging: disabled # Redundant w/ mlflow
   - override hydra/launcher: quest_gpu
   - _self_
 

@@ -159,7 +159,7 @@ def construct_model(cfg: DictConfig, embed_dim: int, featurizer, device, ckpt=No
         
     # Load from ckpt
     if ckpt:
-        ckpt = torch.load(ckpt, map_location=device)
+        ckpt = torch.load(ckpt, map_location=device, weights_only=False)
         model.load_state_dict(ckpt['state_dict'])
         
     return model

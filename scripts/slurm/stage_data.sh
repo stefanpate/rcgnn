@@ -3,11 +3,11 @@
 #SBATCH -p b1039
 #SBATCH -N 1
 #SBATCH -n 1
-#SBATCH --mem=32GB
-#SBATCH -t 4:00:00
+#SBATCH --mem=20GB
+#SBATCH -t 2:00:00
 #SBATCH --job-name="st_dat"
-#SBATCH --output=/home/spn1560/hiec/logs/out/%A
-#SBATCH --error=/home/spn1560/hiec/logs/error/%A
+#SBATCH --output=/home/spn1560/hiec/logs/out/%x_%A.out
+#SBATCH --error=/home/spn1560/hiec/logs/error/%x_%A.err
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
 #SBATCH --array=0
@@ -16,7 +16,8 @@
 # Args
 script=/home/spn1560/hiec/scripts/stage_data.py
 data=(
-    sprhea_rcmcs
+    sprhea_n_100
+    # sprhea_rcmcs
     # sprhea_homology
 )
 
