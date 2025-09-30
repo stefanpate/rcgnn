@@ -3,9 +3,9 @@
 #SBATCH -p b1039
 #SBATCH -N 1
 #SBATCH -n 1
-#SBATCH --mem=64GB
-#SBATCH -t 10:00:00
-#SBATCH --job-name="tr_clip"
+#SBATCH --mem=32GB
+#SBATCH -t 4:00:00
+#SBATCH --job-name="st_dat"
 #SBATCH --output=/home/spn1560/hiec/logs/out/%A
 #SBATCH --error=/home/spn1560/hiec/logs/error/%A
 #SBATCH --mail-type=END
@@ -14,13 +14,10 @@
 #SBATCH --mail-user=stefan.pate@northwestern.edu
 
 # Args
-script=/home/spn1560/hiec/scripts/train_clipzyme.py
-exp=debug_clip_8
-split_idx=(
-    0
-    # 1
-    # 2
-    # -1
+script=/home/spn1560/hiec/scripts/stage_data.py
+data=(
+    sprhea_rcmcs
+    # sprhea_homology
 )
 
 # Commands
@@ -29,4 +26,4 @@ module purge
 module load gcc/9.2.0
 module load python-miniconda3/4.12.0
 source activate clipzyme
-python $script exp=$exp data.split_idx=${split_idx[$SLURM_ARRAY_TASK_ID]}
+python $script data=${data[$SLURM_ARRAY_TASK_ID]}

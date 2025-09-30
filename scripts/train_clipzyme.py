@@ -1,13 +1,12 @@
 import hydra
 from pathlib import Path
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 import torch
 import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import CSVLogger
 from src.clip import EnzymeReactionCLIP, ClipDataset, clip_collate
-from torch_geometric.data.batch import Batch
 import torch
 from torch.utils.data import DataLoader
 
@@ -59,7 +58,6 @@ def main(cfg: DictConfig):
     train_reactions, train_proteins, train_targets = fmt_data(train_data)
     val_reactions, val_proteins, val_targets = (None, None, None) if val_data is None else fmt_data(val_data)
 
-
     train_dataset = ClipDataset(
         reactions=train_reactions,
         protein_embeddings=train_proteins,
@@ -74,13 +72,13 @@ def main(cfg: DictConfig):
         train_dataset,
         shuffle=True,
         collate_fn=clip_collate,
-        batch_size=cfg.model.batch_size,
+        batch_size=cfg.training.batch_size,
     )
     val_dataloader = None if val_data is None else DataLoader(
         val_dataset,
         shuffle=False,
         collate_fn=clip_collate,
-        batch_size=cfg.model.batch_size,
+        batch_size=cfg.training.batch_size,
     )
 
     # Construct model
@@ -102,8 +100,7 @@ def main(cfg: DictConfig):
         enable_progress_bar=True,
         accelerator="auto",
         devices=1,
-        max_epochs=1,#TODO
-        # max_epochs=cfg.training.n_epochs, # number of epochs to train for
+        max_epochs=cfg.training.n_epochs,
         logger=logger,
     )
 
