@@ -97,6 +97,10 @@ def featurize_data(cfg: DictConfig, rng: np.random.Generator, train_data: pd.Dat
         val_datapoints = []
         for _, row in val_data.iterrows():
             y = np.array([row['y']]).astype(np.float32)
+            # TODO: rm
+            dp = datapoint_from_smi(smarts=row['smarts'], reaction_center=row['reaction_center'], y=y, x_d=row['protein_embedding'])
+            fdp = featurizer((dp.reactants, dp.products, dp.rcs)) # Precompute featurization
+            # TODO: end rm
             val_datapoints.append(datapoint_from_smi(smarts=row['smarts'], reaction_center=row['reaction_center'], y=y, x_d=row['protein_embedding']))
 
         if shuffle_val:
@@ -107,7 +111,8 @@ def featurize_data(cfg: DictConfig, rng: np.random.Generator, train_data: pd.Dat
     else:
         val_dataloader = None
 
-    return train_dataloader, val_dataloader, featurizer
+    return val_data, val_dataset, val_dataloader, featurizer # TODO: rm after debug
+    # return train_dataloader, val_dataloader, featurizer
 
 def construct_model(cfg: DictConfig, embed_dim: int, featurizer, device, ckpt=None):
     pos_weight = torch.ones([1]) * cfg.data.neg_multiple * cfg.training.pos_multiplier

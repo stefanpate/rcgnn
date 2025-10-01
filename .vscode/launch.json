@@ -19,7 +19,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args": "${command:pickArgs}",
-            "justMyCode": true,
+            "justMyCode": false,
             "cwd": "${fileDirname}",
         },
         {

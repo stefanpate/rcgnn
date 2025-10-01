@@ -415,6 +415,8 @@ class RCVNReactionMolGraphFeaturizer(SimpleReactionMolGraphFeaturizer):
             cumsum_atoms
         )
 
+        print(V.shape, max(max(elt) for elt in edge_index)) # TODO: remove
+
         V, E, edge_index = self._append_vn(
             reactants,
             products,
@@ -425,9 +427,12 @@ class RCVNReactionMolGraphFeaturizer(SimpleReactionMolGraphFeaturizer):
             cumsum_atoms,
             edge_i,
         )
+        print(V.shape, max(max(elt) for elt in edge_index)) # TODO: remove
 
         rev_edge_index = np.arange(len(E)).reshape(-1, 2)[:, ::-1].ravel()
         edge_index = np.array(edge_index, int)
+
+        assert edge_index.max() < V.shape[0] # TODO: remove
 
         return MolGraph(V, E, edge_index, rev_edge_index)
     
