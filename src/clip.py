@@ -181,17 +181,23 @@ class ClipDataset:
         if len(reactions) != len(protein_embeddings) or len(reactions) != len(targets):
             raise ValueError("Length of reactions, protein_embeddings, and targets must be the same.")
         
-        self.reactions = reactions
+        self.idx2smarts = {}
+        self.smarts2rxn = {}
+        for idx, sma in enumerate(reactions):
+            self.idx2smarts[idx] = sma
+
+            if sma not in self.smarts2rxn:
+                self.smarts2rxn[sma] = process_mapped_reaction(sma)
+
         self.protein_embeddings = protein_embeddings
         self.targets = targets
     
     def __len__(self):
-        return len(self.reactions)
+        return len(self.idx2smarts)
     
     def __getitem__(self, idx) -> dict[str, tuple[Data, Data] | torch.Tensor]:
-        rcts, pdts = process_mapped_reaction(self.reactions[idx])
         return {
-            "reaction": (rcts, pdts),
+            "reaction": self.smarts2rxn[self.idx2smarts[idx]],
             "protein_embedding": self.protein_embeddings[idx],
             "target": self.targets[idx],
         }
@@ -221,6 +227,7 @@ def build_NoamLike_LRSched(
 
 if __name__ == "__main__":
     from hydra import initialize, compose
+    from time import perf_counter
     with initialize(version_base=None, config_path="../configs"):
         cfg = compose(config_name="train_clipzyme")
 
@@ -240,3 +247,13 @@ if __name__ == "__main__":
     print(out)
     loss = model.training_step(batch, 0)
     print(loss)
+
+    tic = perf_counter()
+    print(dataset[0])
+    toc = perf_counter()
+    print(f"data retrieval time: {toc - tic:.4f} s")
+
+    tic = perf_counter()
+    print(dataset[0])
+    toc = perf_counter()
+    print(f"data retrieval time: {toc - tic:.4f} s")
