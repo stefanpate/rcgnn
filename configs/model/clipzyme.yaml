@@ -9,4 +9,8 @@ chemprop_hidden_dim: 1280
 chemprop_node_dim: 9
 chemprop_edge_dim: 3
 chemprop_pool: null
-ckpt_path: null # NOTE: If provided, overrides all args passed to model
+
+# NOTE: If provided, overrides all args passed to model.
+# NOTE: use '_' instead of '=' in the filename
+# Note: this is just the fn, e.g., epoch_0-step_62.ckpt
+ckpt_fn: null

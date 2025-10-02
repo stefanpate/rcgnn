@@ -85,20 +85,17 @@ def main(cfg: DictConfig):
     )
 
     exp = cfg.exp or "Default"
+    if cfg.model.ckpt_fn is not None:
+        ckpt = Path(cfg.filepaths.runs) / exp / version / 'checkpoints' / cfg.model.ckpt_fn.replace('_', '=')
+    else:
+        ckpt = None
 
     # Construct model
-    if cfg.model.ckpt_path is not None:
-        ckpt = Path(cfg.filepaths.runs) / exp / version / 'checkpoints' / cfg.model.ckpt_path.replace('_', '=')
-        log.info(f"Loading model from checkpoint: {ckpt}")
-        model = EnzymeReactionCLIP.load_from_checkpoint(
-            checkpoint_path=ckpt
-        )
-    else:
-        model = EnzymeReactionCLIP(
-            model_hps=cfg.model,
-            negative_multiple=cfg.data.neg_multiple,
-            positive_multiplier=cfg.training.pos_multiplier,
-        )
+    model = EnzymeReactionCLIP(
+        model_hps=cfg.model,
+        negative_multiple=cfg.data.neg_multiple,
+        positive_multiplier=cfg.training.pos_multiplier,
+    )
 
 
     # Track
@@ -122,7 +119,7 @@ def main(cfg: DictConfig):
         model=model,
         train_dataloaders=train_dataloader,
         val_dataloaders=val_dataloader,
-        ckpt_path=cfg.model.ckpt_path
+        ckpt_path=ckpt,
     )
 
     # Predict
