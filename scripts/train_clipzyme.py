@@ -107,7 +107,8 @@ def main(cfg: DictConfig):
     trainer.fit(
         model=model,
         train_dataloaders=train_dataloader,
-        val_dataloaders=val_dataloader
+        val_dataloaders=val_dataloader,
+        ckpt_path=cfg.model.ckpt_path
     )
 
     # Predict

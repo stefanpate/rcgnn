@@ -228,11 +228,26 @@ def build_NoamLike_LRSched(
 if __name__ == "__main__":
     from hydra import initialize, compose
     from time import perf_counter
+    import pytorch_lightning as pl
     with initialize(version_base=None, config_path="../configs"):
         cfg = compose(config_name="train_clipzyme")
 
     model = EnzymeReactionCLIP(cfg.model)
     print(model)
+    print(model.pos_weight)
+
+    # model = EnzymeReactionCLIP()
+    # print(model)
+
+    ckpt = '/home/stef/quest_data/hiec/results/runs/debug/inner_fold_1_of_3/checkpoints/epoch=0-step=62-v1.ckpt'
+    trainer = pl.Trainer(max_epochs=1, logger=False)
+    trainer.fit(model, ckpt_path=ckpt)
+
+
+    model = EnzymeReactionCLIP.load_from_checkpoint(ckpt)
+    print(model)
+    print(model.pos_weight)
+
     reactions = [
         "[CH3:1][N+:2]([CH3:3])([CH3:4])[CH2:5][CH:6]=[O:7].[O:9]=[O:10].[OH2:8]>>[CH3:1][N+:2]([CH3:3])([CH3:4])[CH2:5][C:6](=[O:7])[OH:8].[OH:9][OH:10]",
         '[CH:1]([CH2:3][CH2:5][CH:6]([NH2:7])[C:8](=[O:9])[OH:10])=[O:4].[c:15]1([C:21]([NH2:22])=[O:23])[cH:16][n+:17]([CH:24]2[O:25][CH:27]([CH2:30][O:32][P:33](=[O:34])([OH:35])[O:36][P:37](=[O:38])([OH:39])[O:40][CH2:41][CH:42]3[O:43][CH:45]([n:48]4[cH:50][n:53][c:55]5[c:51]4[n:54][cH:59][n:61][c:60]5[NH2:62])[CH:46]([O:49][P:52](=[O:56])([OH:57])[OH:58])[CH:44]3[OH:47])[CH:28]([OH:31])[CH:26]2[OH:29])[cH:18][cH:19][cH:20]1.[OH:2][P:11](=[O:12])([OH:13])[OH:14]>>[C:1]([O:2][P:11](=[O:12])([OH:13])[OH:14])([CH2:3][CH2:5][CH:6]([NH2:7])[C:8](=[O:9])[OH:10])=[O:4].[C:15]1([C:21]([NH2:22])=[O:23])=[CH:16][N:17]([CH:24]2[O:25][CH:27]([CH2:30][O:32][P:33](=[O:34])([OH:35])[O:36][P:37](=[O:38])([OH:39])[O:40][CH2:41][CH:42]3[O:43][CH:45]([n:48]4[cH:50][n:53][c:55]5[c:51]4[n:54][cH:59][n:61][c:60]5[NH2:62])[CH:46]([O:49][P:52](=[O:56])([OH:57])[OH:58])[CH:44]3[OH:47])[CH:28]([OH:31])[CH:26]2[OH:29])[CH:18]=[CH:19][CH2:20]1',

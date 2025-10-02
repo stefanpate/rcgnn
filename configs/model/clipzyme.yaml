@@ -9,3 +9,4 @@ chemprop_hidden_dim: 1280
 chemprop_node_dim: 9
 chemprop_edge_dim: 3
 chemprop_pool: null
+ckpt_path: null # NOTE: If provided, overrides all args passed to model
