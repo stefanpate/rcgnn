@@ -20,7 +20,7 @@ def assemble_data(
     '''
     splits = train_val_splits + [test_split]
     datas = []
-    cols = ['protein_idx', 'reaction_idx', 'pid', 'rid', 'protein_embedding', 'smarts', 'reaction_center', 'y']
+    cols = ['protein_idx', 'reaction_idx', 'pid', 'rid', 'protein_embedding', 'smarts', 'am_smarts', 'reaction_center', 'y']
     for X, y in splits:
         data = []
         for (pidx, ridx), yi in zip(X, y):
@@ -31,6 +31,7 @@ def assemble_data(
                     idx_sample[pidx],
                     idx_feature[ridx],
                     list(proteins[idx_sample[pidx]]),
+                    reactions[idx_feature[ridx]]['smarts'],
                     reactions[idx_feature[ridx]]['am_smarts'],
                     reactions[idx_feature[ridx]]['rcs'],
                     yi
