@@ -9,12 +9,15 @@ from pytorch_lightning.loggers import CSVLogger
 from src.clip import EnzymeReactionCLIP, ClipDataset, clip_collate
 import torch
 from torch.utils.data import DataLoader
+from logging import getLogger
 
 def downsample_negatives(data: pd.DataFrame, neg_multiple: int, rng: np.random.Generator):
     neg_idxs = data[data['y'] == 0].index
     n_to_rm = len(neg_idxs) - (len(data[data['y'] == 1]) * neg_multiple)
     idx_to_rm = rng.choice(neg_idxs, n_to_rm, replace=False)
     data.drop(axis=0, index=idx_to_rm, inplace=True)
+
+log = getLogger(__name__)
 
 @hydra.main(version_base=None, config_path="../configs", config_name="train_clipzyme")
 def main(cfg: DictConfig):
@@ -31,7 +34,7 @@ def main(cfg: DictConfig):
 
     # Arrange data
     if cfg.data.split_idx == -2: # Train on full dataset
-        version = "full_data"
+        version = f"{cfg.data.dataset}_{cfg.data.toc}_{cfg.data.split_strategy}_full_data"
         more_train_data = pd.read_parquet(
             Path(cfg.filepaths.scratch) / cfg.data.subdir_patt / "test.parquet"
         )
@@ -39,14 +42,14 @@ def main(cfg: DictConfig):
         train_data = pd.concat(train_val_splits + [more_train_data], ignore_index=True)
         val_data = None
     elif cfg.data.split_idx == -1: # Test on outer fold
-        version = "outer_fold"
+        version = f"{cfg.data.dataset}_{cfg.data.toc}_{cfg.data.split_strategy}_outer_fold"
         val_data = pd.read_parquet(
             Path(cfg.filepaths.scratch) / cfg.data.subdir_patt / "test.parquet"
         )
         val_data['protein_embedding'] = val_data['protein_embedding'].apply(lambda x : np.array(x))
         train_data = pd.concat(train_val_splits, ignore_index=True)
     else: # Test on inner fold
-        version = f"inner_fold_{cfg.data.split_idx + 1}_of_{cfg.data.n_splits}"
+        version = f"{cfg.data.dataset}_{cfg.data.toc}_{cfg.data.split_strategy}_inner_fold_{cfg.data.split_idx + 1}_of_{cfg.data.n_splits}"
         train_data = pd.concat([train_val_splits[i] for i in range(cfg.data.n_splits) if i != cfg.data.split_idx], ignore_index=True)
         val_data = train_val_splits[cfg.data.split_idx]
         downsample_negatives(val_data, 1, rng) # Inner fold val are oversampled
@@ -81,16 +84,26 @@ def main(cfg: DictConfig):
         batch_size=cfg.training.batch_size,
     )
 
+    exp = cfg.exp or "Default"
+
     # Construct model
-    model = EnzymeReactionCLIP(
-        model_hps=cfg.model,
-        negative_multiple=cfg.data.neg_multiple,
-        positive_multiplier=cfg.training.pos_multiplier,
-    )
+    if cfg.model.ckpt_path is not None:
+        ckpt = Path(cfg.filepaths.runs) / exp / version / 'checkpoints' / cfg.model.ckpt_path.replace('_', '=')
+        log.info(f"Loading model from checkpoint: {ckpt}")
+        model = EnzymeReactionCLIP.load_from_checkpoint(
+            checkpoint_path=ckpt
+        )
+    else:
+        model = EnzymeReactionCLIP(
+            model_hps=cfg.model,
+            negative_multiple=cfg.data.neg_multiple,
+            positive_multiplier=cfg.training.pos_multiplier,
+        )
+
 
     # Track
     logger = CSVLogger(
-        name=cfg.exp or "Default",
+        name=exp,
         save_dir=cfg.filepaths.runs,
         version=version,
     )
@@ -102,6 +115,7 @@ def main(cfg: DictConfig):
         devices=1,
         max_epochs=cfg.training.n_epochs,
         logger=logger,
+        default_root_dir=Path(cfg.filepaths.runs) / exp / version,
     )
 
     trainer.fit(
@@ -127,7 +141,7 @@ def main(cfg: DictConfig):
     target_output = val_data.loc[:, ["protein_idx", "reaction_idx", "pid", "rid", "y"]]
     target_output.loc[:, "logits"] = logits # These are not really logits but keep naming for consistency
 
-    subdir = Path(f"{cfg.exp}/{version}")
+    subdir = Path(f"{exp}/{version}")
     if not subdir.exists():
         subdir.mkdir(parents=True)
 
