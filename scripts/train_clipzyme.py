@@ -57,7 +57,7 @@ def main(cfg: DictConfig):
     downsample_negatives(train_data, cfg.data.neg_multiple, rng) # Inner fold train are oversampled
 
     # Prepare data
-    fmt_data = lambda df: (df['smarts'].tolist(), torch.tensor(np.stack(df['protein_embedding'].to_numpy())), torch.tensor(df['y'].to_numpy()).float().unsqueeze(1))
+    fmt_data = lambda df: (df['am_smarts'].tolist(), torch.tensor(np.stack(df['protein_embedding'].to_numpy())), torch.tensor(df['y'].to_numpy()).float().unsqueeze(1))
     train_reactions, train_proteins, train_targets = fmt_data(train_data)
     val_reactions, val_proteins, val_targets = (None, None, None) if val_data is None else fmt_data(val_data)
 

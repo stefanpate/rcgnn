@@ -81,12 +81,17 @@ def featurize_data(cfg: DictConfig, rng: np.random.Generator, train_data: pd.Dat
         Set to False when predicting / testing to avoid shuffling
     '''
     featurizer, datapoint_from_smi, dataset_base, generate_dataloader = construct_featurizer(cfg)
+
+    if cfg.model.featurizer in ['cgr', 'drfp']:
+        smarts_k = 'am_smarts'
+    else:
+        smarts_k = 'smarts'
     
     if train_data is not None:
         train_datapoints = []
         for _, row in train_data.iterrows():
             y = np.array([row['y']]).astype(np.float32)
-            train_datapoints.append(datapoint_from_smi(smarts=row['smarts'], reaction_center=row['reaction_center'], y=y, x_d=row['protein_embedding']))
+            train_datapoints.append(datapoint_from_smi(smarts=row[smarts_k], reaction_center=row['reaction_center'], y=y, x_d=row['protein_embedding']))
         
         train_dataset = dataset_base(train_datapoints, featurizer=featurizer)
         train_dataloader = generate_dataloader(train_dataset, shuffle=True, seed=cfg.data.seed)
