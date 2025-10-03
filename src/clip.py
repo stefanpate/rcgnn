@@ -43,6 +43,10 @@ class EnzymeReactionCLIP(LightningModule):
         self.args = model_hps
         pos_weight = torch.ones([1]) * negative_multiple * positive_multiplier
         self.register_buffer("pos_weight", pos_weight) # Adds non-trainable tensor to model state dict thus goes to right device
+        self.linear_prot_layer = torch.nn.Linear(
+            in_features=1280,
+            out_features=model_hps.chemprop_hidden_dim,
+        )
 
         wln_diff_args = copy.deepcopy(model_hps)
         if model_hps.model_name != "enzyme_reaction_clip_wldnv1":
@@ -51,12 +55,6 @@ class EnzymeReactionCLIP(LightningModule):
             wln_diff_args.chemprop_edge_dim = model_hps.chemprop_hidden_dim
             # wln_diff_args.chemprop_num_layers = 1 ## Sic clipzyme original code
             self.wln_diff = DMPNNEncoder(wln_diff_args)
-
-            # mol: attention pool
-            self.final_linear = nn.Linear(
-                model_hps.chemprop_hidden_dim, model_hps.chemprop_hidden_dim, bias=False
-            )
-            self.attention_fc = nn.Linear(model_hps.chemprop_hidden_dim, 1, bias=False)
 
     def encode_reaction(self, batch):
         '''
@@ -117,6 +115,7 @@ class EnzymeReactionCLIP(LightningModule):
 
     def forward(self, batch) -> torch.Tensor:
         P = batch["protein_embedding"]
+        P = self.linear_prot_layer(P)
         P = P / P.norm(
             dim=1, keepdim=True
         )
