@@ -17,8 +17,10 @@ import numpy as np
 import scipy.sparse as sp
 from Bio import Align
 from Bio.Align import substitution_matrices
+from drfp import DrfpEncoder
+from tqdm import tqdm
 
-filepaths = OmegaConf.load("/home/spn1560/hiec/configs/filepaths/base.yaml")
+filepaths = OmegaConf.load("../configs/filepaths/base.yaml")
 embeddings_superdir = Path(filepaths['results']) / "embeddings"
 sim_mats_dir = Path(filepaths['results']) / "similarity_matrices"
 data_fp = Path(filepaths['data'])
@@ -102,6 +104,29 @@ def calc_tani_sim(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_
 
     S = tanimoto_similarity_matrix(rxns, idx_feature)
     save_sim_mat(S, save_to)
+
+def calc_drfp_sim(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_mats_dir):
+    save_to = sim_mats_dir / f"{args.dataset}_{args.toc}_drfp"
+
+    rxns = load_json(data_filepath / args.dataset / f"{args.toc}.json")
+    _, _, idx_feature = construct_sparse_adj_mat(data_fp / args.dataset / f"{args.toc}.csv")
+    V = []
+    for i, id in tqdm(idx_feature.items(), total=len(idx_feature), desc="Calculating DRFP embeddings"):
+        rxn = rxns[id]['am_smarts']
+        embed = DrfpEncoder.encode(rxn)[0]
+        V.append(embed)
+    
+
+    V = np.array(V)
+    D = (V @ V.T)
+    N = V.square().sum(axis=1).reshape(-1, 1)
+    S = D / (N + N.T - D)
+
+    assert S.shape == (len(idx_feature), len(idx_feature))
+    assert (S >= 0).all() and (S <= 1).all()
+
+    save_sim_mat(S, save_to)
+    print(f"Saved DRFP similarity matrix to {save_to}")
 
 def calc_agg_mfp_cosine_sim(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_mats_dir):
     save_to = sim_mats_dir / f"{args.dataset}_{args.toc}_agg_mfp_cosine"
@@ -213,6 +238,12 @@ parser_tanimoto = subparsers.add_parser("tanimoto", help="Calculate substrate-al
 parser_tanimoto.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
 parser_tanimoto.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
 parser_tanimoto.set_defaults(func=calc_tani_sim)
+
+# DRFP similarity
+parser_drfp = subparsers.add_parser("drfp", help="Calculate DRFP similarity")
+parser_drfp.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
+parser_drfp.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
+parser_drfp.set_defaults(func=calc_drfp_sim)
 
 # Global sequence identity
 parser_gsi = subparsers.add_parser("gsi", help="Calculate global sequence identity")

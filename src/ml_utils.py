@@ -82,7 +82,7 @@ def featurize_data(cfg: DictConfig, rng: np.random.Generator, train_data: pd.Dat
     '''
     featurizer, datapoint_from_smi, dataset_base, generate_dataloader = construct_featurizer(cfg)
 
-    if cfg.model.featurizer in ['cgr', 'drfp']:
+    if cfg.model.featurizer == 'cgr':
         smarts_k = 'am_smarts'
     else:
         smarts_k = 'smarts'
