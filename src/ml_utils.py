@@ -102,7 +102,7 @@ def featurize_data(cfg: DictConfig, rng: np.random.Generator, train_data: pd.Dat
         val_datapoints = []
         for _, row in val_data.iterrows():
             y = np.array([row['y']]).astype(np.float32)
-            val_datapoints.append(datapoint_from_smi(smarts=row['smarts'], reaction_center=row['reaction_center'], y=y, x_d=row['protein_embedding']))
+            val_datapoints.append(datapoint_from_smi(smarts=row[smarts_k], reaction_center=row['reaction_center'], y=y, x_d=row['protein_embedding']))
 
         if shuffle_val:
             rng.shuffle(val_datapoints) # Avoid weirdness of calculating metrics with only one class in the batch
