@@ -4,7 +4,7 @@ from src.similarity import(
     rcmcs_similarity_matrix,
     mcs_similarity_matrix,
     tanimoto_similarity_matrix,
-    agg_mfp_cosine_similarity_matrix,
+    morgan_fingerprint,
     homology_similarity_matrix,
     blosum_similarity_matrix
 )
@@ -19,6 +19,7 @@ from Bio import Align
 from Bio.Align import substitution_matrices
 from drfp import DrfpEncoder
 from tqdm import tqdm
+from rdkit import Chem
 
 filepaths = OmegaConf.load("../configs/filepaths/base.yaml")
 embeddings_superdir = Path(filepaths['results']) / "embeddings"
@@ -119,7 +120,7 @@ def calc_drfp_sim(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_
 
     V = np.array(V)
     D = (V @ V.T)
-    N = V.square().sum(axis=1).reshape(-1, 1)
+    N = np.square(V).sum(axis=1).reshape(-1, 1)
     S = D / (N + N.T - D)
 
     assert S.shape == (len(idx_feature), len(idx_feature))
@@ -129,13 +130,63 @@ def calc_drfp_sim(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_
     print(f"Saved DRFP similarity matrix to {save_to}")
 
 def calc_agg_mfp_cosine_sim(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_mats_dir):
+    '''
+    Calculates consine similarity between abs(rct_mfp_sum - pdt_mfp_sum) reaction vectors
+    '''
     save_to = sim_mats_dir / f"{args.dataset}_{args.toc}_agg_mfp_cosine"
 
     rxns = load_json(data_filepath / args.dataset / f"{args.toc}.json")
     _, _, idx_feature = construct_sparse_adj_mat(data_fp / args.dataset / f"{args.toc}.csv")
 
-    S = agg_mfp_cosine_similarity_matrix(rxns, idx_feature)
+    rxn_vecs = []
+    for entry in tqdm(rxns.values(), total=len(rxns), desc="Calculating aggregated Morgan fingerprints"):
+        rxn = entry['smarts']
+        mols = [[Chem.MolFromSmiles(smi) for smi in side.split(".")] for side in rxn.split(">>")]
+        mfps = [[morgan_fingerprint(mol) for mol in side] for side in mols]
+        rvec = abs(sum(mfps[0]) - sum(mfps[1]))
+        
+        n = np.linalg.norm(rvec)
+        if n != 0:
+            rvec /= np.linalg.norm(rvec)
+        
+        rxn_vecs.append(rvec)
+
+    V = np.array(rxn_vecs)
+    S = V @ V.T
+    assert S.shape == (len(idx_feature), len(idx_feature))
+    assert (S >= -0.001).all() and (S <= 1.001).all()
+
     save_sim_mat(S, save_to)
+    print(f"Saved aggregated Morgan fingerprint cosine similarity matrix to {save_to}")
+
+def calc_concat_mfp_sim(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_mats_dir):
+    '''
+    Calculates Tanimoto similarity between concat(multiple rct mfp and multiple pdt mfp) reaction vectors
+    '''
+    save_to = sim_mats_dir / f"{args.dataset}_{args.toc}_concat_mfp_tanimoto"
+
+    rxns = load_json(data_filepath / args.dataset / f"{args.toc}.json")
+    _, _, idx_feature = construct_sparse_adj_mat(data_fp / args.dataset / f"{args.toc}.csv")
+
+    rct_vecs = []
+    pdt_vecs = []
+    for entry in tqdm(rxns.values(), total=len(rxns), desc="Calculating concatenated Morgan fingerprints"):
+        rxn = entry['smarts']
+        mols = [Chem.MolFromSmiles(side) for side in rxn.split(">>")]
+        mfps = [morgan_fingerprint(side) for side in mols]
+        rct_vecs.append(mfps[0])
+        pdt_vecs.append(mfps[1])
+
+    V = np.array([np.concatenate([r, p]) for r, p in zip(rct_vecs, pdt_vecs)])
+    D = (V @ V.T)
+    N = np.square(V).sum(axis=1).reshape(-1, 1)
+    S = D / (N + N.T - D)
+
+    assert S.shape == (len(idx_feature), len(idx_feature))
+    assert (S >= -0.001).all() and (S <= 1.001).all()
+
+    save_sim_mat(S, save_to)
+    print(f"Saved concatenated Morgan fingerprint Tanimoto similarity matrix to {save_to}")
 
 def calc_gsi(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_mats_dir):
 
@@ -264,6 +315,12 @@ parser_agg_mfp_cosine = subparsers.add_parser("agg-mfp-cosine", help="Calculate 
 parser_agg_mfp_cosine.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
 parser_agg_mfp_cosine.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
 parser_agg_mfp_cosine.set_defaults(func=calc_agg_mfp_cosine_sim)
+
+# Concat mfp Tanimoto similarity
+parser_concat_mfp = subparsers.add_parser("concat-mfp-tanimoto", help="Calculate Tanimoto similarity of concatenated Morgan FPs")
+parser_concat_mfp.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
+parser_concat_mfp.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
+parser_concat_mfp.set_defaults(func=calc_concat_mfp_sim)
 
 def main():
     args = parser.parse_args()

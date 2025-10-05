@@ -1,0 +1,13 @@
+defaults:
+  - filepaths: base
+  - _self_
+
+dataset: sprhea
+toc: v3_folded_pt_ns
+rules: ${filepaths.artifacts}/minimal1224_all_uniprot.tsv
+
+hydra:
+  run:
+    dir: ${filepaths.data}/${...dataset}
+  job:
+    chdir: True
