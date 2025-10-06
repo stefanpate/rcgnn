@@ -1,5 +1,6 @@
 from typing import Sequence, Union, List, Tuple
 import numpy as np
+from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.Chem.rdchem import Atom, HybridizationType, Mol, Bond, BondType
 from chemprop.featurizers.base import VectorFeaturizer, GraphFeaturizer
@@ -8,7 +9,6 @@ from chemprop.data.molgraph import MolGraph
 from chemprop.featurizers.molgraph.mixins import _MolGraphFeaturizerMixin
 from dataclasses import dataclass
 from drfp import DrfpEncoder
-from src.cheminfo import de_am
 
 
 class MultiHotAtomFeaturizer(VectorFeaturizer[Atom]):
@@ -505,8 +505,10 @@ class ReactionDRFPFeaturizer:
             reactants: List[Mol],
             products: List[Mol],
     ) -> np.ndarray:
-        de_am_rxn = de_am(reactants, products)
-        fp = DrfpEncoder.encode(de_am_rxn, n_folded_length=self.length)[0]
+        rcts = [Chem.MolToSmiles(mol) for mol in reactants]
+        pdts = [Chem.MolToSmiles(mol) for mol in products]
+        rxn = '.'.join(rcts) + '>>' + '.'.join(pdts)
+        fp = DrfpEncoder.encode(rxn, n_folded_length=self.length)[0]
 
         return fp.astype(np.float32)
 

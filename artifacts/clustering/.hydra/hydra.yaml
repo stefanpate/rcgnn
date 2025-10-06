@@ -5,7 +5,32 @@ hydra:
     dir: multirun/${now:%Y-%m-%d}/${now:%H-%M-%S}
     subdir: ${hydra.job.num}
   launcher:
-    _target_: hydra._internal.core_plugins.basic_launcher.BasicLauncher
+    submitit_folder: ${hydra.sweep.dir}/.submitit/%j
+    timeout_min: 2880
+    cpus_per_task: null
+    gpus_per_node: null
+    tasks_per_node: 1
+    mem_gb: 32
+    nodes: 1
+    name: ${hydra.job.name}
+    stderr_to_stdout: false
+    _target_: hydra_plugins.hydra_submitit_launcher.submitit_launcher.SlurmLauncher
+    partition: b1039
+    qos: null
+    comment: null
+    constraint: null
+    exclude: null
+    gres: null
+    cpus_per_gpu: null
+    gpus_per_task: null
+    mem_per_gpu: null
+    mem_per_cpu: null
+    account: b1039
+    signal_delay_s: 120
+    max_num_timeout: 0
+    additional_parameters: {}
+    array_parallelism: 256
+    setup: null
   sweeper:
     _target_: hydra._internal.core_plugins.basic_sweeper.BasicSweeper
     max_batch_size: null
@@ -83,12 +108,11 @@ hydra:
   overrides:
     hydra:
     - hydra.mode=RUN
-    task:
-    - toc=v3_folded_pt_ns
+    task: []
   job:
     name: cluster
     chdir: null
-    override_dirname: toc=v3_folded_pt_ns
+    override_dirname: ''
     id: ???
     num: ???
     config_name: cluster
@@ -123,6 +147,6 @@ hydra:
       hydra/hydra_help: default
       hydra/help: default
       hydra/sweeper: basic
-      hydra/launcher: basic
+      hydra/launcher: quest_cpu
       hydra/output: default
   verbose: false

@@ -602,21 +602,6 @@ def reaction_tanimoto_similarity(reactions: Iterable[str], norm: str = 'max', an
 
     return cum_score / cum_atoms
 
-def agg_mfp_cosine_similarity(reactions: Iterable[str]) -> float:
-    '''
-    Computes cosine similarity between abs(rct_mfp_sum - pdt_mfp_sum)
-    '''
-    rxn_vecs = []
-    for rxn in reactions:
-        mols = [[Chem.MolFromSmiles(smi) for smi in side.split(".")] for side in rxn.split(">>")]
-        mfps = [[morgan_fingerprint(mol) for mol in side] for side in mols]
-        rvec = abs(sum(mfps[0]) - sum(mfps[1]))
-        rvec /= np.linalg.norm(rvec)
-        rxn_vecs.append(rvec)
-
-    return np.dot(rxn_vecs[0], rxn_vecs[1])
-
-
 def extract_operator_patts(rxn_smarts:str, side:int):
     '''
     Returns list of smarts patts, one for each 
@@ -663,7 +648,7 @@ def tanimoto_similarity(bit_vec_1: np.ndarray, bit_vec_2: np.ndarray, dtype=np.f
     dot = np.dot(bit_vec_1, bit_vec_2)
     return dtype(dot / (bit_vec_1.sum() + bit_vec_2.sum() - dot))
 
-def morgan_fingerprint(mol: Mol, radius: int = 2, length: int = 2**10, use_features: bool = False, use_chirality: bool = False):
+def morgan_fingerprint(mol: Mol, radius: int = 2, length: int = 2**11, use_features: bool = False, use_chirality: bool = False):
     vec = AllChem.GetMorganFingerprintAsBitVect(
         mol,
         radius=radius,
@@ -746,15 +731,12 @@ def _wrap_rxn_mcs(args):
 def _wrap_rxn_tani(args):
     return reaction_tanimoto_similarity(*args)
 
-def _wrap_agg_mfp_cosine(args):
-    return agg_mfp_cosine_similarity(*args)
-
 def load_similarity_matrix(sim_path: Path, dataset: str, toc: str, sim_metric: str, dtype: np.dtype = np.float32):
-    if sim_metric == 'rcmcs':
+    if sim_metric in ['rcmcs', 'mcs', 'tanimoto', 'agg_mfp_cosine', 'drfp', 'unaligned_tanimoto']:
         S = np.load(
             sim_path / f"{dataset}_{toc}_{sim_metric}.npy"
         ).astype(np.float32)
-    else:
+    elif sim_metric in ['homology', 'blosum', 'esm']:
         for i, file in enumerate(sim_path.glob(f"{dataset}_{toc}_{sim_metric}*.npz")):
             chunk = sp.load_npz(file).astype(np.float32)
 
