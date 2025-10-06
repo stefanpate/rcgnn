@@ -737,11 +737,11 @@ def _wrap_rxn_tani(args):
     return reaction_tanimoto_similarity(*args)
 
 def load_similarity_matrix(sim_path: Path, dataset: str, toc: str, sim_metric: str, dtype: np.dtype = np.float32):
-    if sim_metric in ['rcmcs', 'mcs', 'tanimoto', 'agg_mfp_cosine', 'drfp', 'unaligned_tanimoto', 'esm']:
+    if sim_metric in ['mcs', 'tanimoto', 'agg_mfp_cosine', 'drfp', 'unaligned_tanimoto', 'esm']:
         S = np.load(
             sim_path / f"{dataset}_{toc}_{sim_metric}.npy"
         ).astype(np.float32)
-    elif sim_metric in ['homology', 'blosum', 'esm']:
+    elif sim_metric in ['homology', 'blosum', 'rcmcs']:
         for i, file in enumerate(sim_path.glob(f"{dataset}_{toc}_{sim_metric}*.npz")):
             chunk = sp.load_npz(file).astype(np.float32)
 

@@ -9,9 +9,9 @@ filepaths:
   tracking_uri: file:///home/stef/quest_data/hiec/results/runs
   figures: ${.artifacts}/figures
   similarity_matrices: ${.results}/similarity_matrices
-similarity_score: drfp
+similarity_score: rcmcs
 dataset: sprhea
-toc: v3_folded_pt_ns
+toc: v3_folded_n_100
 cutoffs:
 - 80
 - 60

@@ -1,4 +1,4 @@
-from src.utils import load_embed, construct_sparse_adj_mat, load_json, load_embed_matrix
+from src.utils import load_embed, construct_sparse_adj_mat, load_json, load_embed_matrix, augment_idx_feature
 from src.similarity import(
     embedding_similarity_matrix,
     rcmcs_similarity_matrix,
@@ -105,9 +105,6 @@ def calc_rcmcs_sim(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim
         sp.save_npz(save_to, S_chunk)
 
         del S_chunk
-
-    # S = rcmcs_similarity_matrix(rxns, rules, idx_feature)
-    # save_sim_mat(S, save_to)
 
 def calc_mcs_sim(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_mats_dir):
     save_to = sim_mats_dir / f"{args.dataset}_{args.toc}_mcs"

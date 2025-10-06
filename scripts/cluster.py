@@ -1,7 +1,6 @@
 from sklearn.cluster import AgglomerativeClustering
-from src.similarity import rcmcs_similarity_matrix, load_similarity_matrix
-from src.utils import load_json, save_json, construct_sparse_adj_mat
-import pandas as pd
+from src.similarity import load_similarity_matrix
+from src.utils import save_json, construct_sparse_adj_mat
 import numpy as np
 from omegaconf import DictConfig
 import hydra
@@ -15,8 +14,10 @@ def main(cfg: DictConfig):
     
     if cfg.similarity_score in ['rcmcs', 'drfp']:
         matrix_idx_to_id = adj_to_rxn_id
-    else: # Protein based similarity
+    elif cfg.similarity_score in ['gsi', 'esm', 'blosum']: # Protein based similarity
         matrix_idx_to_id = adj_to_prot_id
+    else:
+        raise ValueError(f"Unknown similarity score: {cfg.similarity_score}")
     
     # Load similarity matrix
     S = load_similarity_matrix(
