@@ -1,0 +1,12 @@
+seed: 1234
+dataset: sprhea
+toc: v3_folded_pt_ns
+neg_multiple: 3
+split_strategy: rcmcs
+negative_sampling: alternate_reaction_center
+n_splits: 3
+test_percent: 20
+split_bounds: [100, 80, 60, 40]
+embed_type: esm
+split_idx: -1
+subdir_patt: ${.dataset}_${.toc}/${.split_strategy}_${.negative_sampling}/${.n_splits}fold

@@ -731,9 +731,6 @@ def _wrap_rxn_mcs(args):
 def _wrap_rxn_tani(args):
     return reaction_tanimoto_similarity(*args)
 
-def _wrap_agg_mfp_cosine(args):
-    return agg_mfp_cosine_similarity(*args)
-
 def load_similarity_matrix(sim_path: Path, dataset: str, toc: str, sim_metric: str, dtype: np.dtype = np.float32):
     if sim_metric in ['rcmcs', 'mcs', 'tanimoto', 'agg_mfp_cosine', 'drfp', 'unaligned_tanimoto']:
         S = np.load(

@@ -86,7 +86,7 @@ def main(cfg: DictConfig):
             n_inner_splits=cfg.data.n_splits,
             test_percent=cfg.data.test_percent,
             cluster_dir=Path(cfg.filepaths.clustering),
-            adj_mat_idx_to_id=idx_feature if cfg.data.split_strategy == 'rcmcs' else idx_sample,
+            adj_mat_idx_to_id=idx_feature if cfg.data.split_strategy == 'rcmcs' else idx_sample, # TODO: add other split strategies
             dataset=cfg.data.dataset,
             toc=cfg.data.toc,
             rng=rng
