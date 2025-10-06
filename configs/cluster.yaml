@@ -5,7 +5,7 @@ defaults:
   - override hydra/launcher: quest_cpu
   - _self_
 
-similarity_score: drfp
+similarity_score: esm
 dataset: sprhea
 toc: v3_folded_pt_ns
 cutoffs: [80, 60, 40]
