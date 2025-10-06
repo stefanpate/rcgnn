@@ -1,4 +1,4 @@
-from src.utils import load_embed_matrix, construct_sparse_adj_mat, load_json
+from src.utils import load_embed, construct_sparse_adj_mat, load_json, load_embed_matrix
 from src.similarity import(
     embedding_similarity_matrix,
     rcmcs_similarity_matrix,
@@ -217,6 +217,27 @@ def calc_gsi(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_mats_
 
         del S_chunk
 
+def calc_esm_sim(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_mats_dir):
+    save_to = sim_mats_dir / f"{args.dataset}_{args.toc}_esm"
+
+    _, idx_sample, _ = construct_sparse_adj_mat(data_fp / args.dataset / f"{args.toc}.csv")
+
+    proteins = []
+    for i, id in tqdm(idx_sample.items(), total=len(idx_sample), desc="Loading ESM embeddings"):
+        embed = load_embed(
+            data_filepath / args.dataset / "esm" / f"{id}.pt",
+            embed_key=33
+        )[1]
+        proteins.append(embed)
+
+    V = np.array(proteins)
+    V = V / np.linalg.norm(V, axis=1, keepdims=True)
+    S = V @ V.T
+    assert S.shape == (len(idx_sample), len(idx_sample))
+    assert (S >= -0.001).all() and (S <= 1.001).all()
+    save_sim_mat(S, save_to)
+    print(f"Saved ESM similarity matrix to {save_to}")
+
 def calc_blosum62(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_mats_dir):
 
     toc = pd.read_csv(
@@ -302,6 +323,12 @@ parser_gsi.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
 parser_gsi.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
 parser_gsi.add_argument("chunk_size", type=int, help="Breaks up rows of sim mat")
 parser_gsi.set_defaults(func=calc_gsi)
+
+# ESM similarity
+parser_esm = subparsers.add_parser("esm", help="Calculate ESM similarity")
+parser_esm.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
+parser_esm.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
+parser_esm.set_defaults(func=calc_esm_sim)
 
 # BLOSUM62 sequence similarity
 parser_blosum = subparsers.add_parser("blosum", help="Calculate BLOSUM62 sequence similarity")

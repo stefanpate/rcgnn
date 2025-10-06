@@ -8,13 +8,13 @@ filepaths:
   clustering: ${.artifacts}/clustering
   tracking_uri: file:///home/stef/quest_data/hiec/results/runs
   figures: ${.artifacts}/figures
-similarity_score: gsi
+  similarity_matrices: ${.results}/similarity_matrices
+similarity_score: drfp
 dataset: sprhea
 toc: v3_folded_pt_ns
 cutoffs:
-- 69.141
-- 22.216
-- 12.195
-- 9.155
-- 8.38
-- 7.123
+- 80
+- 60
+- 40
+blosum_ub: 500.0
+blosum_lb: -2000.0
