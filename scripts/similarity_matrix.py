@@ -1,4 +1,4 @@
-from src.utils import load_embed_matrix, construct_sparse_adj_mat, load_json
+from src.utils import load_embed_matrix, construct_sparse_adj_mat, load_json, augment_idx_feature
 from src.similarity import(
     embedding_similarity_matrix,
     rcmcs_similarity_matrix,
@@ -82,11 +82,32 @@ def calc_rcmcs_sim(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim
     )
     rules.set_index('Name', inplace=True)
 
-    rxns = load_json(data_filepath / args.dataset / f"{args.toc}.json")
-    _, _, idx_feature = construct_sparse_adj_mat(data_fp / args.dataset / f"{args.toc}.csv")
+    print("Loading reactions...")
+    _rxns = load_json(data_filepath / args.dataset / f"{args.toc}.json")
+    unobs_rxns = load_json(data_filepath / args.dataset / f"{args.toc}_arc_unobserved_reactions.json")
+    rxns = {**_rxns, **unobs_rxns}
 
-    S = rcmcs_similarity_matrix(rxns, rules, idx_feature)
-    save_sim_mat(S, save_to)
+    _, _, idx_feature = construct_sparse_adj_mat(data_fp / args.dataset / f"{args.toc}.csv")
+    idx_feature = augment_idx_feature(idx_feature, unobs_rxns)
+    n_chunks = -(len(rxns) // - args.chunk_size)
+    for i in range(n_chunks):
+        print(f"Processing chunk {i+1} of {n_chunks}...")
+        start = i * args.chunk_size
+        end = (i + 1) * args.chunk_size
+        S_chunk = rcmcs_similarity_matrix(rxns, rules, idx_feature, start, end)
+        
+        save_to = sim_mats_dir / f"{args.dataset}_{args.toc}_rcmcs_chunk_{i}"
+        parent = save_to.parent
+        
+        if not parent.exists():
+            parent.mkdir(parents=True)
+
+        sp.save_npz(save_to, S_chunk)
+
+        del S_chunk
+
+    # S = rcmcs_similarity_matrix(rxns, rules, idx_feature)
+    # save_sim_mat(S, save_to)
 
 def calc_mcs_sim(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_mats_dir):
     save_to = sim_mats_dir / f"{args.dataset}_{args.toc}_mcs"
@@ -201,8 +222,9 @@ def calc_gsi(args, data_filepath: Path = data_fp, sim_mats_dir: Path = sim_mats_
     )
     aligner.open_gap_score = -1e6
     n_chunks = -(len(toc) // - args.chunk_size)
+    sequences = {id: row["Sequence"] for id, row in toc.iterrows()}
     for i in range(n_chunks):
-        sequences = {id: row["Sequence"] for id, row in toc.iterrows()}
+        print(f"Processing chunk {i+1} of {n_chunks}...")
         start = i * args.chunk_size
         end = (i + 1) * args.chunk_size
         S_chunk = homology_similarity_matrix(sequences, start, end, aligner)
@@ -276,6 +298,7 @@ parser_prot_rxn_embed.set_defaults(func=calc_prot_by_rxn_sim)
 parser_rcmcs = subparsers.add_parser("rcmcs", help="Calculate RCMCS similarity")
 parser_rcmcs.add_argument("dataset", help="Dataset name, e.g., 'sprhea'")
 parser_rcmcs.add_argument("toc", help="TOC name, e.g., 'v3_folded_pt_ns'")
+parser_rcmcs.add_argument("chunk_size", type=int, help="Breaks up rows of sim mat")
 parser_rcmcs.set_defaults(func=calc_rcmcs_sim)
 
 # MCS similarity

@@ -38,6 +38,9 @@ def format_operator_output(rcts_mol: list[Chem.Mol], output: list[Chem.Mol], am_
     '''
     aligned_no_am = '.'.join([Chem.MolToSmiles(m) for m in rcts_mol]) + '>>' + '.'.join([Chem.MolToSmiles(m) for m in output])
 
+    if len(output) != len(aligned_no_am.split('>>')[1].split('.')):
+        raise ValueError("Output length does not match number of products in reaction SMILES")
+
     am = 1
     lhs_rc = [[] for _ in rcts_mol]
     rhs_am_rc = []
@@ -190,9 +193,9 @@ def main(cfg):
                 next_rid += 1
                 unobs_rxns[new_rid] = {
                     'smarts': gen_rxn,
-                    'smarts_am': gen_rxn_am,
-                    'rule': [rule_name],
-                    'rc': gen_rc,
+                    'am_smarts': gen_rxn_am,
+                    'min_rules': entry['min_rules'],
+                    'rcs': gen_rc,
                 }
 
                 for pid in this_pids:
