@@ -10,19 +10,19 @@
 #SBATCH --error=/home/spn1560/hiec/logs/error/%x_%A_%a.err
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
-#SBATCH --array=0-3
+#SBATCH --array=0-5
 #SBATCH --mail-user=stefan.pate@northwestern.edu
 
 # Args
 script=/home/spn1560/hiec/scripts/train.py
-data=sprhea_homology
-training=base
-model=drfp
-split_idx=(
-    -1
-    0
-    1
-    2
+data=sprhea_esm
+model=(
+    rc_agg
+    rc_cxn
+    bom
+    cgr
+    drfp
+    mfp
 )
 
 # Commands
@@ -31,4 +31,4 @@ module purge
 module load gcc/9.2.0
 module load python-miniconda3/4.12.0
 source activate /home/spn1560/.conda/envs/hiec2
-python $script data=$data training=$training model=$model data.split_idx=${split_idx[$SLURM_ARRAY_TASK_ID]}
+python $script data=$data model=${model[$SLURM_ARRAY_TASK_ID]}

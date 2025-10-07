@@ -710,7 +710,8 @@ def _check_ring_info(molecules: Iterable[Mol], reaction_centers: Iterable[tuple[
     '''
     rc_lens = [len(rc) for rc in reaction_centers]
     if len(set(rc_lens)) > 1:
-        raise ValueError("Reaction centers must have same number of atoms")
+        # raise ValueError("Reaction centers must have same number of atoms")
+        return False
     else:
         rc_len = rc_lens[0]
 
