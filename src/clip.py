@@ -11,10 +11,10 @@ from torch_geometric.data.data import Data
 from torch_scatter import scatter
 import copy
 from pytorch_lightning import LightningModule
-from torch.optim import Optimizer
-from torch.optim.lr_scheduler import LambdaLR
+from torch.optim import Optimizer, AdamW
+from torch.optim.lr_scheduler import LambdaLR, _LRScheduler
 from omegaconf import DictConfig
-
+import math
 
 def clip_collate(datapoints: list[dict[str, tuple[Data, Data] | torch.Tensor]]) -> dict[str, dict[str, Batch] | torch.Tensor]:
     rxn_batch, prot_batch, target_batch = [], [], []
@@ -147,32 +147,24 @@ class EnzymeReactionCLIP(LightningModule):
         return Y_hat.detach().cpu().numpy()
     
     def configure_optimizers(self):
-        ''' Sets up Noam-like LR scheduler with Adam optimizer. 
-        cf. chemprop
-        '''
-        opt = torch.optim.Adam(self.parameters(), self.args.init_lr)
-        if self.trainer.train_dataloader is None:
-            # Loading `train_dataloader` to estimate number of training batches.
-            # Using this line of code can pypass the issue of using `num_training_batches` as described [here](https://github.com/Lightning-AI/pytorch-lightning/issues/16060).
-            self.trainer.estimated_stepping_batches
-        steps_per_epoch = self.trainer.num_training_batches
-        warmup_steps = self.args.warmup_epochs * steps_per_epoch
-        if self.trainer.max_epochs == -1:
-            print(
-                "For infinite training, the number of cooldown epochs in learning rate scheduler is set to 100 times the number of warmup epochs."
-            )
-            cooldown_steps = 100 * warmup_steps
-        else:
-            cooldown_epochs = self.trainer.max_epochs - self.args.warmup_epochs
-            cooldown_steps = cooldown_epochs * steps_per_epoch
-
-        lr_sched = build_NoamLike_LRSched(
-            opt, warmup_steps, cooldown_steps, self.args.init_lr, self.args.max_lr, self.args.final_lr
+        """
+        Obtain optimizers and hyperparameter schedulers for model
+        cf. Clipzyme implementation
+        """
+        optimizer = AdamW(
+            [p for p in self.parameters() if p.requires_grad], self.args
+        )
+        schedule = LinearWarmupCosineLRScheduler(
+            optimizer, self.args
         )
 
-        lr_sched_config = {"scheduler": lr_sched, "interval": "step"}
-
-        return {"optimizer": opt, "lr_scheduler": lr_sched_config}
+        scheduler = {
+            "scheduler": schedule,
+            "monitor": self.args.monitor,
+            "interval": self.args.scheduler_interval,
+            "frequency": 1,
+        }
+        return [optimizer], [scheduler]
 
     
 class ClipDataset:
@@ -200,7 +192,79 @@ class ClipDataset:
             "protein_embedding": self.protein_embeddings[idx],
             "target": self.targets[idx],
         }
-    
+
+class AdamW(AdamW):
+    """
+    https://pytorch.org/docs/stable/generated/torch.optim.AdamW.html#torch.optim.AdamW
+    """
+
+    def __init__(self, params, args):
+        adam_betas = tuple(args.adam_betas)
+        super().__init__(
+            params=params,
+            lr=args.lr,
+            betas=adam_betas,
+            weight_decay=args.weight_decay,
+            amsgrad=args.use_amsgrad,
+        )
+
+class LinearWarmupCosineLRScheduler(_LRScheduler):
+    '''
+    cf. Clipzyme implementation
+    '''
+    def __init__(self, optimizer, args):
+        max_epoch = args.max_epochs
+        min_lr = args.warmup_min_lr
+        init_lr = args.warmup_init_lr
+        warmup_start_lr = args.warmup_start_lr
+        warmup_steps = args.warmup_steps
+
+        self.optimizer = optimizer
+
+        self.max_epoch = max_epoch
+        self.min_lr = min_lr
+
+        self.init_lr = init_lr
+        self.warmup_steps = warmup_steps
+        self.warmup_start_lr = warmup_start_lr if warmup_start_lr >= 0 else init_lr
+        super().__init__(optimizer)
+
+    def step(self, cur_epoch=0):
+        # assuming the warmup iters less than one epoch
+        self._step_count += 1
+        cur_step = self._step_count
+        if cur_step < self.warmup_steps:
+            warmup_lr_schedule(
+                step=cur_step,
+                optimizer=self.optimizer,
+                max_step=self.warmup_steps,
+                init_lr=self.warmup_start_lr,
+                max_lr=self.init_lr,
+            )
+        else:
+            cosine_lr_schedule(
+                epoch=cur_epoch,
+                optimizer=self.optimizer,
+                max_epoch=self.max_epoch,
+                init_lr=self.init_lr,
+                min_lr=self.min_lr,
+            )
+
+def cosine_lr_schedule(optimizer, epoch, max_epoch, init_lr, min_lr):
+    """Decay the learning rate"""
+    lr = (init_lr - min_lr) * 0.5 * (
+        1.0 + math.cos(math.pi * epoch / max_epoch)
+    ) + min_lr
+    for param_group in optimizer.param_groups:
+        param_group["lr"] = lr
+
+
+def warmup_lr_schedule(optimizer, step, max_step, init_lr, max_lr):
+    """Warmup the learning rate"""
+    lr = min(max_lr, init_lr + (max_lr - init_lr) * step / max(max_step, 1))
+    for param_group in optimizer.param_groups:
+        param_group["lr"] = lr
+
 def build_NoamLike_LRSched(
     optimizer: Optimizer,
     warmup_steps: int,

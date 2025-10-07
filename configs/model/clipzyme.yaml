@@ -1,14 +1,23 @@
-warmup_epochs: 2
-init_lr: 1e-4
-max_lr: 1e-3
-final_lr: 1e-4
-aggregate_over_edges: false
 model_name: enzyme_reaction_clip
 chemprop_num_layers: 5
 chemprop_hidden_dim: 1280
 chemprop_node_dim: 9
 chemprop_edge_dim: 3
 chemprop_pool: null
+aggregate_over_edges: false
+lr: 1e-4
+adam_betas: [0.9, 0.999]
+weight_decay: 0.05
+use_amsgrad: false
+max_epochs: 30
+warmup_init_lr: 1e-4
+warmup_min_lr: 1e-5
+warmup_start_lr: 1e-6
+warmup_steps: 100.0 # Float sic clipzyme
+scheduler_interval: epoch
+monitor: val_loss
+
+
 
 # NOTE: If provided, overrides all args passed to model.
 # NOTE: use '_' instead of '=' in the filename

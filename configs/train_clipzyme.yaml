@@ -5,7 +5,7 @@ defaults:
   - training: clipzyme
   - _self_
 
-exp: debug_clip
+exp: clipzyme
 
 hydra:
   sweeper:

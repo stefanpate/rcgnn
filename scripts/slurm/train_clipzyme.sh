@@ -16,16 +16,10 @@
 
 # Args
 script=/home/spn1560/hiec/scripts/train_clipzyme.py
-data=sprhea_rcmcs
-training=clipzyme
-model=clipzyme
-exp=clipzyme
-split_idx=(
-    1
-    # 0
-    # 2
-    # -1
+data=(
+    sprhea_rcmcs
 )
+
 # ckpt=epoch_0-step_31.ckpt # Replace '=' with '_' for bash compatibility |  model.ckpt_path=$ckpt in cmd below
 
 # Commands
@@ -35,4 +29,4 @@ module load gcc/9.2.0
 module load python-miniconda3/4.12.0
 source activate /home/spn1560/.conda/envs/clipzyme
 export HYDRA_FULL_ERROR=1
-python $script data=$data training=$training model=$model data.split_idx=${split_idx[$SLURM_ARRAY_TASK_ID]} exp=$exp
+python $script data=${data[$SLURM_ARRAY_TASK_ID]}

@@ -113,6 +113,7 @@ def main(cfg: DictConfig):
         max_epochs=cfg.training.n_epochs,
         logger=logger,
         default_root_dir=Path(cfg.filepaths.runs) / exp / version,
+        detect_anomaly=True,
     )
 
     trainer.fit(
