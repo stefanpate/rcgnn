@@ -3,6 +3,7 @@ dataset: sprhea
 toc: v3_folded_pt_ns
 neg_multiple: 3
 split_strategy: esm
+negative_sampling: random
 n_splits: 3
 test_percent: 20
 split_bounds: [100, 99, 98, 97]

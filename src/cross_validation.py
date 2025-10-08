@@ -1,10 +1,10 @@
 from src.utils import load_json
 import numpy as np
-from sklearn.model_selection import KFold, train_test_split
+from sklearn.model_selection import GroupShuffleSplit, GroupKFold
 from collections import defaultdict
 from pathlib import Path
 
-def sample_negatives(X: list[tuple[int]], y: list[int], neg_multiple: int, rng: np.random.Generator) -> tuple[np.ndarray, np.ndarray]:
+def sample_negatives(X: list[tuple[int]], y: list[int], neg_multiple: int, rng: np.random.Generator) -> tuple[list[tuple[int, int]], list[int]]:
     '''
     Samples negatives to bring the ratio of positives to negatives to neg_multiple
 
@@ -21,9 +21,9 @@ def sample_negatives(X: list[tuple[int]], y: list[int], neg_multiple: int, rng: 
 
     Returns
     -------
-    X:np.ndarray
+    X:list[tuple[int, int]]
         Sample, feature pairs
-    y:np.ndarray
+    y:list[int]
         Labels
 
     '''
@@ -67,16 +67,34 @@ def random_split(
         n_inner_splits: int,
         test_percent: int,
         seed: int,
+        group_by: list = None
     ) -> tuple[list, tuple]:
     '''
     Random single outer split followed by kfold inner splits
     '''
+    def _check_disjoint(train_val_idxs, test_idxs, group_by):
+        if group_by is not None:
+            train_only_groups = set([group_by[i] for i in train_val_idxs])
+            test_only_groups = set([group_by[i] for i in test_idxs])
+            if len(train_only_groups.intersection(test_only_groups)) != 0:
+                raise ValueError("Train and test splits are not disjoint.")
+    
+    kfold = GroupKFold(n_splits=n_inner_splits, shuffle=True, random_state=seed)
+    shuffle_split = GroupShuffleSplit(n_splits=2, random_state=seed, test_size=test_percent / 100)
 
-    # TODO: orient around seed instead of np.rng for reproducibility across packages
-    kfold = KFold(n_splits=n_inner_splits, shuffle=True, random_state=seed)
-    X_train_val, X_test, y_train_val, y_test = train_test_split(X, y, test_size=test_percent / 100, shuffle=True, random_state=seed)
+
+    train_val_idxs, test_idxs = next(shuffle_split.split(X, y, groups=group_by))
+    X_train_val = [X[i] for i in train_val_idxs]
+    y_train_val = [y[i] for i in train_val_idxs]
+    X_test = [X[i] for i in test_idxs]
+    y_test = [y[i] for i in test_idxs]
+
+    _check_disjoint(train_val_idxs, test_idxs, group_by)
+
+    group_by_train_val = [group_by[i] for i in train_val_idxs] if group_by is not None else None
     train_val_splits = []
-    for _, val_idx in kfold.split(X_train_val):
+    for train_idx, val_idx in kfold.split(X_train_val, y_train_val, groups=group_by_train_val):
+        _check_disjoint(train_idx, val_idx, group_by_train_val)
         X_val = [X_train_val[i] for i in val_idx]
         y_val = [y_train_val[i] for i in val_idx]
 
