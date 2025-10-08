@@ -16,8 +16,8 @@
 # Args
 script=/home/spn1560/hiec/scripts/stage_data.py
 data=(
-    sprhea_drfp
-    # sprhea_esm
+    # sprhea_drfp
+    sprhea_esm
     # sprhea_n_100
     # sprhea_rcmcs
     # sprhea_homology

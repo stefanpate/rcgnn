@@ -165,9 +165,9 @@ def stratified_sim_split(
     # Maps reaction or protein matrix index to pair index in X
     single2pair_idx = defaultdict(list) 
     for i, pair in enumerate(X):
-        if split_strategy == 'rcmcs':
+        if split_strategy in ['rcmcs', 'drfp']:
             single2pair_idx[pair[1]].append(i) # Orient to rxn matrix idx
-        elif split_strategy == 'homology':
+        elif split_strategy == ['homology', 'esm']:
             single2pair_idx[pair[0]].append(i) # Orient to prot matrix idx
 
     # Assemble level clusters matrix

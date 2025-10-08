@@ -12,12 +12,13 @@
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=stefan.pate@northwestern.edu
-#SBATCH --array=0
+#SBATCH --array=0-1
 
 # Args
 script=/home/spn1560/hiec/scripts/train_clipzyme.py
 data=(
-    sprhea_rcmcs
+    sprhea_drfp
+    sprhea_esm
 )
 
 # ckpt=epoch_0-step_31.ckpt # Replace '=' with '_' for bash compatibility |  model.ckpt_path=$ckpt in cmd below

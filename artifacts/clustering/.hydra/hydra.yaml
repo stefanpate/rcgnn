@@ -6,11 +6,11 @@ hydra:
     subdir: ${hydra.job.num}
   launcher:
     submitit_folder: ${hydra.sweep.dir}/.submitit/%j
-    timeout_min: 2880
+    timeout_min: 120
     cpus_per_task: null
     gpus_per_node: null
     tasks_per_node: 1
-    mem_gb: 32
+    mem_gb: 64
     nodes: 1
     name: ${hydra.job.name}
     stderr_to_stdout: false
@@ -108,11 +108,14 @@ hydra:
   overrides:
     hydra:
     - hydra.mode=RUN
-    task: []
+    task:
+    - similarity_score=esm
+    - dataset=sprhea
+    - toc=v3_folded_pt_ns
   job:
     name: cluster
     chdir: null
-    override_dirname: ''
+    override_dirname: dataset=sprhea,similarity_score=esm,toc=v3_folded_pt_ns
     id: ???
     num: ???
     config_name: cluster
@@ -126,18 +129,18 @@ hydra:
   runtime:
     version: 1.3.2
     version_base: '1.3'
-    cwd: /home/stef/hiec/scripts
+    cwd: /gpfs/home/spn1560/hiec/scripts
     config_sources:
     - path: hydra.conf
       schema: pkg
       provider: hydra
-    - path: /home/stef/hiec/configs
+    - path: /gpfs/home/spn1560/hiec/configs
       schema: file
       provider: main
     - path: ''
       schema: structured
       provider: schema
-    output_dir: /home/stef/hiec/artifacts/clustering
+    output_dir: /home/spn1560/hiec/artifacts/clustering
     choices:
       filepaths: base
       hydra/env: default

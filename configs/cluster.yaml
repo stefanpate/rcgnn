@@ -8,7 +8,7 @@ defaults:
 similarity_score: esm
 dataset: sprhea
 toc: v3_folded_pt_ns
-cutoffs: [80, 60, 40]
+cutoffs: [99, 98, 97, 95, 90, 85]
 blosum_ub: 5e2
 blosum_lb: -2e3
 
