@@ -8,7 +8,7 @@ filepaths:
   clustering: ${.artifacts}/clustering
 similarity_score: esm
 dataset: sprhea
-toc: v3_folded_pt_ns
+toc: v3_folded_n_100
 cutoffs:
 - 99
 - 98

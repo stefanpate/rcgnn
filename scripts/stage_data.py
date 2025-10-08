@@ -113,11 +113,13 @@ def main(cfg: DictConfig):
     # Save
     print("Saving data...")
     for i, split in enumerate(train_val_data):
+        print(f"Pos frac for split {i}: {split['y'].mean():.3f}")
         split.to_parquet(
             Path(cfg.filepaths.scratch) / cfg.data.subdir_patt / f"train_val_{i}.parquet",
             index=False
         )
 
+    print(f"Pos frac for test: {test_data['y'].mean():.3f}")
     test_data.to_parquet(
         Path(cfg.filepaths.scratch) / cfg.data.subdir_patt / "test.parquet",
         index=False

@@ -5,10 +5,10 @@ defaults:
   - override hydra/launcher: quest_cpu
   - _self_
 
-similarity_score: esm
+similarity_score: rcmcs
 dataset: sprhea
-toc: v3_folded_pt_ns
-cutoffs: [99, 98, 97, 95, 90, 85]
+toc: v3_folded_v3_pt_ns
+cutoffs: [80, 60, 40]
 blosum_ub: 5e2
 blosum_lb: -2e3
 

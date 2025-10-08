@@ -180,7 +180,7 @@ def mcs_similarity_matrix(rxns:dict[str, dict], matrix_idx_to_rxn_id: dict[int, 
 
     return S.astype(dt)
 
-def rcmcs_similarity_matrix(rxns:dict[str, dict], rules:pd.DataFrame, matrix_idx_to_rxn_id: dict[int, str], dt: np.dtype = np.float32):
+def rcmcs_similarity_matrix(rxns:dict[str, dict], rules:pd.DataFrame, matrix_idx_to_rxn_id: dict[int, str], start: int, end: int):
     '''
     Computes reaction center MCS 
     similarity matrix for set of reactions
@@ -206,11 +206,10 @@ def rcmcs_similarity_matrix(rxns:dict[str, dict], rules:pd.DataFrame, matrix_idx
     to_do = []
     S_idxs = []
     print("Preparing reaction pairs\n")
-    for i in range(len(matrix_idx_to_rxn_id) - 1):
+    for i in range(start, min(end, len(matrix_idx_to_rxn_id) - 1)):
         id_i = matrix_idx_to_rxn_id[i]
         smarts_i, rcs_i, rules_i = [rxns[id_i][f] for f in fields]
         patts = [extract_operator_patts(rules.loc[rule, 'SMARTS'], side=0) for rule in rules_i]
-        print(f"Rxn # {i} : {matrix_idx_to_rxn_id[i]}", end='\r')
         for j in range(i + 1, len(matrix_idx_to_rxn_id)):
             id_j = matrix_idx_to_rxn_id[j]
             smarts_j, rcs_j, rules_j = [rxns[id_j][f] for f in fields]
@@ -231,12 +230,14 @@ def rcmcs_similarity_matrix(rxns:dict[str, dict], rules:pd.DataFrame, matrix_idx
     with mp.Pool() as pool:
         res = list(tqdm(pool.imap(_wrap_rxn_mcs, to_do), total=len(to_do)))
     
-    if S_idxs:
-        i, j = [np.array(elt) for elt in zip(*S_idxs)]
-        S[i, j] = res
-        S[j, i] = res
+    if S_idxs: # Not unlikely to get all zeros. Most pairs have rcmcs sim of 0
+        row_idxs, col_idxs = zip(*S_idxs)
+    else:
+        row_idxs, col_idxs = ([], [])
+    
+    S_chunk = sp.csr_array((res, (row_idxs, col_idxs)), shape=(len(matrix_idx_to_rxn_id), len(matrix_idx_to_rxn_id))).astype(np.float32)
 
-    return S.astype(dt)
+    return S_chunk
 
 def merge_cd_hit_clusters(
         pairs:Iterable[tuple],
@@ -408,7 +409,7 @@ def homology_similarity_matrix(sequences:Dict[str, str], start: int, end: int, a
         res = list(tqdm(pool.imap(wrap_gsi, to_do), total=len(to_do)))
     
     row_idxs, col_idxs = zip(*S_idxs)
-    S_chunk = sp.csr_array((res, (row_idxs, col_idxs))).astype(np.float16)
+    S_chunk = sp.csr_array((res, (row_idxs, col_idxs)), shape=(len(sim_i_to_id), len(sim_i_to_id))).astype(np.float32)
 
     return S_chunk
 
@@ -705,7 +706,8 @@ def _check_ring_info(molecules: Iterable[Mol], reaction_centers: Iterable[tuple[
     '''
     rc_lens = [len(rc) for rc in reaction_centers]
     if len(set(rc_lens)) > 1:
-        raise ValueError("Reaction centers must have same number of atoms")
+        # raise ValueError("Reaction centers must have same number of atoms")
+        return False
     else:
         rc_len = rc_lens[0]
 
@@ -736,7 +738,7 @@ def load_similarity_matrix(sim_path: Path, dataset: str, toc: str, sim_metric: s
         S = np.load(
             sim_path / f"{dataset}_{toc}_{sim_metric}.npy"
         ).astype(np.float32)
-    elif sim_metric in ['homology', 'blosum', 'esm']:
+    elif sim_metric in ['homology', 'blosum']:
         for i, file in enumerate(sim_path.glob(f"{dataset}_{toc}_{sim_metric}*.npz")):
             chunk = sp.load_npz(file).astype(np.float32)
 

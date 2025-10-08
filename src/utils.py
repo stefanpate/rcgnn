@@ -76,6 +76,18 @@ def construct_sparse_adj_mat(path: Path):
             
         return adj, idx_sample, idx_feature
 
+def augment_idx_feature(idx_feature : dict[int, str], unobs_rxns: dict[str, dict]) -> dict[int, str]:
+    '''
+    Given idx_feature mapping from positives only data, augmented alternate reaciton center
+    negatives from dict of unobserved reactions.
+    '''
+    max_idx = max(idx_feature.keys())
+    for i, (rid, entry) in enumerate(unobs_rxns.items()):
+        idx_feature[max_idx + 1 + i] = rid
+
+    return idx_feature
+
+
 def load_embed_matrix(filepath: Path, idx_sample: dict, dataset: str, toc: str) -> np.ndarray:
     '''
     Given a filepath to embedding-containing dir on projects,

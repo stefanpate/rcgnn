@@ -38,6 +38,9 @@ def format_operator_output(rcts_mol: list[Chem.Mol], output: list[Chem.Mol], am_
     '''
     aligned_no_am = '.'.join([Chem.MolToSmiles(m) for m in rcts_mol]) + '>>' + '.'.join([Chem.MolToSmiles(m) for m in output])
 
+    if len(output) != len(aligned_no_am.split('>>')[1].split('.')):
+        raise ValueError("Output length does not match number of products in reaction SMILES")
+
     am = 1
     lhs_rc = [[] for _ in rcts_mol]
     rhs_am_rc = []
@@ -171,6 +174,9 @@ def main(cfg):
         this_pids = rid2pids[rid]
         for elt in res:
             gen_rxn, gen_rxn_am, gen_rc = elt
+            gen_rxn_reversed = ">>".join(gen_rxn.split('>>')[::-1])
+            gen_rxn_am_reversed = ">>".join(gen_rxn_am.split('>>')[::-1])
+            gen_rc_reversed = (gen_rc[1], gen_rc[0])
 
             if gen_rxn == rxn:
                 continue
@@ -183,16 +189,24 @@ def main(cfg):
                 
                 for pid in this_pids - other_pids:
                     negative_pairs[pid].add(other_rid)
-            
-            elif gen_rxn not in unobs_smarts:
+            elif gen_rxn_reversed in rxn2rid:
+                other_rid = rxn2rid[gen_rxn_reversed]
+                other_pids = rid2pids[other_rid]
+
+                for pid in other_pids - this_pids:
+                    negative_pairs[pid].add(rid)
+                
+                for pid in this_pids - other_pids:
+                    negative_pairs[pid].add(other_rid)
+            elif gen_rxn not in unobs_smarts and gen_rxn_reversed not in unobs_smarts:
                 unobs_smarts.add(gen_rxn)
                 new_rid = str(next_rid)
                 next_rid += 1
                 unobs_rxns[new_rid] = {
                     'smarts': gen_rxn,
-                    'smarts_am': gen_rxn_am,
-                    'rule': [rule_name],
-                    'rc': gen_rc,
+                    'am_smarts': gen_rxn_am,
+                    'min_rules': entry['min_rules'],
+                    'rcs': gen_rc,
                 }
 
                 for pid in this_pids:
