@@ -108,14 +108,11 @@ hydra:
   overrides:
     hydra:
     - hydra.mode=RUN
-    task:
-    - similarity_score=esm
-    - dataset=sprhea
-    - toc=v3_folded_pt_ns
+    task: []
   job:
     name: cluster
     chdir: null
-    override_dirname: dataset=sprhea,similarity_score=esm,toc=v3_folded_pt_ns
+    override_dirname: ''
     id: ???
     num: ???
     config_name: cluster
@@ -129,18 +126,18 @@ hydra:
   runtime:
     version: 1.3.2
     version_base: '1.3'
-    cwd: /gpfs/home/spn1560/hiec/scripts
+    cwd: /home/stef/hiec/scripts
     config_sources:
     - path: hydra.conf
       schema: pkg
       provider: hydra
-    - path: /gpfs/home/spn1560/hiec/configs
+    - path: /home/stef/hiec/configs
       schema: file
       provider: main
     - path: ''
       schema: structured
       provider: schema
-    output_dir: /home/spn1560/hiec/artifacts/clustering
+    output_dir: /home/stef/hiec/artifacts/clustering
     choices:
       filepaths: base
       hydra/env: default

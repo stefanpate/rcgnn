@@ -26,14 +26,15 @@ def main(cfg: DictConfig):
         toc=cfg.toc,
         sim_metric=cfg.similarity_score
     )
-    S = (S - S.min()) / (S.max() - S.min())    
-    D = 1 - S # Distance matrix
-
+    
     if cfg.similarity_score == 'blosum':
         # Normalize blosum alignment scores
         S = np.where(S > cfg.blosum_ub, cfg.blosum_ub, S)
         S = np.where(S < cfg.blosum_lb, cfg.blosum_lb, S)
     
+    S = (S - S.min()) / (S.max() - S.min())    
+    D = 1 - S # Distance matrix
+
     for cutoff in cfg.cutoffs:
         d_cutoff = 1 - (cutoff / 100)
 

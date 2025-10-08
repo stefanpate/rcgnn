@@ -1,11 +1,14 @@
 filepaths:
-  artifacts: /home/spn1560/hiec/artifacts
-  results: /projects/p30041/spn1560/hiec/results
-  data: /projects/p30041/spn1560/hiec/data
-  scratch: /scratch/spn1560/hiec
-  configs: /home/spn1560/hiec/configs
+  artifacts: /home/stef/hiec/artifacts
+  results: /home/stef/quest_data/hiec/results
+  data: /home/stef/quest_data/hiec/data
+  scratch: /home/stef/quest_data/hiec/scratch
+  configs: /home/stef/hiec/configs
   runs: ${.results}/runs
   clustering: ${.artifacts}/clustering
+  tracking_uri: file:///home/stef/quest_data/hiec/results/runs
+  figures: ${.artifacts}/figures
+  similarity_matrices: ${.results}/similarity_matrices
 similarity_score: esm
 dataset: sprhea
 toc: v3_folded_n_100
@@ -13,8 +16,7 @@ cutoffs:
 - 99
 - 98
 - 97
+- 96
 - 95
-- 90
-- 85
 blosum_ub: 500.0
 blosum_lb: -2000.0

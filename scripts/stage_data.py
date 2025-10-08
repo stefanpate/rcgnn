@@ -94,7 +94,7 @@ def main(cfg: DictConfig):
             )[1]
         )
 
-    print("Splitting data...")
+    print(f"Splitting data with strategy {cfg.data.split_strategy}...")
     if cfg.data.split_strategy == 'random':
         train_val_splits, test_split = random_split(X, y, cfg.data.n_splits, cfg.data.test_percent, seed=cfg.data.seed)
     elif cfg.data.split_strategy == 'random_reaction':
@@ -111,7 +111,6 @@ def main(cfg: DictConfig):
             
             rule_groups.append(int(rule2idx[rule]))
         train_val_splits, test_split = random_split(X, y, cfg.data.n_splits, cfg.data.test_percent, seed=cfg.data.seed, group_by=rule_groups)
-
     else:
         train_val_splits, test_split = stratified_sim_split(
             X=X,
@@ -121,7 +120,7 @@ def main(cfg: DictConfig):
             n_inner_splits=cfg.data.n_splits,
             test_percent=cfg.data.test_percent,
             cluster_dir=Path(cfg.filepaths.clustering),
-            adj_mat_idx_to_id=idx_feature if cfg.data.split_strategy in ['rcmcs', 'drfp'] else idx_sample, # TODO: add other split strategies
+            adj_mat_idx_to_id=idx_feature if cfg.data.split_strategy in ['rcmcs', 'drfp'] else idx_sample,
             dataset=cfg.data.dataset,
             toc=cfg.data.toc,
             rng=rng

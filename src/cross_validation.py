@@ -168,7 +168,7 @@ def stratified_sim_split(
         test = []
         for l in range(level_clusters.shape[1]):
             avail_clusters = list(set(level_clusters[:, l]) - set(level_clusters[already_sampled, l]))
-            n = int(level_test_frac * level_clusters[:, l].max()) # Number of l-level test clusters / points
+            n = max(1, int(level_test_frac * level_clusters[:, l].max())) # Number of l-level test clusters / points
             test_clusters = rng.choice(avail_clusters, size=(min(n, len(avail_clusters)),), replace=False)
 
             for c in test_clusters:
@@ -179,13 +179,14 @@ def stratified_sim_split(
         return test, already_sampled
 
     id_to_adj_mat_idx = {v: k for k, v in adj_mat_idx_to_id.items()} # Either for prots or rxns
+    split_bounds = sorted(split_bounds) # Work upward wrt sim, larger clusters first
 
     # Maps reaction or protein matrix index to pair index in X
     single2pair_idx = defaultdict(list) 
     for i, pair in enumerate(X):
         if split_strategy in ['rcmcs', 'drfp']:
             single2pair_idx[pair[1]].append(i) # Orient to rxn matrix idx
-        elif split_strategy == ['homology', 'esm']:
+        elif split_strategy in ['homology', 'esm', 'gsi', 'blosum']:
             single2pair_idx[pair[0]].append(i) # Orient to prot matrix idx
 
     # Assemble level clusters matrix

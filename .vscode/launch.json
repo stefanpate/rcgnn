@@ -19,7 +19,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args": "${command:pickArgs}",
-            "justMyCode": false,
+            "justMyCode": true,
             "cwd": "${fileDirname}",
             "env": {
                 "HYDRA_FULL_ERROR": "1"
