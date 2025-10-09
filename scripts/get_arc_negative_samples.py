@@ -44,8 +44,8 @@ def format_operator_output(rcts_mol: list[Chem.Mol], output: list[Chem.Mol], am_
     am = 1
     lhs_rc = [[] for _ in rcts_mol]
     rhs_am_rc = []
+    reactants = deepcopy(rcts_mol)
     for prod in output:
-        reactants = deepcopy(rcts_mol)
         for atom in prod.GetAtoms():
             atom.SetAtomMapNum(am)
             props = atom.GetPropsAsDict()
