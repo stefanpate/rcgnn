@@ -13,6 +13,31 @@ from copy import deepcopy
 log = getLogger(__name__)
 _ = rdBase.BlockLogs()
 
+def _check_balanced(am_smarts: str) -> bool:
+    lhs, rhs = [Chem.MolFromSmarts(s) for s in am_smarts.split(">>")]
+    lhs_ams, rhs_ams = {}, {}
+
+    
+    for atom in lhs.GetAtoms():
+        am = atom.GetAtomMapNum()
+        lhs_ams[am] = atom.GetSymbol()
+
+    for atom in rhs.GetAtoms():
+        am = atom.GetAtomMapNum()
+        rhs_ams[am] = atom.GetSymbol()
+
+    if lhs.GetNumAtoms() != len(lhs_ams) or rhs.GetNumAtoms() != len(rhs_ams):
+        log.warning('duplicate am in side')
+        return False
+    elif not len(set(lhs_ams.keys()) ^ set(rhs_ams.keys())) == 0:
+        log.warning('different am numbers on sides')
+        return False
+    elif any([lhs_ams[am] != rhs_ams[am] for am in lhs_ams.keys()]):
+        log.warning('different am elements on sides')
+        return False
+    else:
+        return True
+
 def format_operator_output(rcts_mol: list[Chem.Mol], output: list[Chem.Mol], am_to_reactant_idx: dict[int, int]) -> tuple[str, str, tuple[tuple[tuple[int]]]]:
     '''
     Args
@@ -80,7 +105,12 @@ def format_operator_output(rcts_mol: list[Chem.Mol], output: list[Chem.Mol], am_
     lhs_rc = tuple([tuple(sorted(r)) for r in lhs_rc])
 
     aligned_with_am = '.'.join([Chem.MolToSmiles(m, ignoreAtomMapNumbers=True) for m in reactants]) + '>>' + '.'.join(rhs_am_smiles)
-    return aligned_no_am, aligned_with_am, (lhs_rc, rhs_rc)
+    is_balanced = _check_balanced(aligned_with_am)
+    if not is_balanced:
+        log.warning("Generated reaction is not balanced")
+        return None
+    else:
+        return aligned_no_am, aligned_with_am, (lhs_rc, rhs_rc)
 
 def apply_rule(rcts_smi: list[str], rule_smarts: str) -> list[tuple[str, str, tuple[tuple[tuple[int]]]]]:
     '''
@@ -124,10 +154,16 @@ def apply_rule(rcts_smi: list[str], rule_smarts: str) -> list[tuple[str, str, tu
     
     res = []
     for p in ps:
+        if sum(m.GetNumAtoms() for m in p) != sum(m.GetNumAtoms() for m in rcts_mol):
+            # log.warning("rdkit generated reaction is not balanced. Skipping...") ## Happens a lot
+            continue
         try:
-            res.append(format_operator_output(rcts_mol, p, am_to_reactant_idx))
+            _res = format_operator_output(rcts_mol, p, am_to_reactant_idx)
         except Exception as e:
             continue
+        
+        if _res is not None:
+            res.append(_res)
 
     return res
 
