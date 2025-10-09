@@ -738,7 +738,7 @@ def load_similarity_matrix(sim_path: Path, dataset: str, toc: str, sim_metric: s
         S = np.load(
             sim_path / f"{dataset}_{toc}_{sim_metric}.npy"
         ).astype(np.float32)
-    elif sim_metric in ['homology', 'blosum']:
+    elif sim_metric in ['homology', 'blosum', 'gsi']:
         for i, file in enumerate(sim_path.glob(f"{dataset}_{toc}_{sim_metric}*.npz")):
             chunk = sp.load_npz(file).astype(np.float32)
 
@@ -747,6 +747,8 @@ def load_similarity_matrix(sim_path: Path, dataset: str, toc: str, sim_metric: s
             
             nz_coordinates = chunk.nonzero()
             S[nz_coordinates] = chunk[nz_coordinates]
+    else:
+        raise ValueError(f"Unknown similarity metric {sim_metric}")
 
     return S
 
