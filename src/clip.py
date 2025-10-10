@@ -1,6 +1,5 @@
 from clipzyme.utils.screening import process_mapped_reaction
 from clipzyme.utils.loading import default_collate
-from clipzyme.models.protmol import EnzymeReactionCLIP
 from clipzyme.models.chemprop import DMPNNEncoder
 import torch
 from torch import nn
@@ -30,22 +29,6 @@ def clip_collate(datapoints: list[dict[str, tuple[Data, Data] | torch.Tensor]]) 
     target_batch = torch.stack(target_batch)
 
     return {"reaction": rxn_batch, "protein_embedding": prot_batch, "target": target_batch}
-
-class EnzymeReactionCLIPBN(EnzymeReactionCLIP):
-    '''
-    Adds batch norm to protein embedding after linear layer
-    '''
-    def __init__(self, model_hps: DictConfig, negative_multiple: int = 1, positive_multiplier: int = 1):
-        super().__init__(model_hps, negative_multiple, positive_multiplier)
-        self.bn = nn.BatchNorm1d(model_hps.chemprop_hidden_dim)
-
-    def forward(self, batch) -> torch.Tensor:
-        P = batch["protein_embedding"]
-        P = self.linear_prot_layer(P)
-        R = batch["reaction"]
-        R = self.encode_reaction(R)
-        R = self.bn(R)
-        return self.dot_sig(R, P)
 
 class EnzymeReactionCLIP(LightningModule):
     '''
@@ -182,6 +165,21 @@ class EnzymeReactionCLIP(LightningModule):
         }
         return [optimizer], [scheduler]
 
+class EnzymeReactionCLIPBN(EnzymeReactionCLIP):
+    '''
+    Adds batch norm to protein embedding after linear layer
+    '''
+    def __init__(self, model_hps: DictConfig, negative_multiple: int = 1, positive_multiplier: int = 1):
+        super().__init__(model_hps, negative_multiple, positive_multiplier)
+        self.bn = nn.BatchNorm1d(model_hps.chemprop_hidden_dim)
+
+    def forward(self, batch) -> torch.Tensor:
+        P = batch["protein_embedding"]
+        P = self.linear_prot_layer(P)
+        R = batch["reaction"]
+        R = self.encode_reaction(R)
+        R = self.bn(R)
+        return self.dot_sig(R, P)
     
 class ClipDataset:
     def __init__(self, reactions: list[str], protein_embeddings: torch.Tensor, targets: torch.Tensor):
