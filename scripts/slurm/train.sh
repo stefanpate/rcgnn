@@ -3,8 +3,8 @@
 #SBATCH -p b1039
 #SBATCH -N 1
 #SBATCH -n 1
-#SBATCH --mem=32GB
-#SBATCH -t 50:00:00
+#SBATCH --mem=50GB
+#SBATCH -t 48:00:00
 #SBATCH --job-name="train"
 #SBATCH --output=/home/spn1560/hiec/logs/out/%x_%A_%a.out
 #SBATCH --error=/home/spn1560/hiec/logs/error/%x_%A_%a.err
@@ -15,7 +15,8 @@
 
 # Args
 script=/home/spn1560/hiec/scripts/train.py
-data=sprhea_esm
+data=sprhea_random_rxn_arc
+split_idx=0
 model=(
     rc_agg
     rc_cxn
@@ -31,4 +32,4 @@ module purge
 module load gcc/9.2.0
 module load python-miniconda3/4.12.0
 source activate /home/spn1560/.conda/envs/hiec2
-python $script data=$data model=${model[$SLURM_ARRAY_TASK_ID]}
+python $script data=$data model=${model[$SLURM_ARRAY_TASK_ID]} data.split_idx=$split_idx

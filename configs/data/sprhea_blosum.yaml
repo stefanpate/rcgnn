@@ -5,7 +5,7 @@ neg_multiple: 3
 split_strategy: blosum
 negative_sampling: random
 n_splits: 1
-test_percent: 20
+test_percent: 25
 split_bounds: [40]
 embed_type: esm
 split_idx: -1
