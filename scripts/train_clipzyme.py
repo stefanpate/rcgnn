@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import CSVLogger
-from src.clip import EnzymeReactionCLIP, ClipDataset, clip_collate
+from src.clip import EnzymeReactionCLIP, ClipDataset, clip_collate, EnzymeReactionCLIPBN
 import torch
 from torch.utils.data import DataLoader
 from logging import getLogger
@@ -91,12 +91,18 @@ def main(cfg: DictConfig):
         ckpt = None
 
     # Construct model
-    model = EnzymeReactionCLIP(
-        model_hps=cfg.model,
-        negative_multiple=cfg.data.neg_multiple,
-        positive_multiplier=cfg.training.pos_multiplier,
-    )
-
+    if cfg.data.negative_sampling == 'alternate_reaction_center':
+        model = EnzymeReactionCLIPBN(
+            model_hps=cfg.model,
+            negative_multiple=cfg.data.neg_multiple,
+            positive_multiplier=cfg.training.pos_multiplier,
+        )
+    else:
+        model = EnzymeReactionCLIP(
+            model_hps=cfg.model,
+            negative_multiple=cfg.data.neg_multiple,
+            positive_multiplier=cfg.training.pos_multiplier,
+        )
 
     # Track
     logger = CSVLogger(
