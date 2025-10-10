@@ -17,15 +17,15 @@
 # Args
 script=/home/spn1560/hiec/scripts/train_clipzyme.py
 data=(
-    sprhea_rcmcs
+    # sprhea_rcmcs
     # sprhea_blosum
     # sprhea_drfp
     # sprhea_random_rxn_arc
-    # sprhea_random_rc_arc
+    sprhea_random_rc_arc
     # sprhea_esm
     # sprhea_gsi
 )
-split_idx=0
+split_idx=-1
 
 # ckpt=epoch_0-step_31.ckpt # Replace '=' with '_' for bash compatibility |  model.ckpt_path=$ckpt in cmd below
 
