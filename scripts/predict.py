@@ -10,7 +10,6 @@ import mlflow
 from src.ml_utils import (
     featurize_data,
     construct_model,
-    downsample_negatives,
     mlflow_to_omegaconf
 )
 
@@ -33,7 +32,6 @@ def main(outer_cfg: DictConfig):
         val_data = pd.read_parquet(
             Path(outer_cfg.filepaths.scratch) / cfg.data.subdir_patt / f"train_val_{cfg.data.split_idx}.parquet"
         )
-        downsample_negatives(val_data, 1, rng) # Inner fold val are oversampled
 
     val_data['protein_embedding'] = val_data['protein_embedding'].apply(lambda x : np.array(x))
 
