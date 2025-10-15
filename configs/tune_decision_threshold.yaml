@@ -19,6 +19,35 @@ split_pairs:
   ef2ce94281fb445ba304791f991e23cc: f9640d4e388c43bbbe866bd5b315028e # Model: bom, Split strat: homology
   3c1ce655b064442cb7789fa210e4caaf: 9e69c536486b40f7897e7147401d8d32 # Model: cgr, Split strat: homology
   2a7b803f790143f0b14a1955117cb393: f957e72f77174313bc7d40242b905945 # Model: cgr, Split strat: rcmcs
+  42271427075e4953ab17303b2713e2ea: 65261323c12646998504e370a16b1ea0 # Model: bom, Split strat: drfp
+  3997ceef2ee34887ae426f0296a7a011: ceaf938efda24ae3a378127e50cfdc63 # Model: cgr, Split strat: drfp
+  b2d86a6aaf30416086855180508559bc: 4775a790d24642c2ad2da19fea3abaf2 # Model: drfp, Split strat: drfp
+  7b5a4bf57d774096826902e065bda1d2: 85ce37ffa9e24bb1a71287a0a01568a3 # Model: mfp, Split strat: drfp
+  90c99b23c3704d4d8a83a57747ecb7e3: aec8a9ca120a4d30ac99fe8fca1f7b63 # Model: rc_agg, Split strat: drfp
+  88c48dd4fce64c68aaeaa16e1f636579: bb55e8301105445c82cb289260f06025 # Model: rc_cxn, Split strat: drfp
+  9f28ec963a174626926a5699f7a8ea85: 0312ce9761d64c009ffc0e5179fcb423 # Model: bom, Split strat: esm
+  c4f35529ada44a26ac73e5c11b035a23: 35751dd210f94c77b9d7be8994162c0b # Model: cgr, Split strat: esm
+  1830f282f1be42f3b34c9467d571cfea: 6ba21a8e2d0b48838376b9bae6748017 # Model: drfp, Split strat: esm
+  f43889274968449c83a99335e96cd083: 78b16283d7fe4317b747c6df4c2b417b # Model: mfp, Split strat: esm
+  dcbe7740769440ffa273a4a7dbe82b85: fd693b7a889f420fb173cc4976f1bf35 # Model: rc_agg, Split strat: esm
+  c0652048ded445f0ad2784bc6a289d36: 6694ca03df624497953e8be7e39fb690 # Model: rc_cxn, Split strat: esm
+  e35758e78f444ffcb352891483f11dcd: e295299375284c2cb2ec591f6e099bb9 # Model: bom, Split strat: random_reaction
+  e8554547daa542a091131c518dcf002a: 182988b80e9340a1ad87523068469839 # Model: cgr, Split strat: random_reaction
+  b036364095f945ebb7b326e8376167b9: acdbfe7902dd4ccba8efa806ea7acf05 # Model: drfp, Split strat: random_reaction
+  ac4018e22f994c26921bc3a3a0797d58: 51b8913763c94154bc430f5c5d5d2b6a # Model: mfp, Split strat: random_reaction
+  7f9e852795664f9d877f9c0b05ee4177: ebf81f3dce084e6794b7488e38858de4 # Model: rc_agg, Split strat: random_reaction
+  575b67f3c7ac4d3b896a5a6e2ecf9350: 909f28bcb54a435ca475a2b51a3429f0 # Model: rc_cxn, Split strat: random_reaction
+  8f3e92d3688c4eaaa754c03f821a5f50: 0d6226ad15e643658892b8d6d4b2e0ba # Model: bom, Split strat: random_reaction_center
+  a20a704601954d8983435696493f7638: 3edfcdcf50354b1cb375c93bfd685b20 # Model: cgr, Split strat: random_reaction_center
+  126cac0dd8974a2c8461ce6a89d77876: 76ef6a5afb4c4dac886b2c2b148f73eb # Model: drfp, Split strat: random_reaction_center
+  312b2ccd7ab8476eaf2f02559b472f37: aaa47f28cd304f30ab3f863ed5c21cee # Model: mfp, Split strat: random_reaction_center
+  7446e660756f4cf486a9b17372880abf: d35bcdab4bc5427ebe71d002e0c1b22a # Model: rc_agg, Split strat: random_reaction_center
+  48446286a7ca41b9b9e966cac43dadcb: 3ef970f6de9e4401b07a3aa8cd12c674 # Model: rc_cxn, Split strat: random_reaction_center
+  clipzyme/sprhea_v3_folded_pt_ns_rcmcs_outer_fold: clipzyme/sprhea_v3_folded_pt_ns_rcmcs_inner_fold_1_of_3
+  clipzyme/sprhea_v3_folded_pt_ns_drfp_outer_fold: clipzyme/sprhea_v3_folded_pt_ns_drfp_inner_fold_1_of_3
+  clipzyme/sprhea_v3_folded_pt_ns_esm_outer_fold: clipzyme/sprhea_v3_folded_pt_ns_esm_inner_fold_1_of_3
+  clipzyme/sprhea_v3_folded_pt_ns_random_reaction_outer_fold: clipzyme/sprhea_v3_folded_pt_ns_random_reaction_inner_fold_1_of_3
+  clipzyme/sprhea_v3_folded_pt_ns_random_reaction_center_outer_fold: clipzyme/sprhea_v3_folded_pt_ns_random_reaction_center_inner_fold_1_of_3
 
 hydra:
   run:
