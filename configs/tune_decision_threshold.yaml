@@ -1,0 +1,27 @@
+defaults:
+  - filepaths: base
+  - _self_
+
+n_thresholds: 100
+n_bootstraps: 20
+neg_multiples: [1, 3, 5, 10]
+seed: 1234
+n_workers: 4
+
+split_pairs:
+  ff90895a6070499b8fdcdc0982526885: e2c936866af944a1aaa3e73380d2c072 # Model: bom, Split strat: rcmcs
+  8a155bc5673b4c6aa8667dd55755fe0b: 95963b479bb9434ba0c4fb43a05dc7a4 # Model: rc_agg, Split strat: rcmcs
+  5ca6ba7b8aec4b81a366e9138b9c09b0: 4cddcf9c4aa4439a989a5832a3df20de # Model: rc_cxn, Split strat: rcmcs
+  2241478505f9497885d25b9a0dee3ffd: d320827e0c754801b76edf5efe82d8f9 # Model: rc_cxn, Split strat: homology
+  e638683b53f84d0ba1c8f32794413e0e: 6d850586e6674fd2b4eb520b1d3b7494 # Model: rc_agg, Split strat: homology
+  fb3c7a9061a744fba7dabf9d50092414: e38a5553209a4d5c8063f0e2abb54d74 # Model: mfp, Split strat: rcmcs
+  4bf93c6830744a4b8e6d8076f14a82e1: a785183783074fee877eb15f7bb2a337 # Model: mfp, Split strat: homology
+  ef2ce94281fb445ba304791f991e23cc: f9640d4e388c43bbbe866bd5b315028e # Model: bom, Split strat: homology
+  3c1ce655b064442cb7789fa210e4caaf: 9e69c536486b40f7897e7147401d8d32 # Model: cgr, Split strat: homology
+  2a7b803f790143f0b14a1955117cb393: f957e72f77174313bc7d40242b905945 # Model: cgr, Split strat: rcmcs
+
+hydra:
+  run:
+    dir: ${filepaths.scratch}
+  sweep:
+    dir: ${filepaths.scratch}
