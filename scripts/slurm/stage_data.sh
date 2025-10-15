@@ -16,8 +16,8 @@
 # Args
 script=/home/spn1560/hiec/scripts/stage_data.py
 data=(
-    sprhea_random_rc_arc
-    sprhea_random_rxn_arc
+    sprhea_rcmcs
+    sprhea_homology
 )
 
 # Commands
