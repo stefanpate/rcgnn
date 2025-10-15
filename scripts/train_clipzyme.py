@@ -14,6 +14,10 @@ from logging import getLogger
 def downsample_negatives(data: pd.DataFrame, neg_multiple: int, rng: np.random.Generator):
     neg_idxs = data[data['y'] == 0].index
     n_to_rm = len(neg_idxs) - (len(data[data['y'] == 1]) * neg_multiple)
+    
+    if n_to_rm <= 0:
+        return
+    
     idx_to_rm = rng.choice(neg_idxs, n_to_rm, replace=False)
     data.drop(axis=0, index=idx_to_rm, inplace=True)
 
@@ -34,6 +38,9 @@ def main(cfg: DictConfig):
 
     # Arrange data
     if cfg.data.split_idx == -2: # Train on full dataset
+        if cfg.test_only:
+            raise ValueError("Cannot do test only with full data training")
+        
         version = f"{cfg.data.dataset}_{cfg.data.toc}_{cfg.data.split_strategy}_full_data"
         more_train_data = pd.read_parquet(
             Path(cfg.filepaths.scratch) / cfg.data.subdir_patt / "test.parquet"
@@ -47,35 +54,43 @@ def main(cfg: DictConfig):
             Path(cfg.filepaths.scratch) / cfg.data.subdir_patt / "test.parquet"
         )
         val_data['protein_embedding'] = val_data['protein_embedding'].apply(lambda x : np.array(x))
-        train_data = pd.concat(train_val_splits, ignore_index=True)
+
+        if not cfg.test_only:
+            train_data = pd.concat(train_val_splits, ignore_index=True)
     else: # Test on inner fold
         version = f"{cfg.data.dataset}_{cfg.data.toc}_{cfg.data.split_strategy}_inner_fold_{cfg.data.split_idx + 1}_of_{cfg.data.n_splits}"
-        train_data = pd.concat([train_val_splits[i] for i in range(cfg.data.n_splits) if i != cfg.data.split_idx], ignore_index=True)
         val_data = train_val_splits[cfg.data.split_idx]
-        downsample_negatives(val_data, 1, rng) # Inner fold val are oversampled
+        
+        if not cfg.test_only:
+            train_data = pd.concat([train_val_splits[i] for i in range(cfg.data.n_splits) if i != cfg.data.split_idx], ignore_index=True)
+            downsample_negatives(val_data, 1, rng) # Inner fold val are oversampled
 
-    downsample_negatives(train_data, cfg.data.neg_multiple, rng) # Inner fold train are oversampled
+    if not cfg.test_only:
+        downsample_negatives(train_data, cfg.data.neg_multiple, rng) # Inner fold train are oversampled
 
     # Prepare data
     fmt_data = lambda df: (df['am_smarts'].tolist(), torch.tensor(np.stack(df['protein_embedding'].to_numpy())), torch.tensor(df['y'].to_numpy()).float().unsqueeze(1))
-    train_reactions, train_proteins, train_targets = fmt_data(train_data)
     val_reactions, val_proteins, val_targets = (None, None, None) if val_data is None else fmt_data(val_data)
 
-    train_dataset = ClipDataset(
-        reactions=train_reactions,
-        protein_embeddings=train_proteins,
-        targets=train_targets
-    )
+    if not cfg.test_only:
+        train_reactions, train_proteins, train_targets = fmt_data(train_data)
+
+        train_dataset = ClipDataset(
+            reactions=train_reactions,
+            protein_embeddings=train_proteins,
+            targets=train_targets
+        )
+        train_dataloader = DataLoader(
+            train_dataset,
+            shuffle=True,
+            collate_fn=clip_collate,
+            batch_size=cfg.training.batch_size,
+        )
+
     val_dataset = None if val_data is None else ClipDataset(
         reactions=val_reactions,
         protein_embeddings=val_proteins,
         targets=val_targets
-    )
-    train_dataloader = DataLoader(
-        train_dataset,
-        shuffle=True,
-        collate_fn=clip_collate,
-        batch_size=cfg.training.batch_size,
     )
     val_dataloader = None if val_data is None else DataLoader(
         val_dataset,
@@ -91,43 +106,37 @@ def main(cfg: DictConfig):
         ckpt = None
 
     # Construct model
-    if cfg.data.negative_sampling == 'alternate_reaction_center':
-        model = EnzymeReactionCLIPBN(
-            model_hps=cfg.model,
-            negative_multiple=cfg.data.neg_multiple,
-            positive_multiplier=cfg.training.pos_multiplier,
+    model = EnzymeReactionCLIPBN(
+        model_hps=cfg.model,
+        negative_multiple=cfg.data.neg_multiple,
+        positive_multiplier=cfg.training.pos_multiplier,
+    )
+
+    if not cfg.test_only:
+        # Track
+        logger = CSVLogger(
+            name=exp,
+            save_dir=cfg.filepaths.runs,
+            version=version,
         )
-    else:
-        model = EnzymeReactionCLIP(
-            model_hps=cfg.model,
-            negative_multiple=cfg.data.neg_multiple,
-            positive_multiplier=cfg.training.pos_multiplier,
+
+        # Train
+        trainer = pl.Trainer(
+            enable_progress_bar=True,
+            accelerator="auto",
+            devices=1,
+            max_epochs=cfg.training.n_epochs,
+            logger=logger,
+            default_root_dir=Path(cfg.filepaths.runs) / exp / version,
+            detect_anomaly=True,
         )
 
-    # Track
-    logger = CSVLogger(
-        name=exp,
-        save_dir=cfg.filepaths.runs,
-        version=version,
-    )
-
-    # Train
-    trainer = pl.Trainer(
-        enable_progress_bar=True,
-        accelerator="auto",
-        devices=1,
-        max_epochs=cfg.training.n_epochs,
-        logger=logger,
-        default_root_dir=Path(cfg.filepaths.runs) / exp / version,
-        detect_anomaly=True,
-    )
-
-    trainer.fit(
-        model=model,
-        train_dataloaders=train_dataloader,
-        val_dataloaders=val_dataloader,
-        ckpt_path=ckpt,
-    )
+        trainer.fit(
+            model=model,
+            train_dataloaders=train_dataloader,
+            val_dataloaders=val_dataloader,
+            ckpt_path=ckpt,
+        )
 
     # Predict
     with torch.inference_mode():
@@ -137,7 +146,11 @@ def main(cfg: DictConfig):
             accelerator="auto",
             devices=1
         )
-        val_preds = trainer.predict(model, val_dataloader)
+        val_preds = trainer.predict(
+            model,
+            val_dataloader,
+            ckpt_path=ckpt if cfg.test_only else None, # Test only implies loaded from checkpoint / else follow gets best from training
+        )
 
     logits = np.vstack(val_preds).reshape(-1,)
     

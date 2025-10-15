@@ -15,7 +15,7 @@
 
 # Args
 script=/home/spn1560/hiec/scripts/train.py
-data=sprhea_random_rxn_arc
+data=sprhea_esm
 split_idx=0
 model=(
     rc_agg

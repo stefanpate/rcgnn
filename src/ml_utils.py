@@ -172,6 +172,10 @@ def construct_model(cfg: DictConfig, embed_dim: int, featurizer, device, ckpt=No
 def downsample_negatives(data: pd.DataFrame, neg_multiple: int, rng: np.random.Generator):
     neg_idxs = data[data['y'] == 0].index
     n_to_rm = len(neg_idxs) - (len(data[data['y'] == 1]) * neg_multiple)
+ 
+    if n_to_rm <= 0:
+        return
+    
     idx_to_rm = rng.choice(neg_idxs, n_to_rm, replace=False)
     data.drop(axis=0, index=idx_to_rm, inplace=True)
 
