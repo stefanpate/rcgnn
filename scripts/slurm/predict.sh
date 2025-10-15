@@ -3,19 +3,100 @@
 #SBATCH -p short
 #SBATCH -N 1
 #SBATCH -n 1
-#SBATCH --mem=16GB
-#SBATCH -t 0:30:00
+#SBATCH --mem=24GB
+#SBATCH -t 1:00:00
 #SBATCH --job-name="predict"
-#SBATCH --output=/home/spn1560/hiec/logs/out/%x_%A.out
-#SBATCH --error=/home/spn1560/hiec/logs/error/%x_%A.err
+#SBATCH --output=/home/spn1560/hiec/logs/out/%x_%A_%a.out
+#SBATCH --error=/home/spn1560/hiec/logs/error/%x_%A_%a.err
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=stefan.pate@northwestern.edu
+#SBATCH --array=0-79
 
 # Args
 script=/home/spn1560/hiec/scripts/predict.py
-run_id=2afaec3bcaa64763b6679776cd28db07
-
+run_id=(
+    2514bc1169a84bbbab1a3f13f76bff8c
+    15071c0474cf4fb6b86b23bd47cafec4
+    d71936df1ad0427fbbe8345d316a6b20
+    98354bc002554f53a468578687a62845
+    b6fe27a2cc0849e9a50537dee8c409c2
+    b456f8d410ab4f7e9682cfbe0286be9b
+    65261323c12646998504e370a16b1ea0
+    42271427075e4953ab17303b2713e2ea
+    ceaf938efda24ae3a378127e50cfdc63
+    3997ceef2ee34887ae426f0296a7a011
+    4775a790d24642c2ad2da19fea3abaf2
+    b2d86a6aaf30416086855180508559bc
+    85ce37ffa9e24bb1a71287a0a01568a3
+    7b5a4bf57d774096826902e065bda1d2
+    aec8a9ca120a4d30ac99fe8fca1f7b63
+    90c99b23c3704d4d8a83a57747ecb7e3
+    bb55e8301105445c82cb289260f06025
+    88c48dd4fce64c68aaeaa16e1f636579
+    0312ce9761d64c009ffc0e5179fcb423
+    9f28ec963a174626926a5699f7a8ea85
+    35751dd210f94c77b9d7be8994162c0b
+    c4f35529ada44a26ac73e5c11b035a23
+    6ba21a8e2d0b48838376b9bae6748017
+    1830f282f1be42f3b34c9467d571cfea
+    78b16283d7fe4317b747c6df4c2b417b
+    f43889274968449c83a99335e96cd083
+    fd693b7a889f420fb173cc4976f1bf35
+    dcbe7740769440ffa273a4a7dbe82b85
+    6694ca03df624497953e8be7e39fb690
+    c0652048ded445f0ad2784bc6a289d36
+    9ccbf9af82df419189e1392a205d567e
+    b27cc1134ecb45f2b51f7fdbd712e443
+    85444e594e32414287ae0ed8d912e7f0
+    2902e804853e4ed59094485d5fec6f8b
+    b708c2f0880c434b9a962c9431252657
+    0640823a298c4f088c3160092e273a24
+    e295299375284c2cb2ec591f6e099bb9
+    e35758e78f444ffcb352891483f11dcd
+    182988b80e9340a1ad87523068469839
+    e8554547daa542a091131c518dcf002a
+    acdbfe7902dd4ccba8efa806ea7acf05
+    b036364095f945ebb7b326e8376167b9
+    51b8913763c94154bc430f5c5d5d2b6a
+    ac4018e22f994c26921bc3a3a0797d58
+    ebf81f3dce084e6794b7488e38858de4
+    7f9e852795664f9d877f9c0b05ee4177
+    909f28bcb54a435ca475a2b51a3429f0
+    575b67f3c7ac4d3b896a5a6e2ecf9350
+    0d6226ad15e643658892b8d6d4b2e0ba
+    8f3e92d3688c4eaaa754c03f821a5f50
+    3edfcdcf50354b1cb375c93bfd685b20
+    a20a704601954d8983435696493f7638
+    76ef6a5afb4c4dac886b2c2b148f73eb
+    126cac0dd8974a2c8461ce6a89d77876
+    aaa47f28cd304f30ab3f863ed5c21cee
+    312b2ccd7ab8476eaf2f02559b472f37
+    d35bcdab4bc5427ebe71d002e0c1b22a
+    7446e660756f4cf486a9b17372880abf
+    3ef970f6de9e4401b07a3aa8cd12c674
+    48446286a7ca41b9b9e966cac43dadcb
+    e2c936866af944a1aaa3e73380d2c072
+    ff90895a6070499b8fdcdc0982526885
+    95963b479bb9434ba0c4fb43a05dc7a4
+    8a155bc5673b4c6aa8667dd55755fe0b
+    4cddcf9c4aa4439a989a5832a3df20de
+    5ca6ba7b8aec4b81a366e9138b9c09b0
+    d320827e0c754801b76edf5efe82d8f9
+    2241478505f9497885d25b9a0dee3ffd
+    6d850586e6674fd2b4eb520b1d3b7494
+    e638683b53f84d0ba1c8f32794413e0e
+    e38a5553209a4d5c8063f0e2abb54d74
+    fb3c7a9061a744fba7dabf9d50092414
+    a785183783074fee877eb15f7bb2a337
+    4bf93c6830744a4b8e6d8076f14a82e1
+    f9640d4e388c43bbbe866bd5b315028e
+    ef2ce94281fb445ba304791f991e23cc
+    9e69c536486b40f7897e7147401d8d32
+    3c1ce655b064442cb7789fa210e4caaf
+    f957e72f77174313bc7d40242b905945
+    2a7b803f790143f0b14a1955117cb393
+)
 
 # Commands
 ulimit -c 0
@@ -23,4 +104,4 @@ module purge
 module load gcc/9.2.0
 module load python-miniconda3/4.12.0
 source activate /home/spn1560/.conda/envs/hiec2
-python $script run_id=$run_id
+python $script run_id=${run_id[$SLURM_ARRAY_TASK_ID]}
