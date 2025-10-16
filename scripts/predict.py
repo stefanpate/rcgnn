@@ -70,9 +70,9 @@ def main(outer_cfg: DictConfig):
     # TODO: end remove
 
     # Get max sims
-    sim = cfg.data.similarity if cfg.data.similarity != 'homology' else 'gsi'
+    sim = cfg.data.split_strategy if cfg.data.split_strategy != 'homology' else 'gsi'
     S = load_similarity_matrix(
-        sim_path=Path(cfg.filepaths.similarity_matrices),
+        sim_path=Path(outer_cfg.filepaths.similarity_matrices),
         dataset=cfg.data.dataset,
         toc=cfg.data.toc,
         sim_metric=sim if sim != 'homology' else 'gsi'

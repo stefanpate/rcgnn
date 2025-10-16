@@ -160,16 +160,18 @@ def main(cfg: DictConfig):
     # target_output.loc[:, "logits"] = logits # These are not really logits but keep naming for consistency
     
     #TODO: remove below and uncomment above
-    target_output = pd.read_parquet("target_output.parquet")
     exp = cfg.exp or "Default"
     if cfg.data.split_idx == -1: # Test on outer fold
         version = f"{cfg.data.dataset}_{cfg.data.toc}_{cfg.data.split_strategy}_outer_fold"
     else: # Test on inner fold
         version = f"{cfg.data.dataset}_{cfg.data.toc}_{cfg.data.split_strategy}_inner_fold_{cfg.data.split_idx + 1}_of_{cfg.data.n_splits}"
+    
+    subdir = Path(f"{exp}/{version}")
+    target_output = pd.read_parquet(subdir / "target_output.parquet")
     # TODO: end remove
 
     # Get max sims
-    sim = cfg.data.similarity if cfg.data.similarity != 'homology' else 'gsi'
+    sim = cfg.data.split_strategy if cfg.data.split_strategy != 'homology' else 'gsi'
     S = load_similarity_matrix(
         sim_path=Path(cfg.filepaths.similarity_matrices),
         dataset=cfg.data.dataset,
