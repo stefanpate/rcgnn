@@ -177,7 +177,7 @@ def main(cfg: DictConfig):
             sim_path=Path(cfg.filepaths.similarity_matrices),
             dataset=cfg.data.dataset,
             toc=cfg.data.toc,
-            sim_metric=sim if sim != 'homology' else 'gsi'
+            sim_metric=sim
         )
     except ValueError as e:
         print(e)
@@ -186,7 +186,7 @@ def main(cfg: DictConfig):
 
     if sim in ['rcmcs', 'drfp']:
         val_idx = target_output.loc[:, 'reaction_idx'].to_list()
-    elif sim in ['homology', 'esm']:
+    elif sim in ['gsi', 'esm']:
         val_idx = target_output.loc[:, 'protein_idx'].to_list()
 
     train_idx = [i for i in range(S.shape[0]) if i not in val_idx]
