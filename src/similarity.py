@@ -98,6 +98,9 @@ def agg_mfp_cosine_similarity_matrix(rxns:dict[str, dict], matrix_idx_to_rxn_id:
     S:np.ndarray
         nxn similarity matrix
     '''
+    # TODO: This was to avoid error. Figureo out what happend to this function. Deprecated?
+    def _wrap_agg_mfp_cosine(args):
+        return None
     S = np.eye(N=len(matrix_idx_to_rxn_id)) # Similarity matrix
 
     to_do = []
