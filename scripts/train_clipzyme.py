@@ -172,12 +172,17 @@ def main(cfg: DictConfig):
 
     # Get max sims
     sim = cfg.data.split_strategy if cfg.data.split_strategy != 'homology' else 'gsi'
-    S = load_similarity_matrix(
-        sim_path=Path(cfg.filepaths.similarity_matrices),
-        dataset=cfg.data.dataset,
-        toc=cfg.data.toc,
-        sim_metric=sim if sim != 'homology' else 'gsi'
-    )
+    try:
+        S = load_similarity_matrix(
+            sim_path=Path(cfg.filepaths.similarity_matrices),
+            dataset=cfg.data.dataset,
+            toc=cfg.data.toc,
+            sim_metric=sim if sim != 'homology' else 'gsi'
+        )
+    except ValueError as e:
+        print(e)
+        target_output.to_parquet("target_output.parquet", index=False)
+        return
 
     if sim in ['rcmcs', 'drfp']:
         val_idx = target_output.loc[:, 'reaction_idx'].to_list()

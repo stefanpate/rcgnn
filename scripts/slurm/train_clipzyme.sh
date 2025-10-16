@@ -1,11 +1,10 @@
 #!/bin/bash
 #SBATCH -A p30041
-#SBATCH -p gengpu
+#SBATCH -p short
 #SBATCH -N 1
 #SBATCH -n 1
-#SBATCH --gres=gpu:h100:1
 #SBATCH --mem=64GB
-#SBATCH -t 24:00:00
+#SBATCH -t 0:30:00
 #SBATCH --job-name="tr_clip"
 #SBATCH --output=/home/spn1560/hiec/logs/out/%x_%A_%a.out
 #SBATCH --error=/home/spn1560/hiec/logs/error/%x_%A_%a.err
