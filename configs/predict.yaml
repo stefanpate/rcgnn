@@ -7,10 +7,6 @@ tracking_uri: file:///projects/p30041/spn1560/hiec/results/runs
 run_id: ???
 
 hydra:
-  sweeper:
-    params:
-      run_id: 1a6a3a1a203f40b1bf7c969585e96ff8,4dd874521c1b47929d55edcc01651a5f,4f555ba50eca42a8a32405cc7d468d73,98d2d5c93f6f4d77a07da8658b19c784
-
   sweep:
     dir: ${filepaths.results}/predictions
     subdir: ${...run_id}

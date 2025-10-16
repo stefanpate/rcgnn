@@ -10,7 +10,7 @@ from functools import partial
 import json
 from tqdm import tqdm
 
-def tune_dt(n_thresholds: int, inner_split_path: str, n_bootstraps: int, seed: int, neg_multiples: list[int]) -> dict[int, float]:
+def tune_dt(inner_split_path: str, n_thresholds: int, n_bootstraps: int, seed: int, neg_multiples: list[int]) -> dict[int, float]:
     '''
     Tune decision threshold for several negative multiples / one inner split using bootstrapping.
     '''
@@ -57,8 +57,11 @@ def main(cfg: DictConfig):
     tasks = [Path(cfg.filepaths.results) / "predictions" / elt / "target_output.parquet" for elt in inner2outer.keys()]
 
     with ProcessPoolExecutor(max_workers=cfg.n_workers) as executor:
-        results = tqdm(list(executor.map(_tune_dt, tasks)))
+        results = list(tqdm(executor.map(_tune_dt, tasks), total=len(tasks), desc="Tuning decision thresholds"))
 
-    for outer, best_ths in zip(outer2inner.values(), results):
+    for outer, best_ths in zip(outer2inner.keys(), results):
         with open(Path(cfg.filepaths.results) / "predictions" / outer / f"best_thresholds.json", 'w') as f:
             json.dump(best_ths, f)
+
+if __name__ == "__main__":
+    main()
