@@ -1,44 +1,45 @@
 #!/bin/bash
 #SBATCH -A p30041
-#SBATCH -p short
+#SBATCH -p gengpu
+#SBATCH --gres=h100:1
 #SBATCH -N 1
 #SBATCH -n 1
 #SBATCH --mem=64GB
-#SBATCH -t 0:30:00
+#SBATCH -t 5:00:00
 #SBATCH --job-name="tr_clip"
 #SBATCH --output=/home/spn1560/hiec/logs/out/%x_%A_%a.out
 #SBATCH --error=/home/spn1560/hiec/logs/error/%x_%A_%a.err
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=stefan.pate@northwestern.edu
-#SBATCH --array=0-9
+#SBATCH --array=0-1
 
 # Args
 script=/home/spn1560/hiec/scripts/train_clipzyme.py
 data=(
     sprhea_rcmcs
     sprhea_rcmcs
-    sprhea_drfp
-    sprhea_drfp
-    sprhea_esm
-    sprhea_esm
-    sprhea_random_rxn_arc
-    sprhea_random_rxn_arc
-    sprhea_random_rc_arc
-    sprhea_random_rc_arc
+    # sprhea_drfp
+    # sprhea_drfp
+    # sprhea_esm
+    # sprhea_esm
+    # sprhea_random_rxn_arc
+    # sprhea_random_rxn_arc
+    # sprhea_random_rc_arc
+    # sprhea_random_rc_arc
 )
 
 ckpt=(
     epoch_29-step_127950.ckpt
     epoch_29-step_164550.ckpt
-    epoch_29-step_100230.ckpt
-    epoch_29-step_152550.ckpt
-    epoch_29-step_123960.ckpt
-    epoch_28-step_151409.ckpt
-    epoch_29-step_88500.ckpt
-    epoch_29-step_141330.ckpt
-    epoch_29-step_88500.ckpt
-    epoch_29-step_146220.ckpt
+    # epoch_29-step_100230.ckpt
+    # epoch_29-step_152550.ckpt
+    # epoch_29-step_123960.ckpt
+    # epoch_28-step_151409.ckpt
+    # epoch_29-step_88500.ckpt
+    # epoch_29-step_141330.ckpt
+    # epoch_29-step_88500.ckpt
+    # epoch_29-step_146220.ckpt
     
 )
 
