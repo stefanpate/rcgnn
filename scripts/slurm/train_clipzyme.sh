@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -A p30041
 #SBATCH -p gengpu
-#SBATCH --gres=h100:1
+#SBATCH --gres=gpu:h100:1
 #SBATCH -N 1
 #SBATCH -n 1
 #SBATCH --mem=64GB

@@ -4,7 +4,7 @@ from src.cross_validation import sample_negatives
 import numpy as np
 import json
 
-dir = "/home/stef/quest_data/hiec/scratch/sprhea_v3_folded_pt_ns"
+# dir = "/scratch/spn1560/hiec/sprhea_v3_folded_pt_ns"
 strats = [
     'rcmcs',
     'homology',
@@ -56,10 +56,20 @@ def assemble_data(X, y, sprhea, df) -> pd.DataFrame:
 
 if __name__ == "__main__":
 
-    with open("/home/stef/quest_data/hiec/data/sprhea/v3_folded_pt_ns.json", 'r') as f:
+    # with open("/projects/p30041/spn1560/hiec/data/sprhea/v3_folded_pt_ns.json", 'r') as f:
         sprhea = json.load(f)
 
     for strat in strats:
+        for i in range(3):
+            fn = f"{dir}/{strat}/3fold/train_val_{i}.parquet"
+            df = pd.read_parquet(fn)
+            df['smarts'] = df['rid'].apply(lambda rid: sprhea[rid]['smarts'])
+            df['am_smarts'] = df['rid'].apply(lambda rid: sprhea[rid]['am_smarts'])
+            df['reaction_center'] = df['rid'].apply(lambda rid: sprhea[rid]['rcs'])
+
+            df.to_parquet(fn)
+            print(f"Updated train_val file saved to: {fn}")
+
         print(f"Processing strategy: {strat}")
         old_test_fn = f"{dir}/{strat}/3fold/test.parquet"
         old_test = pd.read_parquet(old_test_fn)
