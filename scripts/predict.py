@@ -20,6 +20,7 @@ def main(outer_cfg: DictConfig):
     run_data = mlflow.get_run(run_id=outer_cfg.run_id)
     cfg, artifacts_path = mlflow_to_omegaconf(run_data)
     run_path = artifacts_path.parent
+    cfg['filepaths'] = outer_cfg.filepaths
 
     rng = np.random.default_rng(seed=cfg.data.seed)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
