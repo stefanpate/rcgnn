@@ -44,6 +44,23 @@ class _RCDatapointMixin:
         products = [make_mol(elt, keep_h, add_h) for elt in rhs.split('.')]
         
         return cls(reactants, products, rcs, *args, **kwargs)
+    
+@dataclass
+class _PretrainedDatapointMixin:
+    rxn_idx: int
+
+    @classmethod
+    def from_smi( # Bit of a misnomer but keeping for consistency
+        cls,
+        rxn_idx: int,
+        *args,
+        **kwargs
+    ) -> _PretrainedDatapointMixin:
+        return cls(rxn_idx, *args, **kwargs)
+    
+@dataclass
+class PretrainedDatapoint(_DatapointMixin, _PretrainedDatapointMixin):
+    pass
 
 @dataclass
 class RxnRCDatapoint(_DatapointMixin, _RCDatapointMixin):
@@ -73,6 +90,29 @@ class MFPDataset(Dataset):
     
     def __getitem__(self, index) -> MFPDatum:
         rxn_embed = self.featurizer(self.data[index].reactants, self.data[index].products)
+        return MFPDatum(
+            rxn_embed=rxn_embed,
+            y=self.data[index].y,
+            x_d=self.data[index].x_d,
+            weight=self.data[index].weight,
+            gt_mask=self.data[index].gt_mask,
+            lt_mask=self.data[index].lt_mask,
+            )
+
+class PretrainedFPDataset(Dataset):
+    def __init__(
+            self,
+            data: List[PretrainedDatapoint],
+            featurizer
+            ) -> None:
+        super().__init__()
+        self.data = data
+
+    def __len__(self):
+        return len(self.data)
+    
+    def __getitem__(self, index) -> MFPDatum:
+        rxn_embed = self.featurizer(self.data[index].rxn_idx)
         return MFPDatum(
             rxn_embed=rxn_embed,
             y=self.data[index].y,

@@ -23,7 +23,9 @@ from src.data import (
     RxnRCDataset,
     MFPDataset,
     mfp_build_dataloader,
-    RxnRCDatapoint
+    RxnRCDatapoint,
+    PretrainedFPDataset,
+    PretrainedDatapoint,
 )
 
 from src.featurizer import (  
@@ -34,6 +36,7 @@ from src.featurizer import (
     MultiHotBondFeaturizer,
     cp_reaction_dp_from_smi,
     ReactionDRFPFeaturizer,
+    PretrainedReactionFeaturizer,
 )
 from chemprop.featurizers import (
     CondensedGraphOfReactionFeaturizer,
@@ -46,12 +49,17 @@ featurizers = {
     'rxn_rc': (RxnRCDataset, RCVNReactionMolGraphFeaturizer, build_dataloader),
     'mfp': (MFPDataset, ReactionMorganFeaturizer, mfp_build_dataloader),
     'drfp': (MFPDataset, ReactionDRFPFeaturizer, mfp_build_dataloader),
+    'rxnfp': (PretrainedFPDataset, PretrainedReactionFeaturizer, mfp_build_dataloader),
+    'uni_rxn': (PretrainedFPDataset, PretrainedReactionFeaturizer, mfp_build_dataloader),
+    'react_seq': (PretrainedFPDataset, PretrainedReactionFeaturizer, mfp_build_dataloader),
 }
 
 def construct_featurizer(cfg: DictConfig):
     
     if cfg.model.featurizer == 'cgr':
         datapoint_from_smi = cp_reaction_dp_from_smi
+    elif cfg.model.featurizer in ['rxnfp', 'uni_rxn', 'react_seq']:
+        datapoint_from_smi = PretrainedDatapoint.from_smi
     else:
         datapoint_from_smi = RxnRCDatapoint.from_smi
 
@@ -63,6 +71,8 @@ def construct_featurizer(cfg: DictConfig):
         featurizer = featurizer_base(length=cfg.model.vec_len)
     elif cfg.model.featurizer == 'cgr':
         featurizer = featurizer_base(mode_=RxnMode.REAC_PROD)
+    elif cfg.model.featurizer in ['rxnfp', 'uni_rxn', 'react_seq']:
+        featurizer = featurizer_base(embed_loc= Path(cfg.filepaths.pretrained_rxn_embeddings) / cfg.model.featurizer)
     else:
         featurizer = featurizer_base(
             atom_featurizer=MultiHotAtomFeaturizer.no_stereo(),
@@ -83,15 +93,17 @@ def featurize_data(cfg: DictConfig, rng: np.random.Generator, train_data: pd.Dat
     featurizer, datapoint_from_smi, dataset_base, generate_dataloader = construct_featurizer(cfg)
 
     if cfg.model.featurizer == 'cgr':
-        smarts_k = 'am_smarts'
+        rxn_k = 'am_smarts'
+    elif cfg.model.featurizer in ['rxnfp', 'uni_rxn', 'react_seq']:
+        rxn_k = 'reaction_idx'
     else:
-        smarts_k = 'smarts'
+        rxn_k = 'smarts'
     
     if train_data is not None:
         train_datapoints = []
         for _, row in train_data.iterrows():
             y = np.array([row['y']]).astype(np.float32)
-            train_datapoints.append(datapoint_from_smi(smarts=row[smarts_k], reaction_center=row['reaction_center'], y=y, x_d=row['protein_embedding']))
+            train_datapoints.append(datapoint_from_smi(row[rxn_k], reaction_center=row['reaction_center'], y=y, x_d=row['protein_embedding']))
         
         train_dataset = dataset_base(train_datapoints, featurizer=featurizer)
         train_dataloader = generate_dataloader(train_dataset, shuffle=True, seed=cfg.data.seed)
@@ -102,7 +114,7 @@ def featurize_data(cfg: DictConfig, rng: np.random.Generator, train_data: pd.Dat
         val_datapoints = []
         for _, row in val_data.iterrows():
             y = np.array([row['y']]).astype(np.float32)
-            val_datapoints.append(datapoint_from_smi(smarts=row[smarts_k], reaction_center=row['reaction_center'], y=y, x_d=row['protein_embedding']))
+            val_datapoints.append(datapoint_from_smi(row[rxn_k], reaction_center=row['reaction_center'], y=y, x_d=row['protein_embedding']))
 
         if shuffle_val:
             rng.shuffle(val_datapoints) # Avoid weirdness of calculating metrics with only one class in the batch

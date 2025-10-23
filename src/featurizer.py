@@ -512,6 +512,19 @@ class ReactionDRFPFeaturizer:
 
         return fp.astype(np.float32)
 
+@dataclass
+class PretrainedReactionFeaturizer:
+    embed_loc: str
+
+    def __post_init__(self):
+        self.embeddings = np.load(self.embed_loc)
+
+    def __call__(
+            self,
+            rxn_idx: int,
+    ) -> np.ndarray:
+        return self.embeddings[rxn_idx].astype(np.float32)
+
 def cp_reaction_dp_from_smi(smarts: str, **kwargs) -> ReactionDatapoint:
     """Create a :class:`ReactionDatapoint` from a SMILES string.
 
