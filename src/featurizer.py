@@ -515,6 +515,7 @@ class ReactionDRFPFeaturizer:
 @dataclass
 class PretrainedReactionFeaturizer:
     embed_loc: str
+    length: int
 
     def __post_init__(self):
         self.embeddings = np.load(self.embed_loc)

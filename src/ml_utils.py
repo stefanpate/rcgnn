@@ -72,7 +72,7 @@ def construct_featurizer(cfg: DictConfig):
     elif cfg.model.featurizer == 'cgr':
         featurizer = featurizer_base(mode_=RxnMode.REAC_PROD)
     elif cfg.model.featurizer in ['rxnfp', 'uni_rxn', 'react_seq']:
-        featurizer = featurizer_base(embed_loc= Path(cfg.filepaths.pretrained_rxn_embeddings) / cfg.model.featurizer)
+        featurizer = featurizer_base(embed_loc= Path(cfg.filepaths.pretrained_rxn_embeddings) / f"{cfg.model.featurizer}.npy", length=cfg.model.vec_len)
     else:
         featurizer = featurizer_base(
             atom_featurizer=MultiHotAtomFeaturizer.no_stereo(),

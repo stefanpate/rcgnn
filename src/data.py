@@ -53,6 +53,7 @@ class _PretrainedDatapointMixin:
     def from_smi( # Bit of a misnomer but keeping for consistency
         cls,
         rxn_idx: int,
+        reaction_center: None = None, # Ignored for compatibility
         *args,
         **kwargs
     ) -> _PretrainedDatapointMixin:
@@ -107,6 +108,7 @@ class PretrainedFPDataset(Dataset):
             ) -> None:
         super().__init__()
         self.data = data
+        self.featurizer = featurizer
 
     def __len__(self):
         return len(self.data)
