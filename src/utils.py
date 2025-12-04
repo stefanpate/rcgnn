@@ -9,7 +9,7 @@ from collections import namedtuple
 from pathlib import Path
 from omegaconf import OmegaConf
 
-filepaths = OmegaConf.load("../configs/filepaths/base.yaml")
+filepaths = OmegaConf.load("/home/spn1560/hiec/configs/filepaths/base.yaml")
 DatabaseEntry = namedtuple("DatabaseEntry", "db, id", defaults=[None, None])
 Enzyme = namedtuple("Enzyme", "uniprot_id, sequence, ec, validation_score, existence, reviewed, organism", defaults=[None, None, None, None, None, None, None])
 
@@ -160,9 +160,8 @@ def ensure_dirs(path):
     if not os.path.exists(path):
         os.makedirs(path)
         
-def retrive_esm1b_embedding(fasta_path, outdir):
+def retrive_esm1b_embedding(fasta_path, outdir, model_loc, _include):
     esm_script = "/home/spn1560/hiec/src/esm/scripts/extract.py"
-    esm_type = "esm1b_t33_650M_UR50S"
-    command = ["python", esm_script, esm_type, 
-              fasta_path, outdir, "--include", "mean"]
+    command = ["python", esm_script, model_loc, 
+              fasta_path, outdir, "--include", _include]
     subprocess.run(command)
