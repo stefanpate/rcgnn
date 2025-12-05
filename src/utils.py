@@ -9,7 +9,8 @@ from collections import namedtuple
 from pathlib import Path
 from omegaconf import OmegaConf
 
-filepaths = OmegaConf.load("/home/spn1560/hiec/configs/filepaths/base.yaml")
+root_dir = Path(__file__).resolve().parent.parent
+filepaths = OmegaConf.load(root_dir / "configs/filepaths/base.yaml")
 DatabaseEntry = namedtuple("DatabaseEntry", "db, id", defaults=[None, None])
 Enzyme = namedtuple("Enzyme", "uniprot_id, sequence, ec, validation_score, existence, reviewed, organism", defaults=[None, None, None, None, None, None, None])
 
@@ -22,14 +23,16 @@ def load_json(path):
         data = json.load(f)
     return data
 
-def load_embed(path: Path, embed_key: int):
+def load_embed(path: Path, embed_type: str):
     id = path.stem
     f = torch.load(path)
+    k = "mean_representations" if embed_type == "esm" else "representations"
     if type(f) == dict:
-        embed = f['mean_representations'][embed_key]
+        embed = f[k][33]
     elif type(f) == torch.Tensor:
         embed = f
-    return id, embed
+    
+    return embed
 
 def ensure_dirs(path):
     if not os.path.exists(path):

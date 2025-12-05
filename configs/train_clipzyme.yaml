@@ -1,11 +1,11 @@
 defaults:
   - filepaths: base
-  - data: sprhea_homology
-  - model: clipzyme
+  - data: sprhea_n_100_arc
+  - model: structural_clipzyme
   - training: clipzyme
   - _self_
 
-exp: clipzyme
+exp: dev # Critical: se to structural_clipzyme when you treain next round!!
 test_only: false
 
 hydra:

@@ -90,8 +90,8 @@ def main(cfg: DictConfig):
         proteins[pid] = np.array(
             load_embed(
                 Path(cfg.filepaths.data) / cfg.data.dataset / cfg.data.embed_type / f"{pid}.pt",
-                embed_key=33
-            )[1]
+                embed_type=cfg.data.embed_type
+            )
         )
 
     print(f"Splitting data with strategy {cfg.data.split_strategy}...")

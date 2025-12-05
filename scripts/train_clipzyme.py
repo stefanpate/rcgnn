@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import CSVLogger
-from src.clip import EnzymeReactionCLIP, ClipDataset, clip_collate, EnzymeReactionCLIPBN
+from src.clip import EnzymeReactionCLIP, ClipDataset, clip_collate, EnzymeReactionCLIPBN, create_protein_graph
 from src.similarity import load_similarity_matrix
 import torch
 from torch.utils.data import DataLoader
@@ -29,6 +29,7 @@ def main(cfg: DictConfig):
     rng = np.random.default_rng(seed=cfg.data.seed)
 
     # Load data
+    log.info("Loading data...")
     train_val_splits = []
     for i in range(cfg.data.n_splits):
         split = pd.read_parquet(
@@ -69,8 +70,36 @@ def main(cfg: DictConfig):
     if not cfg.test_only:
         downsample_negatives(train_data, cfg.data.neg_multiple, rng) # Inner fold train are oversampled
 
+    def add_protein_graphs(df, cfg):
+        '''
+        Warning: modifies df in place
+        '''
+        protein_graphs = []
+        df['protein_embedding'] = df['protein_embedding'].apply(lambda x: torch.tensor(np.vstack(x)))
+        for _, row in df.iterrows():
+            pid = row['pid']
+            esm_emb = row['protein_embedding']
+            cif_path = Path(cfg.filepaths.data) / "sprhea" / "af2" / f"AF-{pid}-F1-model_v4.cif"
+            protein_graphs.append(create_protein_graph(cif_path, esm_emb))
+        
+        df['protein_graph'] = protein_graphs
+
+    # For debugging TODO remove
+    val_data = val_data[:2]
+    train_data = train_data[:2]
+
+    if cfg.model.use_protein_structure:
+        log.info("Creating protein graphs...")
+        if val_data is not None:
+            add_protein_graphs(val_data, cfg)
+        if not cfg.test_only:
+            add_protein_graphs(train_data, cfg)
+
+        fmt_data = lambda df: (df['am_smarts'].tolist(), df['protein_graph'].to_list(), torch.tensor(df['y'].to_numpy()).float().unsqueeze(1))
+    else:
+        fmt_data = lambda df: (df['am_smarts'].tolist(), torch.tensor(np.stack(df['protein_embedding'].to_numpy())), torch.tensor(df['y'].to_numpy()).float().unsqueeze(1))
+    
     # Prepare data
-    fmt_data = lambda df: (df['am_smarts'].tolist(), torch.tensor(np.stack(df['protein_embedding'].to_numpy())), torch.tensor(df['y'].to_numpy()).float().unsqueeze(1))
     val_reactions, val_proteins, val_targets = (None, None, None) if val_data is None else fmt_data(val_data)
 
     if not cfg.test_only:
@@ -78,7 +107,7 @@ def main(cfg: DictConfig):
 
         train_dataset = ClipDataset(
             reactions=train_reactions,
-            protein_embeddings=train_proteins,
+            proteins=train_proteins,
             targets=train_targets
         )
         train_dataloader = DataLoader(
@@ -90,7 +119,7 @@ def main(cfg: DictConfig):
 
     val_dataset = None if val_data is None else ClipDataset(
         reactions=val_reactions,
-        protein_embeddings=val_proteins,
+        proteins=val_proteins,
         targets=val_targets
     )
     val_dataloader = None if val_data is None else DataLoader(
@@ -130,6 +159,7 @@ def main(cfg: DictConfig):
             logger=logger,
             default_root_dir=Path(cfg.filepaths.runs) / exp / version,
             detect_anomaly=True,
+            log_every_n_steps=1,
         )
 
         trainer.fit(
