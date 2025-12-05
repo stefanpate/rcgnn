@@ -2,7 +2,7 @@ defaults:
   - filepaths: base
   - data: sprhea_n_100_arc
   - model: structural_clipzyme
-  - training: clipzyme
+  - training: dev
   - _self_
 
 exp: dev # Critical: se to structural_clipzyme when you treain next round!!

@@ -7,6 +7,6 @@ negative_sampling: alternate_reaction_center
 n_splits: 3
 test_percent: 20
 split_bounds: null
-embed_type: esm2
+embed_type: esm
 split_idx: -1
-subdir_patt: ${.dataset}_${.toc}_${.embed_type}/${.split_strategy}_${.negative_sampling}/${.n_splits}fold
+subdir_patt: ${.dataset}_${.toc}/${.split_strategy}_${.negative_sampling}/${.n_splits}fold

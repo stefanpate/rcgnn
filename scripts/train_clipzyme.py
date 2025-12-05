@@ -8,6 +8,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.loggers import CSVLogger
 from src.clip import EnzymeReactionCLIP, ClipDataset, clip_collate, EnzymeReactionCLIPBN, create_protein_graph
 from src.similarity import load_similarity_matrix
+from src.utils import load_embed
 import torch
 from torch.utils.data import DataLoader
 from logging import getLogger
@@ -22,21 +23,49 @@ def downsample_negatives(data: pd.DataFrame, neg_multiple: int, rng: np.random.G
     idx_to_rm = rng.choice(neg_idxs, n_to_rm, replace=False)
     data.drop(axis=0, index=idx_to_rm, inplace=True)
 
+def load_data(fp, use_prot_struct, blacklist):
+    df = pd.read_parquet(fp)
+    if use_prot_struct:
+        df.drop(columns=['protein_embedding'], inplace=True)
+        df = df[~df['pid'].isin(blacklist)].reset_index(drop=True)
+    else:
+        df['protein_embedding'] = df['protein_embedding'].apply(lambda x : np.array(x))
+
+    return df
+
+def get_protein_graphs(pids, cfg):
+    protein_graphs = {}
+    for pid in pids:
+        esm_path = Path(cfg.filepaths.scratch) / "esm2" / f"{pid}.pt"
+        cif_path = Path(cfg.filepaths.scratch) / "af2" / f"AF-{pid}-F1-model_v4.cif"
+        esm_emb = load_embed(esm_path, embed_type='esm2')
+        protein_graphs[pid] = create_protein_graph(cif_path, esm_emb)
+    
+    return protein_graphs
+
 log = getLogger(__name__)
 
 @hydra.main(version_base=None, config_path="../configs", config_name="train_clipzyme")
 def main(cfg: DictConfig):
     rng = np.random.default_rng(seed=cfg.data.seed)
 
+    # Could not get these structures
+    af2_blacklist = set()
+    with open(Path(cfg.filepaths.data) / "sprhea" / "af2_blacklist.txt", 'r') as f:
+        for line in f:
+            af2_blacklist.add(line.strip())
+
     # Load data
     log.info("Loading data...")
     train_val_splits = []
     for i in range(cfg.data.n_splits):
-        split = pd.read_parquet(
-            Path(cfg.filepaths.scratch) / cfg.data.subdir_patt / f"train_val_{i}.parquet"
+        split = load_data(
+            Path(cfg.filepaths.scratch) / cfg.data.subdir_patt / f"train_val_{i}.parquet",
+            cfg.model.use_protein_structure,
+            af2_blacklist
         )
-        split['protein_embedding'] = split['protein_embedding'].apply(lambda x : np.array(x))
         train_val_splits.append(split)
+
 
     # Arrange data
     if cfg.data.split_idx == -2: # Train on full dataset
@@ -44,18 +73,20 @@ def main(cfg: DictConfig):
             raise ValueError("Cannot do test only with full data training")
         
         version = f"{cfg.data.dataset}_{cfg.data.toc}_{cfg.data.split_strategy}_full_data"
-        more_train_data = pd.read_parquet(
-            Path(cfg.filepaths.scratch) / cfg.data.subdir_patt / "test.parquet"
+        more_train_data = load_data(
+            Path(cfg.filepaths.scratch) / cfg.data.subdir_patt / "test.parquet",
+            cfg.model.use_protein_structure,
+            af2_blacklist
         )
-        more_train_data['protein_embedding'] = more_train_data['protein_embedding'].apply(lambda x : np.array(x))
         train_data = pd.concat(train_val_splits + [more_train_data], ignore_index=True)
         val_data = None
     elif cfg.data.split_idx == -1: # Test on outer fold
         version = f"{cfg.data.dataset}_{cfg.data.toc}_{cfg.data.split_strategy}_outer_fold"
-        val_data = pd.read_parquet(
-            Path(cfg.filepaths.scratch) / cfg.data.subdir_patt / "test.parquet"
+        val_data = load_data(
+            Path(cfg.filepaths.scratch) / cfg.data.subdir_patt / "test.parquet",
+            cfg.model.use_protein_structure,
+            af2_blacklist
         )
-        val_data['protein_embedding'] = val_data['protein_embedding'].apply(lambda x : np.array(x))
 
         if not cfg.test_only:
             train_data = pd.concat(train_val_splits, ignore_index=True)
@@ -70,44 +101,41 @@ def main(cfg: DictConfig):
     if not cfg.test_only:
         downsample_negatives(train_data, cfg.data.neg_multiple, rng) # Inner fold train are oversampled
 
-    def add_protein_graphs(df, cfg):
-        '''
-        Warning: modifies df in place
-        '''
-        protein_graphs = []
-        df['protein_embedding'] = df['protein_embedding'].apply(lambda x: torch.tensor(np.vstack(x)))
-        for _, row in df.iterrows():
-            pid = row['pid']
-            esm_emb = row['protein_embedding']
-            cif_path = Path(cfg.filepaths.data) / "sprhea" / "af2" / f"AF-{pid}-F1-model_v4.cif"
-            protein_graphs.append(create_protein_graph(cif_path, esm_emb))
-        
-        df['protein_graph'] = protein_graphs
 
     # For debugging TODO remove
-    val_data = val_data[:2]
-    train_data = train_data[:2]
+    val_data = val_data[:4]
+    train_data = train_data[:4]
 
     if cfg.model.use_protein_structure:
         log.info("Creating protein graphs...")
-        if val_data is not None:
-            add_protein_graphs(val_data, cfg)
-        if not cfg.test_only:
-            add_protein_graphs(train_data, cfg)
-
-        fmt_data = lambda df: (df['am_smarts'].tolist(), df['protein_graph'].to_list(), torch.tensor(df['y'].to_numpy()).float().unsqueeze(1))
+        val_pgs = get_protein_graphs(val_data['pid'].unique(), cfg) if val_data is not None else {}
+        test_pgs = get_protein_graphs(train_data['pid'].unique(), cfg) if not cfg.test_only else {}
+        pid2prot = {**val_pgs, **test_pgs}
+        del val_pgs, test_pgs
+        fmt_data = lambda df: (df['am_smarts'].tolist(), df['pid'].to_list(), torch.tensor(df['y'].to_numpy()).float().unsqueeze(1))
     else:
-        fmt_data = lambda df: (df['am_smarts'].tolist(), torch.tensor(np.stack(df['protein_embedding'].to_numpy())), torch.tensor(df['y'].to_numpy()).float().unsqueeze(1))
+        pid2prot = {}
+        if val_data is not None:
+            for pid in val_data['pid'].unique():
+                pid2prot[pid] = torch.tensor(val_data.loc[val_data['pid'] == pid, 'protein_embedding'].iloc[0])
+        
+        if not cfg.test_only:
+            for pid in train_data['pid'].unique():
+                if pid not in pid2prot:
+                    pid2prot[pid] = torch.tensor(train_data.loc[train_data['pid'] == pid, 'protein_embedding'].iloc[0])
+        
+        fmt_data = lambda df: (df['am_smarts'].tolist(), df['pid'].to_list(), torch.tensor(df['y'].to_numpy()).float().unsqueeze(1))
     
     # Prepare data
-    val_reactions, val_proteins, val_targets = (None, None, None) if val_data is None else fmt_data(val_data)
+    val_reactions, val_pids, val_targets = (None, None, None) if val_data is None else fmt_data(val_data)
 
     if not cfg.test_only:
-        train_reactions, train_proteins, train_targets = fmt_data(train_data)
+        train_reactions, train_pids, train_targets = fmt_data(train_data)
 
         train_dataset = ClipDataset(
             reactions=train_reactions,
-            proteins=train_proteins,
+            pids=train_pids,
+            pid2prot=pid2prot,
             targets=train_targets
         )
         train_dataloader = DataLoader(
@@ -119,7 +147,8 @@ def main(cfg: DictConfig):
 
     val_dataset = None if val_data is None else ClipDataset(
         reactions=val_reactions,
-        proteins=val_proteins,
+        pids=val_pids,
+        pid2prot=pid2prot,
         targets=val_targets
     )
     val_dataloader = None if val_data is None else DataLoader(
@@ -128,6 +157,8 @@ def main(cfg: DictConfig):
         collate_fn=clip_collate,
         batch_size=cfg.training.batch_size,
     )
+
+    del train_data
 
     exp = cfg.exp or "Default"
     if cfg.model.ckpt_fn is not None:

@@ -20,16 +20,16 @@ use_protein_structure: true
 pool_type: sum
 egcl_layers: 6
 use_sinusoidal: true
-protein_dim: ${.chemprop_hidden_dim}
+protein_dim: 1280
 dropout: 0
-coor_weights_clamp_value: null
-norm_coors_scale_init: 0.01
+coor_weights_clamp_value: null # not in clip config
+norm_coors_scale_init: 0.01 # not in clip config
 norm_coors: true
 norm_feats: true
-soft_edge: 0
+soft_edge: 0 # not in clip config
 message_dim: 24
-edge_attr_dim: 0
-feat_proj_dim: 1280
+edge_attr_dim: 0 # not in clip config
+feat_proj_dim: 1280 # not in clip config
 update_coors: true
 update_feats: true
 neighbour_aggr: mean

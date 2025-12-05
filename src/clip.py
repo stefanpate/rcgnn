@@ -224,21 +224,22 @@ class EnzymeReactionCLIPBN(EnzymeReactionCLIP):
         R = self.encode_reaction(R)
         R = self.bn_rxn(R)
         return self.dot_sig(R, P)
-    
+
 class ClipDataset:
-    def __init__(self, reactions: list[str], proteins: torch.Tensor | list[Data], targets: torch.Tensor):
-        if len(reactions) != len(proteins) or len(reactions) != len(targets):
+    def __init__(self, reactions: list[str], pids: list[str], pid2prot: dict[str, torch.Tensor | Data], targets: torch.Tensor):
+        if len(reactions) != len(pids) or len(reactions) != len(targets):
             raise ValueError("Length of reactions, protein_embeddings, and targets must be the same.")
         
         self.idx2smarts = {}
         self.smarts2rxn = {}
+        self.pidx2pid = {i: pid for i, pid in enumerate(pids)}
+        self.pid2prot = pid2prot
         for idx, sma in enumerate(reactions):
             self.idx2smarts[idx] = sma
 
             if sma not in self.smarts2rxn:
                 self.smarts2rxn[sma] = process_mapped_reaction(sma)
 
-        self.proteins = proteins
         self.targets = targets
     
     def __len__(self):
@@ -247,7 +248,7 @@ class ClipDataset:
     def __getitem__(self, idx) -> dict[str, tuple[Data, Data] | torch.Tensor]:
         return {
             "reaction": self.smarts2rxn[self.idx2smarts[idx]],
-            "protein": self.proteins[idx],
+            "protein": self.pid2prot[self.pidx2pid[idx]],
             "target": self.targets[idx],
         }
 
