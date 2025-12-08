@@ -18,13 +18,23 @@
 script=/home/spn1560/hiec/scripts/train.py
 data=(
     sprhea_rcmcs
+    sprhea_random_rc_arc
     sprhea_rcmcs
     sprhea_random_rc_arc
+    sprhea_rcmcs
     sprhea_random_rc_arc
-    sprhea_random_rxn_arc
-    sprhea_random_rxn_arc
 )
-model=rxnfp
+model=(
+    mfp
+    mfp
+    drfp
+    drfp
+    rxnfp
+    rxnfp
+)
+encoder=ffn
+encoder_depth=2
+split_idx=0
 
 # Commands
 ulimit -c 0
@@ -32,4 +42,4 @@ module purge
 module load gcc/9.2.0
 module load python-miniconda3/4.12.0
 source activate /home/spn1560/.conda/envs/hiec2
-python $script data=${data[$SLURM_ARRAY_TASK_ID]} model=$model data.split_idx=$((($SLURM_ARRAY_TASK_ID % 2) * -1))
+python $script data=${data[$SLURM_ARRAY_TASK_ID]} model=${data[$SLURM_ARRAY_TASK_ID]} data.split_idx=$split_idx model.model=$encoder model.encoder_depth=$encoder_depth
