@@ -5,33 +5,34 @@
 #SBATCH -N 1
 #SBATCH -n 1
 #SBATCH --mem=64GB
-#SBATCH -t 5:00:00
+#SBATCH -t 48:00:00
 #SBATCH --job-name="tr_clip"
 #SBATCH --output=/home/spn1560/hiec/logs/out/%x_%A_%a.out
 #SBATCH --error=/home/spn1560/hiec/logs/error/%x_%A_%a.err
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=stefan.pate@northwestern.edu
-#SBATCH --array=0-1
+#SBATCH --array=0
 
 # Args
 script=/home/spn1560/hiec/scripts/train_clipzyme.py
 data=(
-    sprhea_rcmcs
-    sprhea_rcmcs
+    # sprhea_n_100_arc
+    # sprhea_rcmcs
+    # sprhea_rcmcs
     # sprhea_drfp
     # sprhea_drfp
     # sprhea_esm
     # sprhea_esm
     # sprhea_random_rxn_arc
     # sprhea_random_rxn_arc
-    # sprhea_random_rc_arc
+    sprhea_random_rc_arc
     # sprhea_random_rc_arc
 )
 
 ckpt=(
-    epoch_29-step_127950.ckpt
-    epoch_29-step_164550.ckpt
+    # epoch_29-step_127950.ckpt
+    # epoch_29-step_164550.ckpt
     # epoch_29-step_100230.ckpt
     # epoch_29-step_152550.ckpt
     # epoch_29-step_123960.ckpt
@@ -43,10 +44,12 @@ ckpt=(
     
 )
 
-exp=clipzyme
-test_only=true
+exp=bf16_full_data
+test_only=false
+training=clipzyme
 
 # ckpt=epoch_23-step_131640.ckpt # Replace '=' with '_' for bash compatibility |  model.ckpt_fn=$ckpt in cmd below
+# data.split_idx=$((($SLURM_ARRAY_TASK_ID % 2) * -1))
 
 # Commands
 ulimit -c 0
@@ -55,4 +58,4 @@ module load gcc/9.2.0
 module load python-miniconda3/4.12.0
 source activate /home/spn1560/.conda/envs/clipzyme
 export HYDRA_FULL_ERROR=1
-python $script data=${data[$SLURM_ARRAY_TASK_ID]} exp=$exp test_only=$test_only model.ckpt_fn=${ckpt[$SLURM_ARRAY_TASK_ID]} data.split_idx=$((($SLURM_ARRAY_TASK_ID % 2) * -1))
+python $script data=${data[$SLURM_ARRAY_TASK_ID]} training=$training exp=$exp test_only=$test_only 

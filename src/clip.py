@@ -26,6 +26,9 @@ from typing import Union
 import Bio
 import Bio.PDB
 from Bio.Data.IUPACData import protein_letters_3to1
+import logging
+
+logger = logging.getLogger(__name__)
 
 def clip_collate(datapoints: list[dict[str, tuple[Data, Data] | torch.Tensor]]) -> dict[str, dict[str, Batch] | torch.Tensor]:
     rxn_batch, prot_batch, target_batch = [], [], []
@@ -403,6 +406,7 @@ def create_protein_graph(cif_path: str, esm_embed: torch.Tensor) -> Union[Data, 
         data["receptor"].x = esm_embed[: min(len(AA_seq), truncation_seq_length) + 1]
 
         if len(data["receptor"].seq) != data["receptor"].x.shape[0]:
+            logger.warning(f"Length mismatch between structure sequence ({len(data['receptor'].seq)}) and ESM embedding ({data['receptor'].x.shape[0]}) for {cif_path}")
             return None
 
         if hasattr(data, "x") and not hasattr(data["receptor"], "x"):
@@ -427,7 +431,7 @@ def create_protein_graph(cif_path: str, esm_embed: torch.Tensor) -> Union[Data, 
         return data
 
     except Exception as e:
-        print(f"Could not create protein graph because of the exception: {e}")
+        logger.warning(f"Could not create protein graph because of the exception: {e}")
         return None
 
 

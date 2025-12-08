@@ -55,6 +55,11 @@ def main(cfg: DictConfig):
         for line in f:
             af2_blacklist.add(line.strip())
 
+    # Clipzyme excludes greater than 650 residues
+    toc = pd.read_csv(Path(cfg.filepaths.data) / cfg.data.dataset / f"{cfg.data.toc}.csv", sep='\t')
+    toc['seq_len'] = toc['Sequence'].str.len()
+    af2_blacklist.update(set(toc.loc[toc['seq_len'] > 650, 'Entry'].to_list()))
+
     # Load data
     log.info("Loading data...")
     train_val_splits = []
@@ -101,11 +106,6 @@ def main(cfg: DictConfig):
     if not cfg.test_only:
         downsample_negatives(train_data, cfg.data.neg_multiple, rng) # Inner fold train are oversampled
 
-
-    # For debugging TODO remove
-    val_data = val_data[:4]
-    train_data = train_data[:4]
-
     if cfg.model.use_protein_structure:
         log.info("Creating protein graphs...")
         val_pgs = get_protein_graphs(val_data['pid'].unique(), cfg) if val_data is not None else {}
@@ -113,6 +113,14 @@ def main(cfg: DictConfig):
         pid2prot = {**val_pgs, **test_pgs}
         del val_pgs, test_pgs
         fmt_data = lambda df: (df['am_smarts'].tolist(), df['pid'].to_list(), torch.tensor(df['y'].to_numpy()).float().unsqueeze(1))
+
+        # Just in case filter out entries without protein graphs
+        pg_blacklist = [pid for pid in pid2prot if pid2prot[pid] is None]
+        if val_data is not None:
+            val_data = val_data[~val_data['pid'].isin(pg_blacklist)].reset_index(drop=True)
+        if not cfg.test_only:
+            train_data = train_data[~train_data['pid'].isin(pg_blacklist)].reset_index(drop=True)
+    
     else:
         pid2prot = {}
         if val_data is not None:
@@ -191,6 +199,7 @@ def main(cfg: DictConfig):
             default_root_dir=Path(cfg.filepaths.runs) / exp / version,
             detect_anomaly=True,
             log_every_n_steps=1,
+            precision='bf16' if torch.cuda.is_available() else 32,
         )
 
         trainer.fit(
