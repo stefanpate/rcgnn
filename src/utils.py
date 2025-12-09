@@ -9,7 +9,8 @@ from collections import namedtuple
 from pathlib import Path
 from omegaconf import OmegaConf
 
-filepaths = OmegaConf.load("/home/spn1560/hiec/configs/filepaths/base.yaml")
+root_dir = Path(__file__).resolve().parent.parent
+filepaths = OmegaConf.load(root_dir / "configs/filepaths/base.yaml")
 DatabaseEntry = namedtuple("DatabaseEntry", "db, id", defaults=[None, None])
 Enzyme = namedtuple("Enzyme", "uniprot_id, sequence, ec, validation_score, existence, reviewed, organism", defaults=[None, None, None, None, None, None, None])
 
