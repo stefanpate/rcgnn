@@ -32,5 +32,6 @@ ulimit -c 0
 module purge
 module load gcc/9.2.0
 module load python-miniconda3/4.12.0
+eval "$(conda shell.bash hook)"
 source activate /home/spn1560/.conda/envs/hiec2
 python $scripts_dir/similarity_matrix.py rcmcs sprhea v3_folded_pt_ns 5000 ${start_chunk[$SLURM_ARRAY_TASK_ID]} ${end_chunk[$SLURM_ARRAY_TASK_ID]}

@@ -53,6 +53,7 @@ ulimit -c 0
 module purge
 module load gcc/9.2.0
 module load python-miniconda3/4.12.0
+eval "$(conda shell.bash hook)"
 source activate /home/spn1560/.conda/envs/clipzyme
 export HYDRA_FULL_ERROR=1
 python $script data=${data[$SLURM_ARRAY_TASK_ID]} exp=$exp test_only=$test_only model.ckpt_fn=${ckpt[$SLURM_ARRAY_TASK_ID]} data.split_idx=$((($SLURM_ARRAY_TASK_ID % 2) * -1))
