@@ -1,13 +1,13 @@
 defaults:
   - filepaths: base
-  - data: sprhea_n_100_arc
-  - model: mfp
+  - data: sprhea_random_rc_arc
+  - model: rc_agg
   - training: dev
   - _self_
 
 hpo_seed: 1234
-n_trials: 2 # 1000
-timeout: 360 # 36000 seconds
+n_trials: 1000
+timeout: 86400 # seconds
 objective: val_roc
 direction: maximize # maximize | minimize
 data:
@@ -39,3 +39,4 @@ hydra:
     dir: ${filepaths.results}/hpo
   job:
     chdir: True
+    name: ${...study_name}
