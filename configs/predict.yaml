@@ -3,8 +3,9 @@ defaults:
   - override hydra/launcher: quest_cpu
   - _self_
 
-tracking_uri: file:///projects/p30041/spn1560/hiec/results/runs
 run_id: ???
+external_data: null # Option to predict on external data set
+negative_sampling: null # Option to override negative sampling strategy for external data set
 
 hydra:
   sweep:

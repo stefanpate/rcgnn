@@ -1,6 +1,7 @@
 import hydra
+from hydra import initialize, compose
 from pathlib import Path
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 import torch
 import numpy as np
 import pandas as pd
@@ -14,14 +15,22 @@ from src.ml_utils import (
     mlflow_to_omegaconf
 )
 
-@hydra.main(version_base=None, config_path="../configs", config_name="predict")
+root_dir = Path(__file__).parent.parent.resolve()
+@hydra.main(version_base=None, config_path=f"{root_dir}/configs", config_name="predict")
 def main(outer_cfg: DictConfig):
-    mlflow.set_tracking_uri(outer_cfg.tracking_uri)
+    mlflow.set_tracking_uri(outer_cfg.filepaths.tracking_uri)
     run_data = mlflow.get_run(run_id=outer_cfg.run_id)
     cfg, artifacts_path = mlflow_to_omegaconf(run_data)
     run_path = artifacts_path.parent
+    run_path = Path(outer_cfg.filepaths.runs) / run_path.parts[-2] / run_path.parts[-1] # Hack to change filepath to current machine
     cfg['filepaths'] = outer_cfg.filepaths
 
+    if outer_cfg.external_data:
+        cfg.data = OmegaConf.load(f"{root_dir}/configs/data/{outer_cfg.external_data}.yaml")
+
+        if outer_cfg.negative_sampling:
+            cfg.data.negative_sampling = outer_cfg.negative_sampling
+        
     rng = np.random.default_rng(seed=cfg.data.seed)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -77,7 +86,10 @@ def main(outer_cfg: DictConfig):
         )
     except ValueError as e:
         print(e)
-        target_output.to_parquet("target_output.parquet", index=False)
+        if outer_cfg.external_data:
+            target_output.to_parquet(f"{cfg.data.dataset}_{cfg.data.negative_sampling}_target_output.parquet", index=False)
+        else:
+            target_output.to_parquet("target_output.parquet", index=False)
         return
     
     if sim in ['rcmcs', 'drfp']:
@@ -90,7 +102,10 @@ def main(outer_cfg: DictConfig):
     target_output.loc[:, "max_sim"] = max_sims
     
     # Save
-    target_output.to_parquet("target_output.parquet", index=False)
+    if outer_cfg.external_data:
+        target_output.to_parquet(f"{cfg.data.dataset}_{cfg.data.negative_sampling}_target_output.parquet", index=False)
+    else:
+        target_output.to_parquet("target_output.parquet", index=False)
 
 if __name__ == '__main__':
     main()
