@@ -2,9 +2,10 @@ defaults:
   - filepaths: base
   - _self_
 
-dataset: sprhea
-toc: v3_folded_pt_ns
-rules: ${filepaths.artifacts}/minimal1224_all_uniprot.tsv
+dataset: time_split
+toc: 250915_time_split
+rules: ${filepaths.artifacts}/rc_plus_0_rules.csv
+additional_blacklist: reactions_seen_pre_250915.txt # Exclude predicted rxns by those in here in addition to dataset_toc
 
 hydra:
   run:

@@ -16,3 +16,8 @@ src.egg-info/PKG-INFO
 src.egg-info/SOURCES.txt
 src.egg-info/dependency_links.txt
 src.egg-info/top_level.txt
+src/ergochemics/__init__.py
+src/ergochemics/draw.py
+src/ergochemics/mapping.py
+src/ergochemics/similarity.py
+src/ergochemics/standardize.py

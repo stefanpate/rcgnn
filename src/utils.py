@@ -162,7 +162,7 @@ def ensure_dirs(path):
         os.makedirs(path)
         
 def retrive_esm1b_embedding(fasta_path, outdir, model_loc, _include):
-    esm_script = "/home/spn1560/hiec/src/esm/scripts/extract.py"
+    esm_script = f"{filepaths.root}/src/esm/scripts/extract.py"
     command = ["python", esm_script, model_loc, 
               fasta_path, outdir, "--include", _include]
     subprocess.run(command)

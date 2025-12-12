@@ -9,9 +9,15 @@ from tqdm import tqdm
 from logging import getLogger
 from collections import defaultdict
 from copy import deepcopy
+from src.ergochemics.standardize import standardize_rxn, hash_reaction
+from functools import lru_cache
 
 log = getLogger(__name__)
 _ = rdBase.BlockLogs()
+
+@lru_cache(maxsize=10_000)
+def get_rid(smarts: str) -> str:
+    return str(hash_reaction(standardize_rxn(smarts)))
 
 def _check_balanced(am_smarts: str) -> bool:
     lhs, rhs = [Chem.MolFromSmarts(s) for s in am_smarts.split(">>")]
@@ -173,11 +179,10 @@ def main(cfg):
     with open(Path(cfg.filepaths.data) / cfg.dataset / f"{cfg.toc}.json") as f:
         sprhea = json.load(f)
 
-    next_rid = max([int(rid) for rid in sprhea.keys()]) + 1
     rxn2rid = {entry['smarts']: rid for rid, entry in sprhea.items()}
 
     # Load rules
-    rules = pd.read_csv(cfg.rules, sep="\t")
+    rules = pd.read_csv(cfg.rules, sep="\t" if cfg.rules.endswith('.tsv') else ",")
 
     # Load toc
     toc = pd.read_csv(Path(cfg.filepaths.data) / cfg.dataset / f"{cfg.toc}.csv", sep="\t")
@@ -185,6 +190,13 @@ def main(cfg):
     for _, row in toc.iterrows():
         for rid in row['Label'].split(";"):
             rid2pids[rid].add(row['Entry'])
+
+    # Load additional blacklist if provided
+    additional_blacklist = set()
+    if cfg.additional_blacklist is not None:
+        with open(Path(cfg.filepaths.data) / cfg.dataset / cfg.additional_blacklist) as f:
+            for line in f:
+                additional_blacklist.add(line.strip())
     
     unobs_rxns = {}
     unobs_smarts = set()
@@ -199,7 +211,9 @@ def main(cfg):
             continue
 
         rule_name = entry['min_rules'][0]
-        rule_smarts = rules.loc[rules['Name'] == rule_name, 'SMARTS'].values[0]
+        rule_id_k = 'Name' if 'Name' in rules.columns else 'id'
+        rule_smarts_k = 'SMARTS' if 'SMARTS' in rules.columns else 'smarts'
+        rule_smarts = rules.loc[rules[rule_id_k] == rule_name, rule_smarts_k].values[0]
         res = apply_rule(reactants, rule_smarts)
 
         if not any([r[0] == rxn for r in res]):
@@ -211,12 +225,21 @@ def main(cfg):
         for elt in res:
             gen_rxn, gen_rxn_am, gen_rc = elt
             gen_rxn_reversed = ">>".join(gen_rxn.split('>>')[::-1])
-            gen_rxn_am_reversed = ">>".join(gen_rxn_am.split('>>')[::-1])
-            gen_rc_reversed = (gen_rc[1], gen_rc[0])
 
             if gen_rxn == rxn:
                 continue
-            elif gen_rxn in rxn2rid:
+
+            if additional_blacklist:
+                
+                gen_rxn_id = get_rid(gen_rxn)
+                if gen_rxn_id in additional_blacklist:
+                    continue
+                
+                rev_gen_rxn_id = get_rid(gen_rxn_reversed)
+                if rev_gen_rxn_id in additional_blacklist:
+                    continue
+    
+            if gen_rxn in rxn2rid:
                 other_rid = rxn2rid[gen_rxn]
                 other_pids = rid2pids[other_rid]
 
@@ -235,10 +258,9 @@ def main(cfg):
                 for pid in this_pids - other_pids:
                     negative_pairs[pid].add(other_rid)
             elif gen_rxn not in unobs_smarts and gen_rxn_reversed not in unobs_smarts:
+                gen_rxn_id = get_rid(gen_rxn)
                 unobs_smarts.add(gen_rxn)
-                new_rid = str(next_rid)
-                next_rid += 1
-                unobs_rxns[new_rid] = {
+                unobs_rxns[gen_rxn_id] = {
                     'smarts': gen_rxn,
                     'am_smarts': gen_rxn_am,
                     'min_rules': entry['min_rules'],
@@ -246,7 +268,7 @@ def main(cfg):
                 }
 
                 for pid in this_pids:
-                    negative_pairs[pid].add(new_rid)
+                    negative_pairs[pid].add(gen_rxn_id)
 
     for pid, rids in negative_pairs.items():
         for rid in rids:

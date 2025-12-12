@@ -104,7 +104,7 @@ def main(cfg: DictConfig):
         rule_groups = []
         for _, ridx in X:
             rid = idx_feature[ridx]
-            rule = tuple(sorted(reactions[rid]['min_rules']))
+            rule = tuple(sorted(reactions[rid]['min_rules'])) # Sorting here is critical to avoid "almost reverses" being mistaken as more different than they are
             
             if rule not in rule2idx:
                 rule2idx[rule] = len(rule2idx)

@@ -217,6 +217,9 @@ def rcmcs_similarity_matrix(rxns:dict[str, dict], rules:pd.DataFrame, matrix_idx
             id_j = matrix_idx_to_rxn_id[j]
             smarts_j, rcs_j, rules_j = [rxns[id_j][f] for f in fields]
 
+            # This logic effectively does max(sim(i, j), sim(i, j_reversed))
+            # which is critical to avoid mistaken underestimates of similarity
+            # due to non-canoncial directionality of reactions
             if tuple(rules_i) != tuple(rules_j):
                 rules_j = rules_j[::-1]
             
