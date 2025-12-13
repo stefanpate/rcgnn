@@ -1,7 +1,7 @@
 defaults:
   - filepaths: base
   - data: sprhea_n_100_arc
-  - model: rc_agg
+  - model: rxnfp
   - training: base
   - _self_
 
