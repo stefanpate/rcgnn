@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from lightning import pytorch as pl
 from lightning.pytorch.loggers import MLFlowLogger
+from lightning.pytorch.callbacks import ModelCheckpoint
 import mlflow
 
 from src.ml_utils import (
@@ -68,6 +69,15 @@ def main(cfg: DictConfig):
     )
     mlflow.set_experiment(experiment_id=logger.experiment_id)
 
+    # Set up checkpointing
+    checkpoint_callback = ModelCheckpoint(
+        monitor="val/roc",
+        save_top_k=1,
+        mode="max",
+        every_n_epochs=3,
+        filename="best-checkpoint-{epoch:02d}-{val_roc:.3f}"
+    )
+
     # Train
     with mlflow.start_run(run_id=logger.run_id):
         flat_resolved_cfg = pd.json_normalize(
@@ -80,7 +90,8 @@ def main(cfg: DictConfig):
             accelerator="auto",
             devices=1,
             max_epochs=cfg.training.n_epochs, # number of epochs to train for
-            logger=logger
+            logger=logger,
+            callbacks=[checkpoint_callback],
         )
 
         trainer.fit(
