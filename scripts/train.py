@@ -69,12 +69,14 @@ def main(cfg: DictConfig):
     mlflow.set_experiment(experiment_id=logger.experiment_id)
 
     # Set up checkpointing
+    k_val=3
     checkpoint_callback = ModelCheckpoint(
         monitor="val/roc",
         save_top_k=1,
         mode="max",
-        every_n_epochs=3,
-        filename="best-checkpoint-{epoch:02d}-{val_roc:.3f}"
+        every_n_epochs=k_val,
+        filename="best-checkpoint-{epoch:02d}-val_roc-{val/roc:.3f}",
+        auto_insert_metric_name=False,
     )
 
     # Train
@@ -91,6 +93,7 @@ def main(cfg: DictConfig):
             max_epochs=cfg.model.n_epochs or cfg.training.n_epochs, # Use hpoed model n_epochs if available else default
             logger=logger,
             callbacks=[checkpoint_callback],
+            check_val_every_n_epoch=k_val,
         )
 
         trainer.fit(

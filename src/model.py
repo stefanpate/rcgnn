@@ -1,4 +1,3 @@
-
 from typing import Iterable
 import torch
 from torch.optim import Adam
@@ -6,10 +5,9 @@ from torch import Tensor
 import lightning as L
 from chemprop.schedulers import NoamLR
 from chemprop.models import MPNN
-from chemprop.data import BatchMolGraph
+from chemprop.data import BatchMolGraph, TrainingBatch
 from chemprop.nn import MessagePassing, Aggregation, Predictor, LossFunction, Metric
 from chemprop.nn.ffn import MLP
-
 
 class MPNNDimRed(MPNN):
     def __init__(
@@ -51,6 +49,31 @@ class MPNNDimRed(MPNN):
 
         return H if X_d is None else torch.cat((H, self.reduce_X_d(X_d)), 1)
     
+    def training_step(self, batch: TrainingBatch, batch_idx):
+        bmg, V_d, X_d, targets, weights, lt_mask, gt_mask = batch
+
+        mask = targets.isfinite()
+        targets = targets.nan_to_num(nan=0.0)
+
+        Z = self.fingerprint(bmg, V_d, X_d)
+        preds = self.predictor.train_step(Z)
+        l = self.criterion(preds, targets, mask, weights, lt_mask, gt_mask)
+
+        self.log("train_loss", l, prog_bar=True, on_epoch=True, on_step=False)
+
+        return l
+
+    def on_validation_model_eval(self) -> None:
+        self.eval()
+        self.predictor.output_transform.train()
+
+    def validation_step(self, batch: TrainingBatch, batch_idx: int = 0):
+        losses = self._evaluate_batch(batch)
+        metric2loss = {f"val/{m.alias}": l for m, l in zip(self.metrics, losses)}
+
+        self.log_dict(metric2loss, batch_size=len(batch[0]))
+        self.log("val_loss", losses[0], batch_size=len(batch[0]), prog_bar=True, on_epoch=True, on_step=False)
+    
 class TwoChannelLinear(L.LightningModule):
     def __init__(
             self,
@@ -90,7 +113,7 @@ class TwoChannelLinear(L.LightningModule):
         Y_hat = self.predictor(torch.cat((R, P), dim=1))
         mask = Y_hat.isfinite()
         loss = self.criterion(Y_hat, Y, mask, weights, gt_mask, lt_mask)
-        self.log("train_loss", loss, prog_bar=True)
+        self.log("train_loss", loss, prog_bar=True, on_epoch=True, on_step=False)
         return loss
     
     def validation_step(self, batch, batch_idx: int = 0):
@@ -98,7 +121,7 @@ class TwoChannelLinear(L.LightningModule):
         metric2loss = {f"val/{m.alias}": l for m, l in zip(self.metrics, losses)}
 
         self.log_dict(metric2loss, batch_size=len(batch[0]))
-        self.log("val_loss", losses[0], batch_size=len(batch[0]), prog_bar=True)
+        self.log("val_loss", losses[0], batch_size=len(batch[0]), prog_bar=True, on_epoch=True, on_step=False)
     
     def forward(self, R, P):
         R = self.reaction_encoder(R)
