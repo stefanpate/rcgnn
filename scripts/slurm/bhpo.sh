@@ -11,7 +11,7 @@
 #SBATCH --error=/home/spn1560/hiec/logs/error/%x_%A_%a.err
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
-#SBATCH --array=0-3
+#SBATCH --array=3-5
 #SBATCH --mail-user=stefan.pate@northwestern.edu
 
 # Args
@@ -25,8 +25,9 @@ model=(
     drfp
     rxnfp
 )
-n_trials=1000
-timeout=86400 # seconds
+n_trials=100
+timeout=86000 # seconds
+n_epochs=15
 
 # Commands
 ulimit -c 0
@@ -34,6 +35,6 @@ module purge
 module load gcc/9.2.0
 module load python-miniconda3/4.12.0
 eval "$(conda shell.bash hook)"
-source activate /home/spn1560/.conda/envs/hiec2
+conda activate /home/spn1560/.conda/envs/hiec2
 export HYDRA_FULL_ERROR=1
-python $script model=${model[$SLURM_ARRAY_TASK_ID]} n_trials=$n_trials timeout=$timeout
+python $script model=${model[$SLURM_ARRAY_TASK_ID]} n_trials=$n_trials timeout=$timeout training.n_epochs=$n_epochs

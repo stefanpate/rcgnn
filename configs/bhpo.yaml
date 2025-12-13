@@ -2,7 +2,7 @@ defaults:
   - filepaths: base
   - data: sprhea_random_rc_arc
   - model: rc_agg
-  - training: dev
+  - training: base
   - _self_
 
 hpo_seed: 1234

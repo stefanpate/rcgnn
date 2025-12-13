@@ -66,7 +66,7 @@ def objective(trial: optuna.trial.Trial, train_data: pd.DataFrame, val_data: pd.
         callbacks=[PyTorchLightningPruningCallback(trial, monitor=to_monitor)],
         accelerator="auto",
         devices=1,
-        max_epochs=cfg.training.n_epochs, # number of epochs to train for
+        max_epochs=cfg.training.n_epochs,
         logger=False
     )
 
@@ -75,6 +75,8 @@ def objective(trial: optuna.trial.Trial, train_data: pd.DataFrame, val_data: pd.
         train_dataloaders=train_dataloader,
         val_dataloaders=val_dataloader
     )
+
+    trial.set_user_attr("n_epochs", trainer.current_epoch)
 
     return trainer.callback_metrics[to_monitor].item()
 
