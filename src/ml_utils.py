@@ -127,7 +127,7 @@ def featurize_data(cfg: DictConfig, rng: np.random.Generator, train_data: pd.Dat
     return train_dataloader, val_dataloader, featurizer
 
 def construct_model(cfg: DictConfig, embed_dim: int, featurizer, device, ckpt=None):
-    pos_weight = torch.ones([1]) * cfg.data.neg_multiple * cfg.training.pos_multiplier
+    pos_weight = torch.ones([1]) * cfg.model.neg_multiple * cfg.model.pos_multiplier
     pos_weight = pos_weight.to(device)
     agg = getattr(src.nn, cfg.model.agg)() if cfg.model.agg else None
     pred_head = getattr(src.nn, cfg.model.pred_head)(

@@ -46,9 +46,8 @@ def main(cfg: DictConfig):
     else: # Test on inner fold
         train_data = pd.concat([train_val_splits[i] for i in range(cfg.data.n_splits) if i != cfg.data.split_idx], ignore_index=True)
         val_data = train_val_splits[cfg.data.split_idx]
-        downsample_negatives(val_data, 1, rng) # Inner fold val are oversampled
-
-    downsample_negatives(train_data, cfg.data.neg_multiple, rng) # Inner fold train are oversampled
+        
+    downsample_negatives(train_data, cfg.model.neg_multiple, rng) # Inner fold train are oversampled
 
     train_dataloader, val_dataloader, featurizer = featurize_data(
         cfg=cfg,

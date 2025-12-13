@@ -1,7 +1,6 @@
 seed: 1234
 dataset: time_split
 toc: 250915_time_split
-neg_multiple: 10
 split_strategy: null
 negative_sampling: alternate_reaction_center
 n_splits: null

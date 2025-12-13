@@ -126,7 +126,7 @@ def main(cfg: DictConfig):
             rng=rng
         )
     
-    # Oversample negatives on train_val side (10 x pos)
+    # Oversample negatives on (10 x pos)
     if cfg.data.negative_sampling == 'random':
         tmp = []
         for (Xi, yi) in train_val_splits:
