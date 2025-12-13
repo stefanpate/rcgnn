@@ -8,3 +8,4 @@ encoder_depth: 4
 d_h_encoder: 145
 neg_multiple: 4
 pos_multiplier: 1
+n_epochs: null

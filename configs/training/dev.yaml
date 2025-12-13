@@ -1,4 +1,4 @@
-n_epochs: 8
+n_epochs: 1
 batch_size: 8
 metrics:
   - BinaryF1Metric

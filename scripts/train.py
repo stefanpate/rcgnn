@@ -46,7 +46,7 @@ def main(cfg: DictConfig):
     else: # Test on inner fold
         train_data = pd.concat([train_val_splits[i] for i in range(cfg.data.n_splits) if i != cfg.data.split_idx], ignore_index=True)
         val_data = train_val_splits[cfg.data.split_idx]
-        
+
     downsample_negatives(train_data, cfg.model.neg_multiple, rng) # Inner fold train are oversampled
 
     train_dataloader, val_dataloader, featurizer = featurize_data(
@@ -88,7 +88,7 @@ def main(cfg: DictConfig):
             enable_progress_bar=True,
             accelerator="auto",
             devices=1,
-            max_epochs=cfg.training.n_epochs, # number of epochs to train for
+            max_epochs=cfg.model.n_epochs or cfg.training.n_epochs, # Use hpoed model n_epochs if available else default
             logger=logger,
             callbacks=[checkpoint_callback],
         )

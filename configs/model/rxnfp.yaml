@@ -9,3 +9,4 @@ d_h_encoder: 55
 vec_len: 256
 neg_multiple: 3
 pos_multiplier: 1
+n_epochs: null
