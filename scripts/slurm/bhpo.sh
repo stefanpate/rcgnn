@@ -1,11 +1,10 @@
 #!/bin/bash
-#SBATCH -A p30041
-#SBATCH -p gengpu
-#SBATCH --gres=gpu:a100:1
+#SBATCH -A b1039
+#SBATCH -p b1039
 #SBATCH -N 1
 #SBATCH -n 1
 #SBATCH --mem=48GB
-#SBATCH -t 24:00:00
+#SBATCH -t 12:00:00
 #SBATCH --job-name="hpo"
 #SBATCH --output=/home/spn1560/hiec/logs/out/%x_%A_%a.out
 #SBATCH --error=/home/spn1560/hiec/logs/error/%x_%A_%a.err
@@ -27,7 +26,7 @@ model=(
 )
 n_trials=100
 timeout=86000 # seconds
-n_epochs=15
+n_epochs=5
 
 # Commands
 ulimit -c 0

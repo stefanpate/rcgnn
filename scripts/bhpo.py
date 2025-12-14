@@ -44,10 +44,10 @@ def objective(trial: optuna.trial.Trial, train_data: pd.DataFrame, val_data: pd.
             if group == "model" and hp_name == "model" and cfg.model.name not in ["drfp", "mfp", "rxnfp"]:
                 continue # there's only a choice to be made for the fp models (linear v ffn)
             hp = get_optuna_hp(group, hp_name, _hp, trial)
-            cfg[group][hp_name] = hp
+            cfg['model'][hp_name] = hp
       
     # Prepare data
-    downsample_negatives(train_data, cfg.data.neg_multiple, rng) # Inner fold train are oversampled
+    downsample_negatives(train_data, cfg.model.neg_multiple, rng) # Inner fold train are oversampled
     train_dataloader, val_dataloader, featurizer = featurize_data(
         cfg=cfg,
         rng=rng,

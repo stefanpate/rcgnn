@@ -7,3 +7,5 @@ message_passing: BondMessagePassing
 encoder_depth: 6
 d_h_encoder: 300
 n_epochs: null
+neg_multiple: 4
+pos_multiplier: 1
