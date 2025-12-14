@@ -69,10 +69,13 @@ def main(cfg: DictConfig):
     mlflow.set_experiment(experiment_id=logger.experiment_id)
 
     # Set up checkpointing
-    k_val=3
     if cfg.model.n_epochs:
-        checkpoint_callback = None
+        k_val=1
+        checkpoint_callback = ModelCheckpoint(
+            filename="{epoch:02d}",
+        )
     else:
+        k_val=3
         checkpoint_callback = ModelCheckpoint(
             monitor="val/roc",
             save_top_k=1,
