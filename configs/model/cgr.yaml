@@ -5,7 +5,7 @@ agg: MeanAggregation
 pred_head: DotSig
 message_passing: BondMessagePassing
 encoder_depth: 6
-d_h_encoder: 300
+d_h_encoder: 273
 n_epochs: null
-neg_multiple: 4
-pos_multiplier: 1
+neg_multiple: 6
+pos_multiplier: 2

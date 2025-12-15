@@ -1,11 +1,10 @@
 #!/bin/bash
-#SBATCH -A p30041
-#SBATCH -p gengpu
-#SBATCH --gres=gpu:h100:1
+#SBATCH -A b1039
+#SBATCH -p b1039
 #SBATCH -N 1
 #SBATCH -n 1
 #SBATCH --mem=48GB
-#SBATCH -t 8:00:00
+#SBATCH -t 96:00:00
 #SBATCH --job-name="train"
 #SBATCH --output=/home/spn1560/hiec/logs/out/%x_%A_%a.out
 #SBATCH --error=/home/spn1560/hiec/logs/error/%x_%A_%a.err
@@ -17,16 +16,28 @@
 # Args
 script=/home/spn1560/hiec/scripts/train.py
 data=(
-    sprhea_rcmcs
-    sprhea_rcmcs
+    sprhea_random_rc_arc
+    sprhea_random_rc_arc
+    sprhea_random_rc_arc
+    sprhea_random_rxn_arc
+    sprhea_random_rxn_arc
+    sprhea_random_rxn_arc
 )
 model=(
     rc_agg
     rc_cxn
+    bom
+    rc_agg
+    rc_cxn
+    bom
 )
 n_epochs=(
-    11
-    8
+    6
+    12
+    24
+    21
+    24
+    24
 )
 split_idx=-2
 
