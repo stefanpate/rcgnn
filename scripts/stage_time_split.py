@@ -23,7 +23,7 @@ def assemble_data(
     '''
     Pull together the actual data from the split indices
     '''
-    cols = ['protein_idx', 'reaction_idx', 'pid', 'rid', 'protein_embedding', 'smarts', 'am_smarts', 'reaction_center', 'y']
+    cols = ['protein_idx', 'reaction_idx', 'pid', 'rid', 'protein_embedding', 'smarts', 'am_smarts', 'reaction_center', 'am_chiral_smarts', 'chiral_smarts', 'y']
     data = []
     for (pidx, ridx), yi in zip(X, y):
         data.append(
@@ -36,6 +36,8 @@ def assemble_data(
                 reactions[idx_feature[ridx]]['smarts'],
                 reactions[idx_feature[ridx]]['am_smarts'],
                 reactions[idx_feature[ridx]]['rcs'],
+                reactions[idx_feature[ridx]]['am_chiral_smarts'],
+                reactions[idx_feature[ridx]]['chiral_smarts'],
                 yi
             )
         )

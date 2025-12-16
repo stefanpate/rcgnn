@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from itertools import permutations, product, chain, accumulate
 from functools import lru_cache
 import numpy as np
-from ergochemics.standardize import (
+from src.ergochemics.standardize import (
     standardize_rxn,
     fast_tautomerize
 )

@@ -15,6 +15,24 @@ from src.ml_utils import (
     mlflow_to_omegaconf
 )
 
+def get_best_ckpt_outer_split(ckpt_dir: str) -> Path:
+    ckpts = list(ckpt_dir.glob('*.ckpt'))
+    srt_epochs = [
+        (int(ckpt.stem.split('=')[1]), ckpt)
+        for ckpt in ckpts
+    ]
+    srt_epochs = sorted(srt_epochs, key=lambda x: x[0], reverse=True)
+    return srt_epochs[0][1]
+
+def get_best_ckpt_inner_split(ckpt_dir: str) -> Path:
+    ckpts = list(ckpt_dir.glob('*.ckpt'))
+    val_epochs = [
+        (float(ckpt.stem.split('-')[4]), ckpt)
+        for ckpt in ckpts
+    ]
+    val_epochs = sorted(val_epochs, key=lambda x: x[0], reverse=True)
+    return val_epochs[0][1]
+
 root_dir = Path(__file__).parent.parent.resolve()
 @hydra.main(version_base=None, config_path=f"{root_dir}/configs", config_name="predict")
 def main(outer_cfg: DictConfig):
@@ -55,8 +73,12 @@ def main(outer_cfg: DictConfig):
 
     # Construct model
     embed_dim = val_data.loc[0, 'protein_embedding'].shape[0]
-    ckpt_dir = run_path / 'checkpoints' 
-    ckpt = ckpt_dir / next(ckpt_dir.glob("*.ckpt"))
+    ckpt_dir = run_path / 'checkpoints'
+    if cfg.data.split_idx == -1:
+        ckpt = get_best_ckpt_outer_split(ckpt_dir)
+    else:
+        ckpt = get_best_ckpt_inner_split(ckpt_dir)
+    
     model = construct_model(cfg, embed_dim, featurizer, device, ckpt=ckpt)
 
     # Predict
