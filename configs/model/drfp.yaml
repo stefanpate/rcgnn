@@ -1,12 +1,12 @@
 name: drfp
 featurizer: drfp
-model: linear
+model: ffn
 agg: null
 pred_head: DotSig
 message_passing: null
-encoder_depth: null
-d_h_encoder: 300
+encoder_depth: 4
+d_h_encoder: 25
 vec_len: 2048
 n_epochs: null
-neg_multiple: 4
-pos_multiplier: 1
+neg_multiple: 3
+pos_multiplier: 3
