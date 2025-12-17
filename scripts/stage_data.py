@@ -53,7 +53,6 @@ def main(cfg: DictConfig):
 
     print("Loading data...")
 
-
     # Load reaction data
     _rxns = load_json(Path(cfg.filepaths.data) / cfg.data.dataset / f"{cfg.data.toc}.json")
     adj, idx_sample, idx_feature = construct_sparse_adj_mat(
