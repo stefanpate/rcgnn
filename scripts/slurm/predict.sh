@@ -11,7 +11,7 @@
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=stefan.pate@northwestern.edu
-#SBATCH --array=0-35
+#SBATCH --array=0-41
 
 # Args
 script=/home/spn1560/hiec/scripts/predict.py
@@ -37,6 +37,12 @@ run_id=(
     6bb1753ed0b14a6fb6eddb0d0b3679a5
     e54a25eafc65463a95dee11b4a46e4cd
     f0d279b0ffed4544bc23a81327e449d0
+    000fc5f378954a27bf934ccd58241a57
+    bafce811361c4d19afe7919fb4666fb2
+    f1cf506a0c0f48b49bbf491f51db24f7
+    c4fdab61494a4affb7b48b3f18b0a314
+    a91ff6acc5a848f18a179c42f5127a85
+    36a93d8131bd460599ef98740f8d322d
     120f090f4b3e471a965979401b3271ae
     34cda1e3f64a4b18a98894ed0e86be86
     e627a08cec3c47e18b4fd9f1ade6b9fe

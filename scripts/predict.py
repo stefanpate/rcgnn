@@ -6,6 +6,7 @@ import torch
 import numpy as np
 import pandas as pd
 from lightning import pytorch as pl
+from lightning.pytorch.utilities.model_summary import ModelSummary
 import mlflow
 
 from src.similarity import load_similarity_matrix
@@ -80,6 +81,12 @@ def main(outer_cfg: DictConfig):
         ckpt = get_best_ckpt_inner_split(ckpt_dir)
     
     model = construct_model(cfg, embed_dim, featurizer, device, ckpt=ckpt)
+    summary = ModelSummary(model, max_depth=-1)
+    print(f"MODEL: {cfg.model.name}")
+    print(summary)
+    n_params = summary.total_parameters
+    with open("n_trainable_params.txt", 'w') as f:
+        f.write(f"{n_params}\n")
 
     # Predict
     with torch.inference_mode():
