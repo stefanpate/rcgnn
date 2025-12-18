@@ -1,0 +1,11 @@
+seed: 1234
+dataset: rxn_mapper_am
+toc: v3_folded_pt_ns
+split_strategy: null
+negative_sampling: random
+n_splits: null
+test_percent: null
+split_bounds: null
+embed_type: esm
+split_idx: -1
+subdir_patt: ${.dataset}_${.toc}/${.split_strategy}_${.negative_sampling}/${.n_splits}fold
