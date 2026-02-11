@@ -1,0 +1,17 @@
+name: rxnfp_ft
+featurizer: rxnfp_ft
+model: bert
+agg: null
+pred_head: DotSig
+message_passing: null
+encoder_depth: null
+max_length: 512 # Max positional embeddings
+padding: true
+truncation: true
+return_tensors: pt
+d_rxn: 256
+d_h_encoder: 132
+neg_multiple: 3
+pos_multiplier: 1
+n_epochs: null
+ckpt: null

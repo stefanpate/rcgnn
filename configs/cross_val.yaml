@@ -1,8 +1,8 @@
 defaults:
   - filepaths: base
   - data: sprhea_n_100_arc
-  - model: rxnfp
-  - training: base
+  - model: rxnfp_ft
+  - training: dev
   - _self_
 
 exp: null

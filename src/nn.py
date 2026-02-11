@@ -14,6 +14,8 @@ from chemprop.nn.metrics import BinaryAUROCMetric
 from chemprop.nn.message_passing.base import _MessagePassingBase, BondMessagePassing
 from chemprop.data import BatchMolGraph
 from lightning.pytorch.core.mixins import HyperparametersMixin
+from transformers import BertModel
+
 
 class WeightedBCELoss(BCELoss):
     def __init__(self, pos_weight, task_weights = 1):
@@ -186,3 +188,24 @@ class _MessagePassingDictBase(_MessagePassingBase):
 
 class BondMessagePassingDict(_MessagePassingDictBase, BondMessagePassing):
     pass
+
+class BertRxnEncoder(Module):
+    def __init__(self, base_model: BertModel, d_rxn: int, d_h: int):
+        '''
+        d_rxn: dimension of reaction embedding output by BERT
+        d_h: dimension of hidden representation to feed into predictor
+        '''
+        super().__init__()
+        self.model = base_model
+        self.model.eval()
+        self.linear_rxn_layer = torch.nn.Linear(in_features=d_rxn, out_features=d_h)
+
+    def forward(self, input_ids, token_type_ids, attention_mask):
+        bert_output = self.model(
+            input_ids=input_ids,
+            token_type_ids=token_type_ids,
+            attention_mask=attention_mask
+        )['last_hidden_state'][:, 0, :] # [CLS] token embeddings in position 0
+
+        rxn_embeddings = self.linear_rxn_layer(bert_output)
+        return rxn_embeddings

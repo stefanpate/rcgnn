@@ -511,6 +511,25 @@ class ReactionDRFPFeaturizer:
         fp = DrfpEncoder.encode(rxn, n_folded_length=self.length)[0]
 
         return fp.astype(np.float32)
+    
+@dataclass
+class TransformerFeaturizer:
+    tokenizer: object
+    max_length: int
+
+    def __call__(
+            self,
+            rxns: list[str],
+    ) -> np.ndarray:
+        bert_inputs = self.tokenizer.batch_encode_plus(
+            rxns,
+            max_length=self.max_length,
+            padding=True,
+            truncation=True,
+            return_tensors='pt'
+        )
+
+        return bert_inputs
 
 @dataclass
 class PretrainedReactionFeaturizer:

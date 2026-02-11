@@ -8,6 +8,7 @@ from chemprop.models import MPNN
 from chemprop.data import BatchMolGraph, TrainingBatch
 from chemprop.nn import MessagePassing, Aggregation, Predictor, LossFunction, Metric
 from chemprop.nn.ffn import MLP
+from src.nn import BertRxnEncoder
 
 class MPNNDimRed(MPNN):
     def __init__(
@@ -195,3 +196,92 @@ class TwoChannelFFN(TwoChannelLinear):
             n_layers=encoder_depth,
             )
         
+class BertTwoChannel(L.LightningModule):
+    def __init__(
+            self,
+            d_prot: int,
+            d_h: int,
+            reaction_encoder: BertRxnEncoder,
+            predictor: Predictor,
+            metrics: Iterable[Metric] | None = None,
+            warmup_epochs: int = 2,
+            init_lr: float = 1e-4,
+            max_lr: float = 1e-3,
+            final_lr: float = 1e-4,
+            ):
+        super().__init__()
+        self.reaction_encoder = reaction_encoder
+        self.protein_encoder = torch.nn.Linear(in_features=d_prot, out_features=d_h)
+        self.predictor = predictor
+        self.warmup_epochs = warmup_epochs
+        self.init_lr = init_lr
+        self.max_lr = max_lr
+        self.final_lr = final_lr
+
+        self.metrics = (
+            [*metrics, self.criterion]
+            if metrics
+            else [self.predictor._T_default_metric(), self.criterion]
+        )
+
+    @property
+    def criterion(self) -> LossFunction:
+        return self.predictor.criterion
+
+    def training_step(self, batch, batch_idx):
+        input_ids, token_type_ids, attention_mask, Y, P, weights, gt_mask, lt_mask = batch
+        R = self.reaction_encoder(input_ids, token_type_ids, attention_mask)
+        P = self.protein_encoder(P)
+        Y_hat = self.predictor(torch.cat((R, P), dim=1))
+        mask = Y_hat.isfinite()
+        loss = self.criterion(Y_hat, Y, mask, weights, gt_mask, lt_mask)
+        self.log("train_loss", loss, prog_bar=True, on_epoch=True, on_step=False)
+        return loss
+    
+    def validation_step(self, batch, batch_idx: int = 0):
+        losses = self._evaluate_batch(batch)
+        metric2loss = {f"val/{m.alias}": l for m, l in zip(self.metrics, losses)}
+
+        self.log_dict(metric2loss, batch_size=len(batch[0]))
+        self.log("val_loss", losses[0], batch_size=len(batch[0]), prog_bar=True, on_epoch=True, on_step=False)
+    
+    def forward(self, input_ids, token_type_ids, attention_mask, P):
+        R = self.reaction_encoder(input_ids, token_type_ids, attention_mask)
+        P = self.protein_encoder(P)
+        Y_hat = self.predictor(torch.cat((R, P), dim=1))
+        return Y_hat
+    
+    def predict_step(self, batch, batch_idx: int, dataloader_idx: int = 0) -> Tensor:
+        input_ids, token_type_ids, attention_mask, _, P, *_ = batch
+        return self(input_ids, token_type_ids, attention_mask, P)
+    
+    def configure_optimizers(self):
+        opt = Adam(self.parameters(), self.init_lr)
+
+        lr_sched = NoamLR(
+            opt,
+            self.warmup_epochs,
+            self.trainer.max_epochs,
+            self.trainer.estimated_stepping_batches // self.trainer.max_epochs,
+            self.init_lr,
+            self.max_lr,
+            self.final_lr,
+        )
+        lr_sched_config = {
+            "scheduler": lr_sched,
+            "interval": "step" if isinstance(lr_sched, NoamLR) else "batch",
+        }
+
+        return {"optimizer": opt, "lr_scheduler": lr_sched_config}
+    
+    def _evaluate_batch(self, batch) -> list[Tensor]:
+        input_ids, token_type_ids, attention_mask, Y, P, weights, gt_mask, lt_mask = batch
+
+        mask = Y.isfinite()
+        Y = Y.nan_to_num(nan=0.0)
+        preds = self(input_ids, token_type_ids, attention_mask, P)
+
+        return [
+            metric(preds, Y, mask, None, lt_mask, gt_mask) for metric in self.metrics[:-1]
+        ]
+

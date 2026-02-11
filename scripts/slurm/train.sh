@@ -5,13 +5,13 @@
 #SBATCH -N 1
 #SBATCH -n 1
 #SBATCH --mem=48GB
-#SBATCH -t 18:00:00
+#SBATCH -t 48:00:00
 #SBATCH --job-name="train"
 #SBATCH --output=/home/spn1560/hiec/logs/out/%x_%A_%a.out
 #SBATCH --error=/home/spn1560/hiec/logs/error/%x_%A_%a.err
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
-#SBATCH --array=0-1
+#SBATCH --array=0-2
 #SBATCH --mail-user=stefan.pate@northwestern.edu
 
 # Args
@@ -22,16 +22,11 @@ data=(
     sprhea_random_rc_arc
 )
 model=(
-    drfp
-    drfp
-    drfp
+    rxnfp_ft
+    rxnfp_ft
+    rxnfp_ft
 )
-n_epochs=(
-    15
-    21
-    9
-)
-split_idx=-2
+split_idx=0
 
 # Commands
 ulimit -c 0
@@ -39,4 +34,4 @@ module purge
 module load gcc/9.2.0
 eval "$(conda shell.bash hook)"
 conda activate /home/spn1560/.conda/envs/hiec2
-python $script data=${data[$SLURM_ARRAY_TASK_ID]} model=${model[$SLURM_ARRAY_TASK_ID]} data.split_idx=$split_idx model.n_epochs=${n_epochs[$SLURM_ARRAY_TASK_ID]}
+python $script data=${data[$SLURM_ARRAY_TASK_ID]} model=${model[$SLURM_ARRAY_TASK_ID]} data.split_idx=$split_idx # model.n_epochs=${n_epochs[$SLURM_ARRAY_TASK_ID]}

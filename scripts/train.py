@@ -15,6 +15,8 @@ from src.ml_utils import (
     downsample_negatives
 )
 
+from src.rxnfp.transformer_fingerprints import get_default_model_and_tokenizer
+
 @hydra.main(version_base=None, config_path="../configs", config_name="cross_val")
 def main(cfg: DictConfig):
     rng = np.random.default_rng(seed=cfg.data.seed)
@@ -100,6 +102,7 @@ def main(cfg: DictConfig):
             logger=logger,
             callbacks=checkpoint_callback,
             check_val_every_n_epoch=k_val,
+            precision='bf16' if torch.cuda.is_available() else 32,
         )
 
         trainer.fit(

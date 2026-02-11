@@ -16,7 +16,8 @@ from chemprop.data import (
 from src.model import (
     MPNNDimRed,
     TwoChannelFFN,
-    TwoChannelLinear
+    TwoChannelLinear,
+    BertTwoChannel,
 )
 
 from src.data import (
@@ -26,6 +27,9 @@ from src.data import (
     RxnRCDatapoint,
     PretrainedFPDataset,
     PretrainedDatapoint,
+    TransformerDatapoint,
+    TransformerDataset,
+    transformer_build_dataloader,
 )
 
 from src.featurizer import (  
@@ -37,11 +41,13 @@ from src.featurizer import (
     cp_reaction_dp_from_smi,
     ReactionDRFPFeaturizer,
     PretrainedReactionFeaturizer,
+    TransformerFeaturizer,
 )
 from chemprop.featurizers import (
     CondensedGraphOfReactionFeaturizer,
     RxnMode,
 )
+from src.rxnfp.transformer_fingerprints import get_default_model_and_tokenizer
 
 featurizers = {
     'cgr': (ReactionDataset, CondensedGraphOfReactionFeaturizer, build_dataloader),
@@ -50,6 +56,7 @@ featurizers = {
     'mfp': (MFPDataset, ReactionMorganFeaturizer, mfp_build_dataloader),
     'drfp': (MFPDataset, ReactionDRFPFeaturizer, mfp_build_dataloader),
     'rxnfp': (PretrainedFPDataset, PretrainedReactionFeaturizer, mfp_build_dataloader),
+    'rxnfp_ft': (TransformerDataset, TransformerFeaturizer, transformer_build_dataloader),
     'uni_rxn': (PretrainedFPDataset, PretrainedReactionFeaturizer, mfp_build_dataloader),
     'react_seq': (PretrainedFPDataset, PretrainedReactionFeaturizer, mfp_build_dataloader),
 }
@@ -60,6 +67,8 @@ def construct_featurizer(cfg: DictConfig):
         datapoint_from_smi = cp_reaction_dp_from_smi
     elif cfg.model.featurizer in ['rxnfp', 'uni_rxn', 'react_seq']:
         datapoint_from_smi = PretrainedDatapoint.from_smi
+    elif cfg.model.featurizer == 'rxnfp_ft':
+        datapoint_from_smi = TransformerDatapoint.from_smi
     else:
         datapoint_from_smi = RxnRCDatapoint.from_smi
 
@@ -73,6 +82,9 @@ def construct_featurizer(cfg: DictConfig):
         featurizer = featurizer_base(mode_=RxnMode.REAC_PROD)
     elif cfg.model.featurizer in ['rxnfp', 'uni_rxn', 'react_seq']:
         featurizer = featurizer_base(embed_loc= Path(cfg.filepaths.pretrained_rxn_embeddings) / f"{cfg.data.dataset}_{cfg.data.toc}_{cfg.model.featurizer}.npy", length=cfg.model.vec_len)
+    elif cfg.model.featurizer == 'rxnfp_ft':
+        _, tokenizer = get_default_model_and_tokenizer()
+        featurizer = featurizer_base(tokenizer=tokenizer, max_length=cfg.model.max_length)
     else:
         featurizer = featurizer_base(
             atom_featurizer=MultiHotAtomFeaturizer.no_stereo(),
@@ -173,6 +185,15 @@ def construct_model(cfg: DictConfig, embed_dim: int, featurizer, device, ckpt=No
             predictor=pred_head,
             metrics=metrics
     )
+    elif cfg.model.model == 'bert':
+        base_model, _ = get_default_model_and_tokenizer()
+        model = BertTwoChannel(
+            d_prot=embed_dim,
+            d_h=cfg.model.d_h_encoder,
+            reaction_encoder=src.nn.BertRxnEncoder(base_model, d_rxn=cfg.model.d_rxn, d_h=cfg.model.d_h_encoder),
+            predictor=pred_head,
+            metrics=metrics
+        )
         
     # Load from ckpt
     if ckpt:
